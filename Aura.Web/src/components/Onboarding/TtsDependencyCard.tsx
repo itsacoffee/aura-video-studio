@@ -409,16 +409,26 @@ export function TtsDependencyCard({
         provider === 'piper' ? await ttsClient.testPiperVoice() : await ttsClient.testMimic3Voice();
 
       if (result.success && result.audioBase64) {
-        // Play the audio
+        // Play the audio with error handling
         const audio = new Audio(
           `data:${result.audioFormat || 'audio/wav'};base64,${result.audioBase64}`
         );
-        audio.play();
 
-        showSuccessToast({
-          title: 'Voice Test Successful',
-          message: result.message || 'Audio playback started.',
-        });
+        try {
+          await audio.play();
+          showSuccessToast({
+            title: 'Voice Test Successful',
+            message: result.message || 'Audio playback started.',
+          });
+        } catch (playbackError: unknown) {
+          console.error('[TtsDependencyCard] Audio playback failed:', playbackError);
+          const playbackErrorMsg =
+            playbackError instanceof Error ? playbackError.message : 'Unknown playback error';
+          showFailureToast({
+            title: 'Audio Playback Failed',
+            message: `Voice synthesis succeeded, but playback failed: ${playbackErrorMsg}. The browser may have blocked autoplay.`,
+          });
+        }
       } else {
         showFailureToast({
           title: 'Voice Test Failed',

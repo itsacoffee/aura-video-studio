@@ -19,6 +19,16 @@ public record InstallProgress(
     long TotalBytes
 );
 
+/// <summary>
+/// URLs for Piper TTS binary and voice model downloads
+/// </summary>
+public static class PiperDownloadUrls
+{
+    public const string WindowsBinaryUrl = "https://github.com/rhasspy/piper/releases/latest/download/piper_windows_amd64.tar.gz";
+    public const string DefaultVoiceModelUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+    public const string VoiceModelsBaseUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main";
+}
+
 public class DependencyInstaller
 {
     private readonly ILogger<DependencyInstaller> _logger;
@@ -147,15 +157,12 @@ public class DependencyInstaller
 
             progress?.Report(new InstallProgress(5, "Resolving download URL...", "", 0, 0));
 
-            // Try to resolve the download URL from GitHub releases
-            var downloadUrl = "https://github.com/rhasspy/piper/releases/latest/download/piper_windows_amd64.tar.gz";
-
             progress?.Report(new InstallProgress(10, "Downloading Piper...", "piper_windows_amd64.tar.gz", 0, 0));
 
             var downloadPath = Path.Combine(Path.GetTempPath(), $"piper_{Guid.NewGuid():N}.tar.gz");
 
-            // Download Piper with retries
-            await DownloadWithRetriesAsync(downloadUrl, downloadPath, progress, ct).ConfigureAwait(false);
+            // Download Piper with retries using constant URL
+            await DownloadWithRetriesAsync(PiperDownloadUrls.WindowsBinaryUrl, downloadPath, progress, ct).ConfigureAwait(false);
 
             progress?.Report(new InstallProgress(60, "Extracting Piper...", "", 0, 0));
 
@@ -184,13 +191,12 @@ public class DependencyInstaller
 
             progress?.Report(new InstallProgress(75, "Downloading default voice model...", "en_US-lessac-medium.onnx", 0, 0));
 
-            // Download default voice model
-            var voiceModelUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+            // Download default voice model using constant URL
             var voiceModelPath = Path.Combine(voicesDir, "en_US-lessac-medium.onnx");
 
             try
             {
-                using var response = await _httpClient.GetAsync(voiceModelUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+                using var response = await _httpClient.GetAsync(PiperDownloadUrls.DefaultVoiceModelUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 using var contentStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);

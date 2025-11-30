@@ -12,6 +12,37 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Aura.Api.Controllers;
 
 /// <summary>
+/// Piper voice model metadata for downloads
+/// </summary>
+public record PiperVoiceModel(string Id, string Name, string Language, string Quality, long SizeBytes, string Url);
+
+/// <summary>
+/// Static registry of available Piper voice models
+/// </summary>
+public static class PiperVoiceModels
+{
+    private const string VoiceBaseUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main";
+
+    public static readonly IReadOnlyList<PiperVoiceModel> AvailableVoices = new List<PiperVoiceModel>
+    {
+        new("en_US-lessac-medium", "Lessac (Medium)", "English (US)", "medium", 63_000_000L, $"{VoiceBaseUrl}/en/en_US/lessac/medium/en_US-lessac-medium.onnx"),
+        new("en_US-lessac-high", "Lessac (High)", "English (US)", "high", 113_000_000L, $"{VoiceBaseUrl}/en/en_US/lessac/high/en_US-lessac-high.onnx"),
+        new("en_US-amy-low", "Amy (Low)", "English (US)", "low", 17_000_000L, $"{VoiceBaseUrl}/en/en_US/amy/low/en_US-amy-low.onnx"),
+        new("en_US-amy-medium", "Amy (Medium)", "English (US)", "medium", 63_000_000L, $"{VoiceBaseUrl}/en/en_US/amy/medium/en_US-amy-medium.onnx"),
+        new("en_GB-alba-medium", "Alba (Medium)", "English (UK)", "medium", 63_000_000L, $"{VoiceBaseUrl}/en/en_GB/alba/medium/en_GB-alba-medium.onnx"),
+        new("en_GB-jenny_dioco-medium", "Jenny (Medium)", "English (UK)", "medium", 63_000_000L, $"{VoiceBaseUrl}/en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx"),
+        new("de_DE-thorsten-medium", "Thorsten (Medium)", "German", "medium", 63_000_000L, $"{VoiceBaseUrl}/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx"),
+        new("fr_FR-siwis-medium", "Siwis (Medium)", "French", "medium", 63_000_000L, $"{VoiceBaseUrl}/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx"),
+        new("es_ES-sharvard-medium", "Sharvard (Medium)", "Spanish", "medium", 63_000_000L, $"{VoiceBaseUrl}/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx"),
+    };
+
+    public static PiperVoiceModel? GetVoiceById(string voiceId)
+    {
+        return AvailableVoices.FirstOrDefault(v => v.Id.Equals(voiceId, StringComparison.OrdinalIgnoreCase));
+    }
+}
+
+/// <summary>
 /// Controller for handling desktop setup operations like dependency installation
 /// </summary>
 [ApiController]
@@ -2679,24 +2710,21 @@ public class SetupController : ControllerBase
         {
             _logger.LogInformation("[{CorrelationId}] Getting available Piper voices", correlationId);
 
-            // List of popular Piper voices with their metadata
-            var voices = new[]
+            // Use the shared voice models configuration
+            var voices = PiperVoiceModels.AvailableVoices.Select(v => new
             {
-                new { id = "en_US-lessac-medium", name = "Lessac (Medium)", language = "English (US)", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx" },
-                new { id = "en_US-lessac-high", name = "Lessac (High)", language = "English (US)", quality = "high", sizeBytes = 113_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/high/en_US-lessac-high.onnx" },
-                new { id = "en_US-amy-low", name = "Amy (Low)", language = "English (US)", quality = "low", sizeBytes = 17_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx" },
-                new { id = "en_US-amy-medium", name = "Amy (Medium)", language = "English (US)", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx" },
-                new { id = "en_GB-alba-medium", name = "Alba (Medium)", language = "English (UK)", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx" },
-                new { id = "en_GB-jenny_dioco-medium", name = "Jenny (Medium)", language = "English (UK)", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx" },
-                new { id = "de_DE-thorsten-medium", name = "Thorsten (Medium)", language = "German", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx" },
-                new { id = "fr_FR-siwis-medium", name = "Siwis (Medium)", language = "French", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx" },
-                new { id = "es_ES-sharvard-medium", name = "Sharvard (Medium)", language = "Spanish", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx" },
-            };
+                id = v.Id,
+                name = v.Name,
+                language = v.Language,
+                quality = v.Quality,
+                sizeBytes = v.SizeBytes,
+                url = v.Url
+            });
 
             return Ok(new
             {
                 voices = voices,
-                total = voices.Length
+                total = PiperVoiceModels.AvailableVoices.Count
             });
         }
         catch (Exception ex)
@@ -2774,25 +2802,14 @@ public class SetupController : ControllerBase
         {
             _logger.LogInformation("[{CorrelationId}] Downloading Piper voice: {VoiceId}", correlationId, voiceId);
 
-            // Map voice ID to download URL
-            var voiceUrls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "en_US-lessac-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx" },
-                { "en_US-lessac-high", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/high/en_US-lessac-high.onnx" },
-                { "en_US-amy-low", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx" },
-                { "en_US-amy-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx" },
-                { "en_GB-alba-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx" },
-                { "en_GB-jenny_dioco-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx" },
-                { "de_DE-thorsten-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx" },
-                { "fr_FR-siwis-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx" },
-                { "es_ES-sharvard-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx" },
-            };
-
-            if (!voiceUrls.TryGetValue(voiceId, out var downloadUrl))
+            // Use the shared voice models configuration
+            var voiceModel = PiperVoiceModels.GetVoiceById(voiceId);
+            if (voiceModel == null)
             {
                 return BadRequest(new { success = false, message = $"Unknown voice ID: {voiceId}" });
             }
 
+            var downloadUrl = voiceModel.Url;
             var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
                            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
             var voicesDir = Path.Combine(dataPath, "piper", "voices");
