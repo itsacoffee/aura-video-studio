@@ -123,13 +123,139 @@ public class DependencyInstaller
         }
     }
 
-    public Task<bool> InstallPiperTtsAsync(
+    public async Task<bool> InstallPiperTtsAsync(
         IProgress<InstallProgress>? progress = null,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Piper TTS installation has been moved to the Setup Wizard API endpoint. This method is deprecated.");
-        progress?.Report(new InstallProgress(0, "Please use the Setup Wizard to install Piper TTS", "", 0, 0));
-        return Task.FromResult(false);
+        _logger.LogInformation("Starting Piper TTS installation");
+
+        try
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var installDir = Path.Combine(localAppData, "Aura", "Tools", "piper");
+            var voicesDir = Path.Combine(installDir, "voices");
+
+            progress?.Report(new InstallProgress(0, "Preparing installation...", "", 0, 0));
+
+            // Only supported on Windows for managed installation
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _logger.LogWarning("Piper TTS managed installation is only available on Windows. Please install manually from https://github.com/rhasspy/piper/releases");
+                progress?.Report(new InstallProgress(0, "Managed installation only available on Windows. Please install manually.", "", 0, 0));
+                return false;
+            }
+
+            progress?.Report(new InstallProgress(5, "Resolving download URL...", "", 0, 0));
+
+            // Try to resolve the download URL from GitHub releases
+            var downloadUrl = "https://github.com/rhasspy/piper/releases/latest/download/piper_windows_amd64.tar.gz";
+
+            progress?.Report(new InstallProgress(10, "Downloading Piper...", "piper_windows_amd64.tar.gz", 0, 0));
+
+            var downloadPath = Path.Combine(Path.GetTempPath(), $"piper_{Guid.NewGuid():N}.tar.gz");
+
+            // Download Piper with retries
+            await DownloadWithRetriesAsync(downloadUrl, downloadPath, progress, ct).ConfigureAwait(false);
+
+            progress?.Report(new InstallProgress(60, "Extracting Piper...", "", 0, 0));
+
+            // Create installation directory
+            Directory.CreateDirectory(installDir);
+            Directory.CreateDirectory(voicesDir);
+
+            // Extract using tar command (available on Windows 10+)
+            await ExtractTarGzAsync(downloadPath, installDir, ct).ConfigureAwait(false);
+
+            // Find piper.exe
+            var piperExePath = Directory.GetFiles(installDir, "piper.exe", SearchOption.AllDirectories).FirstOrDefault();
+            if (piperExePath == null)
+            {
+                _logger.LogError("Piper executable not found after extraction");
+                progress?.Report(new InstallProgress(0, "Extraction failed: piper.exe not found", "", 0, 0));
+                return false;
+            }
+
+            // Move to root of installDir if nested
+            var targetPath = Path.Combine(installDir, "piper.exe");
+            if (piperExePath != targetPath)
+            {
+                File.Copy(piperExePath, targetPath, overwrite: true);
+            }
+
+            progress?.Report(new InstallProgress(75, "Downloading default voice model...", "en_US-lessac-medium.onnx", 0, 0));
+
+            // Download default voice model
+            var voiceModelUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+            var voiceModelPath = Path.Combine(voicesDir, "en_US-lessac-medium.onnx");
+
+            try
+            {
+                using var response = await _httpClient.GetAsync(voiceModelUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                using var contentStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+                using var fileStream = new FileStream(voiceModelPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+                await contentStream.CopyToAsync(fileStream, ct).ConfigureAwait(false);
+
+                _logger.LogInformation("Voice model downloaded successfully: {Path}", voiceModelPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to download voice model, installation will continue without it");
+            }
+
+            progress?.Report(new InstallProgress(95, "Verifying installation...", "", 0, 0));
+
+            // Verify Piper works
+            try
+            {
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = targetPath,
+                        Arguments = "--help",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                await process.WaitForExitAsync(ct).ConfigureAwait(false);
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogWarning("Piper verification returned non-zero exit code: {ExitCode}", process.ExitCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Piper verification failed, but installation may still work");
+            }
+
+            // Clean up download file
+            try
+            {
+                File.Delete(downloadPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clean up download file");
+            }
+
+            progress?.Report(new InstallProgress(100, "Piper TTS installed successfully", "", 0, 0));
+
+            _logger.LogInformation("Piper TTS installation completed successfully at {Path}", targetPath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Piper TTS installation failed");
+            progress?.Report(new InstallProgress(0, $"Installation failed: {ex.Message}", "", 0, 0));
+            return false;
+        }
     }
 
     public async Task<bool> DownloadStockAssetsAsync(

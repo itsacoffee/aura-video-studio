@@ -2522,6 +2522,458 @@ public class SetupController : ControllerBase
     }
 
     /// <summary>
+    /// Test Piper TTS voice synthesis after installation
+    /// </summary>
+    [HttpPost("piper/test-voice")]
+    public async Task<IActionResult> TestPiperVoice(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Testing Piper TTS voice synthesis", correlationId);
+
+            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+            providerSettings.Reload();
+            var piperPath = providerSettings.PiperExecutablePath;
+            var voiceModelPath = providerSettings.PiperVoiceModelPath;
+
+            if (string.IsNullOrWhiteSpace(piperPath) || !System.IO.File.Exists(piperPath))
+            {
+                return Ok(new
+                {
+                    success = false,
+                    message = "Piper executable not found. Please install Piper TTS first.",
+                    audioBase64 = (string?)null
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(voiceModelPath) || !System.IO.File.Exists(voiceModelPath))
+            {
+                return Ok(new
+                {
+                    success = false,
+                    message = "Voice model not found. Please install a voice model.",
+                    audioBase64 = (string?)null
+                });
+            }
+
+            // Generate a test audio file
+            var testText = "Hello! This is a test of the Piper text to speech system.";
+            var outputPath = Path.Combine(Path.GetTempPath(), $"piper_test_{Guid.NewGuid():N}.wav");
+
+            try
+            {
+                using var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = piperPath,
+                        Arguments = $"--model \"{voiceModelPath}\" --output_file \"{outputPath}\"",
+                        RedirectStandardInput = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+
+                // Write test text to stdin
+                await process.StandardInput.WriteLineAsync(testText).ConfigureAwait(false);
+                process.StandardInput.Close();
+
+                // Wait for completion with timeout
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+                await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+
+                if (process.ExitCode != 0)
+                {
+                    var error = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+                    _logger.LogWarning("[{CorrelationId}] Piper test synthesis failed: {Error}", correlationId, error);
+                    return Ok(new
+                    {
+                        success = false,
+                        message = $"Voice synthesis failed: {error}",
+                        audioBase64 = (string?)null
+                    });
+                }
+
+                if (!System.IO.File.Exists(outputPath))
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        message = "Voice synthesis completed but output file was not created.",
+                        audioBase64 = (string?)null
+                    });
+                }
+
+                // Read and return audio as base64
+                var audioBytes = await System.IO.File.ReadAllBytesAsync(outputPath, cancellationToken).ConfigureAwait(false);
+                var audioBase64 = Convert.ToBase64String(audioBytes);
+
+                // Cleanup test file
+                try
+                {
+                    System.IO.File.Delete(outputPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "[{CorrelationId}] Failed to cleanup test audio file", correlationId);
+                }
+
+                _logger.LogInformation("[{CorrelationId}] Piper test synthesis successful, audio size: {Size} bytes", correlationId, audioBytes.Length);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Voice synthesis test successful!",
+                    audioBase64 = audioBase64,
+                    audioFormat = "audio/wav"
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("[{CorrelationId}] Piper test synthesis timed out", correlationId);
+                return Ok(new
+                {
+                    success = false,
+                    message = "Voice synthesis timed out after 30 seconds.",
+                    audioBase64 = (string?)null
+                });
+            }
+            finally
+            {
+                // Cleanup output file if it exists
+                if (System.IO.File.Exists(outputPath))
+                {
+                    try { System.IO.File.Delete(outputPath); } catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to test Piper voice synthesis", correlationId);
+            return Ok(new
+            {
+                success = false,
+                message = $"Error testing voice: {ex.Message}",
+                audioBase64 = (string?)null
+            });
+        }
+    }
+
+    /// <summary>
+    /// List available Piper voice models that can be downloaded
+    /// </summary>
+    [HttpGet("piper/voices")]
+    public IActionResult GetPiperVoices()
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Getting available Piper voices", correlationId);
+
+            // List of popular Piper voices with their metadata
+            var voices = new[]
+            {
+                new { id = "en_US-lessac-medium", name = "Lessac (Medium)", language = "English (US)", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx" },
+                new { id = "en_US-lessac-high", name = "Lessac (High)", language = "English (US)", quality = "high", sizeBytes = 113_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/high/en_US-lessac-high.onnx" },
+                new { id = "en_US-amy-low", name = "Amy (Low)", language = "English (US)", quality = "low", sizeBytes = 17_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx" },
+                new { id = "en_US-amy-medium", name = "Amy (Medium)", language = "English (US)", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx" },
+                new { id = "en_GB-alba-medium", name = "Alba (Medium)", language = "English (UK)", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx" },
+                new { id = "en_GB-jenny_dioco-medium", name = "Jenny (Medium)", language = "English (UK)", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx" },
+                new { id = "de_DE-thorsten-medium", name = "Thorsten (Medium)", language = "German", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx" },
+                new { id = "fr_FR-siwis-medium", name = "Siwis (Medium)", language = "French", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx" },
+                new { id = "es_ES-sharvard-medium", name = "Sharvard (Medium)", language = "Spanish", quality = "medium", sizeBytes = 63_000_000L, url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx" },
+            };
+
+            return Ok(new
+            {
+                voices = voices,
+                total = voices.Length
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to get Piper voices", correlationId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// List installed Piper voice models
+    /// </summary>
+    [HttpGet("piper/voices/installed")]
+    public IActionResult GetInstalledPiperVoices()
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Getting installed Piper voices", correlationId);
+
+            var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
+                           Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
+            var voicesDir = Path.Combine(dataPath, "piper", "voices");
+
+            var installedVoices = new List<object>();
+
+            if (Directory.Exists(voicesDir))
+            {
+                var onnxFiles = Directory.GetFiles(voicesDir, "*.onnx", SearchOption.AllDirectories);
+                foreach (var file in onnxFiles)
+                {
+                    var fileName = Path.GetFileNameWithoutExtension(file);
+                    var fileInfo = new FileInfo(file);
+                    installedVoices.Add(new
+                    {
+                        id = fileName,
+                        name = fileName,
+                        path = file,
+                        sizeBytes = fileInfo.Length,
+                        installedAt = fileInfo.CreationTimeUtc
+                    });
+                }
+            }
+
+            // Also check current configured voice
+            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+            providerSettings.Reload();
+            var currentVoicePath = providerSettings.PiperVoiceModelPath;
+
+            return Ok(new
+            {
+                voices = installedVoices,
+                currentVoice = currentVoicePath,
+                voicesDirectory = voicesDir,
+                total = installedVoices.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to get installed Piper voices", correlationId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Download a specific Piper voice model
+    /// </summary>
+    [HttpPost("piper/voices/{voiceId}/download")]
+    public async Task<IActionResult> DownloadPiperVoice(string voiceId, CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Downloading Piper voice: {VoiceId}", correlationId, voiceId);
+
+            // Map voice ID to download URL
+            var voiceUrls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "en_US-lessac-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx" },
+                { "en_US-lessac-high", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/high/en_US-lessac-high.onnx" },
+                { "en_US-amy-low", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/low/en_US-amy-low.onnx" },
+                { "en_US-amy-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx" },
+                { "en_GB-alba-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alba/medium/en_GB-alba-medium.onnx" },
+                { "en_GB-jenny_dioco-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/jenny_dioco/medium/en_GB-jenny_dioco-medium.onnx" },
+                { "de_DE-thorsten-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx" },
+                { "fr_FR-siwis-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx" },
+                { "es_ES-sharvard-medium", "https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx" },
+            };
+
+            if (!voiceUrls.TryGetValue(voiceId, out var downloadUrl))
+            {
+                return BadRequest(new { success = false, message = $"Unknown voice ID: {voiceId}" });
+            }
+
+            var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
+                           Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
+            var voicesDir = Path.Combine(dataPath, "piper", "voices");
+            Directory.CreateDirectory(voicesDir);
+
+            var voiceModelPath = Path.Combine(voicesDir, $"{voiceId}.onnx");
+
+            // Download with retry logic
+            for (int attempt = 1; attempt <= 3; attempt++)
+            {
+                try
+                {
+                    _logger.LogInformation("[{CorrelationId}] Downloading voice model (attempt {Attempt}/3): {Url}", correlationId, attempt, downloadUrl);
+
+                    using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
+
+                    using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                    using var fileStream = new FileStream(voiceModelPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+                    await contentStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+
+                    _logger.LogInformation("[{CorrelationId}] Voice model downloaded successfully: {Path}", correlationId, voiceModelPath);
+
+                    // Update provider settings if this is the first voice or user wants to use it
+                    var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+                    providerSettings.Reload();
+                    var currentVoice = providerSettings.PiperVoiceModelPath;
+
+                    // If no voice configured, set this as default
+                    if (string.IsNullOrWhiteSpace(currentVoice) || !System.IO.File.Exists(currentVoice))
+                    {
+                        var piperPath = providerSettings.PiperExecutablePath;
+                        providerSettings.SetPiperPaths(piperPath, voiceModelPath);
+                        _logger.LogInformation("[{CorrelationId}] Set {VoiceId} as default voice", correlationId, voiceId);
+                    }
+
+                    return Ok(new
+                    {
+                        success = true,
+                        message = $"Voice '{voiceId}' downloaded successfully",
+                        path = voiceModelPath,
+                        voiceId = voiceId
+                    });
+                }
+                catch (Exception ex) when (attempt < 3)
+                {
+                    _logger.LogWarning(ex, "[{CorrelationId}] Download attempt {Attempt}/3 failed", correlationId, attempt);
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            return Ok(new
+            {
+                success = false,
+                message = "Failed to download voice model after 3 attempts"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to download Piper voice: {VoiceId}", correlationId, voiceId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Set the active Piper voice model
+    /// </summary>
+    [HttpPost("piper/voices/{voiceId}/activate")]
+    public IActionResult ActivatePiperVoice(string voiceId)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Activating Piper voice: {VoiceId}", correlationId, voiceId);
+
+            var dataPath = Environment.GetEnvironmentVariable("AURA_DATA_PATH") ??
+                           Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AuraVideoStudio");
+            var voicesDir = Path.Combine(dataPath, "piper", "voices");
+            var voiceModelPath = Path.Combine(voicesDir, $"{voiceId}.onnx");
+
+            if (!System.IO.File.Exists(voiceModelPath))
+            {
+                return BadRequest(new { success = false, message = $"Voice model not found: {voiceId}" });
+            }
+
+            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+            providerSettings.Reload();
+            var piperPath = providerSettings.PiperExecutablePath;
+            providerSettings.SetPiperPaths(piperPath, voiceModelPath);
+
+            _logger.LogInformation("[{CorrelationId}] Activated voice: {VoiceId}", correlationId, voiceId);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Voice '{voiceId}' activated",
+                path = voiceModelPath
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to activate Piper voice: {VoiceId}", correlationId, voiceId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Test Mimic3 TTS voice synthesis after installation
+    /// </summary>
+    [HttpPost("mimic3/test-voice")]
+    public async Task<IActionResult> TestMimic3Voice(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] Testing Mimic3 TTS voice synthesis", correlationId);
+
+            var providerSettings = new ProviderSettings(_loggerFactory.CreateLogger<ProviderSettings>());
+            providerSettings.Reload();
+            var baseUrl = providerSettings.Mimic3BaseUrl ?? "http://127.0.0.1:59125";
+
+            var testText = "Hello! This is a test of the Mimic3 text to speech system.";
+            var voice = "en_US/vctk_low";
+
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+                var url = $"{baseUrl}/api/tts?voice={Uri.EscapeDataString(voice)}";
+
+                var content = new StringContent(testText, System.Text.Encoding.UTF8, "text/plain");
+                var response = await client.PostAsync(url, content, cancellationToken).ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    return Ok(new
+                    {
+                        success = false,
+                        message = $"Voice synthesis failed: {response.StatusCode} - {error}",
+                        audioBase64 = (string?)null
+                    });
+                }
+
+                var audioBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+                var audioBase64 = Convert.ToBase64String(audioBytes);
+
+                _logger.LogInformation("[{CorrelationId}] Mimic3 test synthesis successful, audio size: {Size} bytes", correlationId, audioBytes.Length);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Voice synthesis test successful!",
+                    audioBase64 = audioBase64,
+                    audioFormat = "audio/wav"
+                });
+            }
+            catch (HttpRequestException ex)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    message = $"Cannot connect to Mimic3 server: {ex.Message}",
+                    audioBase64 = (string?)null
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Failed to test Mimic3 voice synthesis", correlationId);
+            return Ok(new
+            {
+                success = false,
+                message = $"Error testing voice: {ex.Message}",
+                audioBase64 = (string?)null
+            });
+        }
+    }
+
+    /// <summary>
     /// Check Piper TTS installation status
     /// </summary>
     [HttpGet("check-piper")]
