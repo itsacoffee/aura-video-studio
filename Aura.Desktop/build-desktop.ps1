@@ -427,8 +427,27 @@ NEXT_TELEMETRY_DISABLED=1
                     npm install --legacy-peer-deps 2>&1 | Out-Host
                 }
                 else {
-                    # bun install
+                    # bun install - ensure lockfile is up to date
+                    # The --frozen-lockfile flag ensures we use existing lockfile, but we want to update it
+                    # So we use regular bun install which will update the lockfile if needed
                     bun install 2>&1 | Out-Host
+
+                    # Save the primary install exit code before any secondary commands
+                    $primaryInstallExitCode = $LASTEXITCODE
+
+                    # If bun install succeeded, verify lockfile is present and valid
+                    if ($primaryInstallExitCode -eq 0) {
+                        $lockfilePath = "$openCutRootDir\bun.lockb"
+                        if (-not (Test-Path $lockfilePath)) {
+                            Show-Warning "Lockfile not found after installation. Regenerating..."
+                            bun install --force 2>&1 | Out-Host
+                            # Note: We don't check the exit code of --force since it's just a recovery attempt
+                            # The primary install already succeeded, so we continue with success
+                        }
+                    }
+
+                    # Restore the primary install exit code for the overall status check
+                    $LASTEXITCODE = $primaryInstallExitCode
                 }
 
                 if ($LASTEXITCODE -eq 0) {
@@ -490,16 +509,16 @@ NEXT_TELEMETRY_DISABLED=1
                 }
 
                 # Verify critical dependencies are installed
+                # In monorepo setups, dependencies can be hoisted to root or in app directory
                 $criticalDeps = @("next", "react", "react-dom")
                 $missingDeps = @()
                 foreach ($dep in $criticalDeps) {
-                    $depPath = if ($useNpmFallback) {
-                        "$openCutAppDir\node_modules\$dep"
-                    }
-                    else {
-                        "$openCutRootDir\node_modules\$dep"
-                    }
-                    if (-not (Test-Path $depPath)) {
+                    # Check both root and app node_modules (monorepo hoisting)
+                    $rootDepPath = "$openCutRootDir\node_modules\$dep"
+                    $appDepPath = "$openCutAppDir\node_modules\$dep"
+
+                    $depFound = (Test-Path $rootDepPath) -or (Test-Path $appDepPath)
+                    if (-not $depFound) {
                         $missingDeps += $dep
                     }
                 }
@@ -568,6 +587,9 @@ NEXT_TELEMETRY_DISABLED=1
                     }
                     else {
                         Set-Location $openCutRootDir
+                        # Note: Turbo may show warnings about lockfile entries (e.g., @emnapi/wasi-threads)
+                        # This is expected when using Bun's lockfile format with Turbo and is non-fatal
+                        # The build will continue successfully despite these warnings
                         bun run build 2>&1 | Out-Host
                     }
                 }
@@ -1254,7 +1276,5 @@ Write-Info "To run the app in development mode:"
 Write-Host "  cd Aura.Desktop"
 Write-Host "  npm start"
 Write-Host ""
-
-Write-Success "All done! 🎉"
 
 Write-Success "All done! 🎉"
