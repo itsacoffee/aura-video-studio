@@ -30,3 +30,11 @@ export {
   useTypographyStyles,
   typographyTokens,
 } from './typography';
+
+// Fluid typography tokens from styles
+export {
+  fluidTypeScale,
+  lineHeights as fluidLineHeights,
+  letterSpacing,
+  fontWeights as fluidFontWeights,
+} from '../styles/tokens';

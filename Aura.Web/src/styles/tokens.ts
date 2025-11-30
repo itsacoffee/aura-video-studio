@@ -146,6 +146,63 @@ export const designTokens = {
 } as const;
 
 /**
+ * Fluid Typography Scale Tokens
+ *
+ * CSS custom property references for the fluid type system.
+ * These tokens use clamp() for viewport-responsive sizing.
+ */
+export const fluidTypeScale = {
+  /** Extra small - ~11-15px fluid */
+  xs: 'var(--type-xs)',
+  /** Small - ~13-16px fluid */
+  sm: 'var(--type-sm)',
+  /** Medium (base) - ~14-18px fluid */
+  md: 'var(--type-md)',
+  /** Large - ~17-22px fluid */
+  lg: 'var(--type-lg)',
+  /** Extra large - ~20-26px fluid */
+  xl: 'var(--type-xl)',
+  /** 2XL - ~24-31px fluid */
+  '2xl': 'var(--type-2xl)',
+  /** 3XL - ~29-37px fluid */
+  '3xl': 'var(--type-3xl)',
+  /** 4XL (display) - ~35-45px fluid */
+  '4xl': 'var(--type-4xl)',
+} as const;
+
+/**
+ * Line Height Tokens
+ */
+export const lineHeights = {
+  tight: 'var(--leading-tight)',
+  snug: 'var(--leading-snug)',
+  normal: 'var(--leading-normal)',
+  relaxed: 'var(--leading-relaxed)',
+  loose: 'var(--leading-loose)',
+} as const;
+
+/**
+ * Letter Spacing Tokens
+ */
+export const letterSpacing = {
+  tight: 'var(--tracking-tight)',
+  normal: 'var(--tracking-normal)',
+  wide: 'var(--tracking-wide)',
+  wider: 'var(--tracking-wider)',
+} as const;
+
+/**
+ * Font Weight Tokens
+ */
+export const fontWeights = {
+  light: 'var(--weight-light)',
+  regular: 'var(--weight-regular)',
+  medium: 'var(--weight-medium)',
+  semibold: 'var(--weight-semibold)',
+  bold: 'var(--weight-bold)',
+} as const;
+
+/**
  * CSS Custom Properties Generator
  * Converts design tokens to CSS variables
  */
