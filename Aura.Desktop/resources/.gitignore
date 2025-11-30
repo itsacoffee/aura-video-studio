@@ -1,5 +1,6 @@
 # Ignore build artifacts
 backend/
+opencut/
 ffmpeg/**/*.exe
 ffmpeg/**/*.dll
 ffmpeg/**/*.7z

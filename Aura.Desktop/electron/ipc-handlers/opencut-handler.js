@@ -272,6 +272,34 @@ class OpenCutHandler {
         };
       }
     });
+
+    // Diagnostics - get detailed info for troubleshooting
+    ipcMain.handle('opencut:getDiagnostics', async () => {
+      try {
+        if (!this.openCutManager) {
+          return {
+            error: 'OpenCutManager not initialized',
+            serverPath: null,
+            serverExists: false,
+            portInUse: false,
+            processRunning: false,
+            isPackaged: false,
+            resourcesPath: null,
+            checkedPaths: [],
+          };
+        }
+
+        return await this.openCutManager.getDiagnostics();
+      } catch (error) {
+        return {
+          error: error.message,
+          serverPath: null,
+          serverExists: false,
+          portInUse: false,
+          processRunning: false,
+        };
+      }
+    });
   }
 
   /**
@@ -285,6 +313,7 @@ class OpenCutHandler {
     ipcMain.removeHandler('opencut:stop');
     ipcMain.removeHandler('opencut:waitForReady');
     ipcMain.removeHandler('opencut:health');
+    ipcMain.removeHandler('opencut:getDiagnostics');
   }
 }
 

@@ -5,9 +5,11 @@ import {
   ArrowClockwise24Regular,
   Play24Regular,
   Info24Regular,
+  Bug24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { env } from '../config/env';
+import { OpenCutDiagnostics } from '../components/OpenCut';
 
 const useStyles = makeStyles({
   root: {
@@ -135,6 +137,19 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusMedium,
     marginTop: tokens.spacingVerticalM,
   },
+  diagnosticsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: tokens.spacingHorizontalXL,
+  },
 });
 
 function getEffectiveOpenCutUrl(): string | null {
@@ -244,6 +259,7 @@ export function OpenCutPage() {
     isStarting: false,
     isRunning: false,
   });
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const statusCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -892,8 +908,18 @@ export function OpenCutPage() {
                   Retry Connection {retryCount > 0 && `(${retryCount})`}
                 </Button>
               )}
+              {isElectronWithOpenCut() && (
+                <Button
+                  appearance="secondary"
+                  size="large"
+                  icon={<Bug24Regular aria-hidden />}
+                  onClick={() => setShowDiagnostics(true)}
+                >
+                  View Diagnostics
+                </Button>
+              )}
               <Button
-                appearance="secondary"
+                appearance="subtle"
                 size="large"
                 icon={<Open24Regular aria-hidden />}
                 onClick={() => window.open(effectiveUrl, '_blank', 'noopener,noreferrer')}
@@ -901,6 +927,17 @@ export function OpenCutPage() {
                 Open in Browser
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Diagnostics overlay */}
+        {showDiagnostics && effectiveUrl && (
+          <div className={styles.diagnosticsOverlay}>
+            <OpenCutDiagnostics
+              serverUrl={effectiveUrl}
+              isElectron={isElectronWithOpenCut()}
+              onClose={() => setShowDiagnostics(false)}
+            />
           </div>
         )}
 

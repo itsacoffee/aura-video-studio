@@ -128,50 +128,14 @@
         ]
       },
       {
-        "from": "../OpenCut/apps/web/.next/standalone/apps/web",
+        "from": "resources/opencut",
         "to": "opencut",
         "filter": [
           "**/*",
           "!**/node_modules/**/@ffmpeg/core/**",
           "!**/node_modules/**/@ffmpeg/ffmpeg/**",
           "!**/node_modules/**/bun-types/**",
-          "!**/node_modules/**/.bun/**",
-          "!**/node_modules/**/next/**",
-          "!**/node_modules/**/react/**"
-        ]
-      },
-      {
-        "from": "../OpenCut/apps/web/.next/standalone/node_modules",
-        "to": "opencut/node_modules",
-        "filter": [
-          "**/*",
-          "!**/@ffmpeg/core/**",
-          "!**/@ffmpeg/ffmpeg/**",
-          "!**/bun-types/**",
-          "!**/.bun/**",
-          "!**/next/**",
-          "!**/react/**"
-        ]
-      },
-      {
-        "from": "../OpenCut/apps/web/.next/standalone/packages",
-        "to": "opencut/packages",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "../OpenCut/apps/web/.next/static",
-        "to": "opencut/.next/static",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "../OpenCut/apps/web/public",
-        "to": "opencut/public",
-        "filter": [
-          "**/*"
+          "!**/node_modules/**/.bun/**"
         ]
       }
     ],

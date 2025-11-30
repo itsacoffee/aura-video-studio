@@ -827,6 +827,97 @@ NEXT_TELEMETRY_DISABLED=1
             }
 
             Write-Success "  ✓ Symlink cleanup complete"
+
+            # ----------------------------------------
+            # Step 1b.9: Copy OpenCut standalone build to resources/opencut
+            # ----------------------------------------
+            Write-Info "Copying OpenCut standalone build to resources..."
+
+            $openCutResourcesDir = "$ScriptDir\resources\opencut"
+
+            # Clean existing resources/opencut
+            if (Test-Path $openCutResourcesDir) {
+                Remove-Item -Path $openCutResourcesDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            New-Item -ItemType Directory -Path $openCutResourcesDir -Force | Out-Null
+
+            # Determine source paths (monorepo vs single structure)
+            $openCutNextDir = "$openCutAppDir\.next"
+            $standaloneDir = "$openCutNextDir\standalone"
+            $staticDir = "$openCutNextDir\static"
+
+            # In monorepo, server.js is at standalone/apps/web/server.js
+            $monorepoServerPath = "$standaloneDir\apps\web\server.js"
+            $singleServerPath = "$standaloneDir\server.js"
+
+            if (Test-Path $monorepoServerPath) {
+                # Monorepo structure: copy apps/web contents to resources/opencut
+                $sourceAppDir = "$standaloneDir\apps\web"
+
+                Write-Info "Copying standalone app (monorepo structure)..."
+                Copy-Item -Path "$sourceAppDir\*" -Destination $openCutResourcesDir -Recurse -Force
+
+                # Copy node_modules from standalone root if exists
+                $standaloneNodeModules = "$standaloneDir\node_modules"
+                if (Test-Path $standaloneNodeModules) {
+                    Write-Info "Copying standalone node_modules..."
+                    Copy-Item -Path $standaloneNodeModules -Destination "$openCutResourcesDir\node_modules" -Recurse -Force
+                }
+
+                # Copy packages from standalone root if exists (for monorepo dependencies)
+                $standalonePackages = "$standaloneDir\packages"
+                if (Test-Path $standalonePackages) {
+                    Write-Info "Copying standalone packages..."
+                    Copy-Item -Path $standalonePackages -Destination "$openCutResourcesDir\packages" -Recurse -Force
+                }
+
+                Write-Success "  ✓ Standalone app copied (monorepo)"
+            }
+            elseif (Test-Path $singleServerPath) {
+                # Single package structure: copy standalone contents directly
+                Write-Info "Copying standalone app (single structure)..."
+                Copy-Item -Path "$standaloneDir\*" -Destination $openCutResourcesDir -Recurse -Force
+                Write-Success "  ✓ Standalone app copied (single)"
+            }
+            else {
+                Show-ErrorMessage "OpenCut server.js not found in standalone build!"
+                Show-ErrorMessage "Expected at: $monorepoServerPath or $singleServerPath"
+                $openCutBuildSuccess = $false
+            }
+
+            # Copy static assets (required for Next.js)
+            if ($openCutBuildSuccess -and (Test-Path $staticDir)) {
+                $destStaticDir = "$openCutResourcesDir\.next\static"
+                New-Item -ItemType Directory -Path "$openCutResourcesDir\.next" -Force | Out-Null
+                Write-Info "Copying static assets..."
+                Copy-Item -Path $staticDir -Destination $destStaticDir -Recurse -Force
+                Write-Success "  ✓ Static assets copied"
+            }
+
+            # Copy public assets if exists
+            $publicDir = "$openCutAppDir\public"
+            if ($openCutBuildSuccess -and (Test-Path $publicDir)) {
+                Write-Info "Copying public assets..."
+                Copy-Item -Path $publicDir -Destination "$openCutResourcesDir\public" -Recurse -Force
+                Write-Success "  ✓ Public assets copied"
+            }
+
+            # Verify final structure
+            if ($openCutBuildSuccess) {
+                $finalServerJs = "$openCutResourcesDir\server.js"
+                if (Test-Path $finalServerJs) {
+                    Write-Success "  ✓ OpenCut resources prepared successfully"
+                    Write-Success "    Server: $finalServerJs"
+                }
+                else {
+                    Show-ErrorMessage "Final server.js not found at: $finalServerJs"
+                    $openCutBuildSuccess = $false
+                }
+            }
+
+            if ($openCutBuildSuccess) {
+                Write-Success "OpenCut resources ready for packaging"
+            }
         }
         else {
             Show-Warning "========================================"
