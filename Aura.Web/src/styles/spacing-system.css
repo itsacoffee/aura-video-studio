@@ -1,0 +1,251 @@
+/**
+ * Proportional Spacing System
+ *
+ * A responsive spacing system inspired by Apple's design principles.
+ * The base unit scales with viewport, and all spacing values are derived from it.
+ * Supports three density modes: compact, comfortable, and spacious.
+ */
+
+:root {
+  /* ============================================
+     PROPORTIONAL SPACING SYSTEM
+     Base unit scales with viewport, all spacing
+     derived from this base.
+     ============================================ */
+
+  /* Base spacing unit - fluid between 4px and 8px */
+  --space-unit: clamp(0.25rem, 0.2rem + 0.15vw, 0.5rem);
+
+  /* Spacing scale - multiples of base unit */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: calc(var(--space-unit) * 0.5); /* 2-4px */
+  --space-1: var(--space-unit); /* 4-8px */
+  --space-1-5: calc(var(--space-unit) * 1.5); /* 6-12px */
+  --space-2: calc(var(--space-unit) * 2); /* 8-16px */
+  --space-3: calc(var(--space-unit) * 3); /* 12-24px */
+  --space-4: calc(var(--space-unit) * 4); /* 16-32px */
+  --space-5: calc(var(--space-unit) * 5); /* 20-40px */
+  --space-6: calc(var(--space-unit) * 6); /* 24-48px */
+  --space-8: calc(var(--space-unit) * 8); /* 32-64px */
+  --space-10: calc(var(--space-unit) * 10); /* 40-80px */
+  --space-12: calc(var(--space-unit) * 12); /* 48-96px */
+  --space-16: calc(var(--space-unit) * 16); /* 64-128px */
+  --space-20: calc(var(--space-unit) * 20); /* 80-160px */
+  --space-24: calc(var(--space-unit) * 24); /* 96-192px */
+
+  /* Semantic spacing tokens */
+  --space-inline-xs: var(--space-1);
+  --space-inline-sm: var(--space-2);
+  --space-inline-md: var(--space-3);
+  --space-inline-lg: var(--space-4);
+  --space-inline-xl: var(--space-6);
+  --space-stack-xs: var(--space-1);
+  --space-stack-sm: var(--space-2);
+  --space-stack-md: var(--space-4);
+  --space-stack-lg: var(--space-6);
+  --space-stack-xl: var(--space-8);
+
+  /* Component-specific spacing */
+  --space-card-padding: var(--space-4);
+  --space-card-gap: var(--space-3);
+  --space-section-gap: var(--space-8);
+  --space-page-padding: var(--space-6);
+  --space-page-padding-x: clamp(var(--space-4), 5vw, var(--space-10));
+
+  /* Safe areas - minimum breathing room */
+  --safe-area-top: var(--space-4);
+  --safe-area-bottom: var(--space-6);
+  --safe-area-left: var(--space-4);
+  --safe-area-right: var(--space-4);
+}
+
+/* ============================================
+   DENSITY MODES
+   ============================================ */
+
+/* Compact density - for small screens or user preference */
+[data-density='compact'] {
+  --space-unit: clamp(0.1875rem, 0.15rem + 0.1vw, 0.375rem);
+  --space-card-padding: var(--space-3);
+  --space-section-gap: var(--space-6);
+}
+
+/* Comfortable density - default (uses root values) */
+[data-density='comfortable'] {
+  /* Uses root values */
+}
+
+/* Spacious density - for large screens */
+[data-density='spacious'] {
+  --space-unit: clamp(0.375rem, 0.3rem + 0.2vw, 0.625rem);
+  --space-card-padding: var(--space-5);
+  --space-section-gap: var(--space-10);
+}
+
+/* ============================================
+   LAYOUT UTILITIES
+   ============================================ */
+
+/* Stack - vertical spacing between children */
+.stack > * + * {
+  margin-top: var(--stack-space, var(--space-stack-md));
+}
+
+.stack-xs {
+  --stack-space: var(--space-stack-xs);
+}
+
+.stack-sm {
+  --stack-space: var(--space-stack-sm);
+}
+
+.stack-md {
+  --stack-space: var(--space-stack-md);
+}
+
+.stack-lg {
+  --stack-space: var(--space-stack-lg);
+}
+
+.stack-xl {
+  --stack-space: var(--space-stack-xl);
+}
+
+/* Cluster - horizontal spacing with wrapping */
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cluster-space, var(--space-inline-md));
+  align-items: center;
+}
+
+.cluster-xs {
+  --cluster-space: var(--space-inline-xs);
+}
+
+.cluster-sm {
+  --cluster-space: var(--space-inline-sm);
+}
+
+.cluster-md {
+  --cluster-space: var(--space-inline-md);
+}
+
+.cluster-lg {
+  --cluster-space: var(--space-inline-lg);
+}
+
+/* Center - horizontally centered with max-width */
+.center {
+  box-sizing: content-box;
+  margin-inline: auto;
+  max-inline-size: var(--center-max, 65ch);
+  padding-inline: var(--space-page-padding-x);
+}
+
+/* Sidebar layout */
+.with-sidebar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-section-gap);
+}
+
+.with-sidebar > :first-child {
+  flex-basis: var(--sidebar-width, 300px);
+  flex-grow: 1;
+}
+
+.with-sidebar > :last-child {
+  flex-basis: 0;
+  flex-grow: 999;
+  min-inline-size: 50%;
+}
+
+/* Cover - full height with centered content */
+.cover {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+  padding: var(--space-page-padding);
+}
+
+.cover > * {
+  margin-block: var(--space-stack-md);
+}
+
+.cover > :first-child:not(.cover-center) {
+  margin-block-start: 0;
+}
+
+.cover > :last-child:not(.cover-center) {
+  margin-block-end: 0;
+}
+
+.cover > .cover-center {
+  margin-block: auto;
+}
+
+/* Switcher - switches from row to column at breakpoint */
+.switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-section-gap);
+}
+
+.switcher > * {
+  flex-grow: 1;
+  flex-basis: calc((var(--switcher-threshold, 600px) - 100%) * 999);
+}
+
+/* Imposter - positioned overlay */
+.imposter {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.imposter[data-fixed] {
+  position: fixed;
+}
+
+/* Reel - horizontal scrolling container */
+.reel {
+  display: flex;
+  block-size: auto;
+  overflow: auto hidden;
+  scrollbar-color: var(--color-border, #ccc) var(--color-surface, #f5f5f5);
+  gap: var(--space-inline-md);
+  padding-block: var(--space-stack-sm);
+}
+
+.reel::-webkit-scrollbar {
+  block-size: 8px;
+}
+
+.reel::-webkit-scrollbar-track {
+  background: var(--color-surface, #f5f5f5);
+}
+
+.reel::-webkit-scrollbar-thumb {
+  background: var(--color-border, #ccc);
+  border-radius: 4px;
+}
+
+/* Region - section with consistent vertical rhythm */
+.region {
+  padding-block: var(--region-space, var(--space-section-gap));
+}
+
+.region-sm {
+  --region-space: var(--space-6);
+}
+
+.region-lg {
+  --region-space: var(--space-12);
+}
+
+.region-xl {
+  --region-space: var(--space-16);
+}
