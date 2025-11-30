@@ -314,6 +314,7 @@ export function CreatePage() {
           },
           voiceSpec,
           renderSpec,
+          imageProvider: selectedImageProvider,
         }),
       });
 
@@ -370,7 +371,16 @@ export function CreatePage() {
     } finally {
       setGenerating(false);
     }
-  }, [brief, planSpec, addActivity, updateActivity, showSuccessToast, showFailureToast, navigate]);
+  }, [
+    brief,
+    planSpec,
+    selectedImageProvider,
+    addActivity,
+    updateActivity,
+    showSuccessToast,
+    showFailureToast,
+    navigate,
+  ]);
 
   // Register Create workflow shortcuts
   useEffect(() => {

@@ -25,6 +25,15 @@ import {
 } from '@fluentui/react-icons';
 import React, { useEffect, useState, useCallback } from 'react';
 import apiClient from '../../services/api/apiClient';
+import type {
+  ImageProvider,
+  ImageProvidersResponse,
+  ImagePreviewResult,
+  ImageProviderPreviewResponse,
+} from '../../services/api/providersApi';
+
+// Re-export types from the API module for external use
+export type { ImageProvider } from '../../services/api/providersApi';
 
 const useStyles = makeStyles({
   container: {
@@ -112,41 +121,6 @@ const useStyles = makeStyles({
     ...shorthands.borderRadius(tokens.borderRadiusSmall),
   },
 });
-
-export interface ImageProvider {
-  id: string;
-  name: string;
-  type: string;
-  available: boolean;
-  hasApiKey: boolean;
-  status: string | null;
-  quotaRemaining: number | null;
-  quotaLimit: number | null;
-  quotaResetTime: string | null;
-  capabilities: string[];
-  description: string | null;
-}
-
-interface ImageProvidersResponse {
-  providers: ImageProvider[];
-  defaultProvider: string | null;
-}
-
-interface ImagePreviewResult {
-  id: string;
-  thumbnailUrl: string;
-  previewUrl: string;
-  width: number;
-  height: number;
-  attribution: string | null;
-}
-
-interface ImageProviderPreviewResponse {
-  images: ImagePreviewResult[];
-  provider: string;
-  totalResults: number;
-  errorMessage: string | null;
-}
 
 export interface ImageProviderSelectorProps {
   selectedProvider: string | null;
