@@ -127,12 +127,84 @@ export function GlobalLlmSelector() {
 
     try {
       const response = await fetch('/api/models/available');
+
+      // Parse the response even if status is not OK - API now returns structured data
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Failed to load models: ${response.statusText}`);
+        // Log the issue but try to use any data returned
+        console.warn('[GlobalLlmSelector] API returned non-OK status:', response.status, data);
       }
 
-      const data = await response.json();
       const providersData = data.providers || {};
+
+      // If API returned empty providers but we got a response, the backend is up but has no configured models
+      if (Object.keys(providersData).length === 0) {
+        console.info('[GlobalLlmSelector] No providers from API, using fallback list');
+        // Provide minimal fallback list for offline providers that work without configuration
+        const fallbackProviders: Record<string, LlmModelInfo[]> = {
+          RuleBased: [
+            {
+              modelId: 'rule-based-script-generator',
+              provider: 'RuleBased',
+              maxTokens: 4096,
+              contextWindow: 4096,
+              aliases: [],
+              isDeprecated: false,
+            },
+          ],
+          Ollama: [], // Empty - user needs to configure and refresh
+        };
+        setAvailableModels(fallbackProviders);
+
+        // Build provider list from fallback
+        const fallbackProviderList: ProviderInfo[] = [
+          {
+            id: 'RuleBased',
+            name: 'Rule-Based (Offline)',
+            requiresApiKey: false,
+            modelCount: 1,
+            isAvailable: true,
+          },
+          {
+            id: 'Ollama',
+            name: 'Ollama',
+            requiresApiKey: false,
+            modelCount: 0,
+            isAvailable: false,
+          },
+          {
+            id: 'OpenAI',
+            name: 'OpenAI',
+            requiresApiKey: true,
+            modelCount: 0,
+            isAvailable: false,
+          },
+          {
+            id: 'Anthropic',
+            name: 'Anthropic',
+            requiresApiKey: true,
+            modelCount: 0,
+            isAvailable: false,
+          },
+          {
+            id: 'Gemini',
+            name: 'Gemini',
+            requiresApiKey: true,
+            modelCount: 0,
+            isAvailable: false,
+          },
+          {
+            id: 'Azure',
+            name: 'Azure',
+            requiresApiKey: true,
+            modelCount: 0,
+            isAvailable: false,
+          },
+        ];
+        setProviders(fallbackProviderList);
+        return fallbackProviders;
+      }
 
       setAvailableModels(providersData);
 
@@ -162,10 +234,15 @@ export function GlobalLlmSelector() {
         }
       }
 
-      // Sort providers: available first, then alphabetically
+      // Sort providers: available first, then by local providers, then alphabetically
       providerList.sort((a, b) => {
         if (a.isAvailable && !b.isAvailable) return -1;
         if (!a.isAvailable && b.isAvailable) return 1;
+        // Among unavailable, put local providers first
+        if (!a.isAvailable && !b.isAvailable) {
+          if (!a.requiresApiKey && b.requiresApiKey) return -1;
+          if (a.requiresApiKey && !b.requiresApiKey) return 1;
+        }
         return a.name.localeCompare(b.name);
       });
 
@@ -176,6 +253,30 @@ export function GlobalLlmSelector() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load models';
       setError(errorMessage);
       console.error('[GlobalLlmSelector] Error fetching models:', err);
+
+      // Provide minimal fallback even on network error
+      setProviders([
+        {
+          id: 'RuleBased',
+          name: 'Rule-Based (Offline)',
+          requiresApiKey: false,
+          modelCount: 1,
+          isAvailable: true,
+        },
+      ]);
+      setAvailableModels({
+        RuleBased: [
+          {
+            modelId: 'rule-based-script-generator',
+            provider: 'RuleBased',
+            maxTokens: 4096,
+            contextWindow: 4096,
+            aliases: [],
+            isDeprecated: false,
+          },
+        ],
+      });
+
       return null;
     } finally {
       if (showLoadingState) {
