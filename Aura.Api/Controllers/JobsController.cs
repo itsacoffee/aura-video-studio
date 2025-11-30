@@ -629,9 +629,12 @@ public class JobsController : ControllerBase
             var lastProgressMessage = "";
             var lastLogCount = job.Logs.Count;
             var lastPingTime = DateTime.UtcNow;
+            var lastProgressChangeTime = DateTime.UtcNow;
             var pingIntervalSeconds = 5; // 5-second heartbeat as per requirements
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
             var eventIdCounter = 0;
+            var stallWarningThresholdSeconds = 120; // Warn after 2 minutes of no progress
+            var stallWarningEmitted = false;
 
             while (!cancellationToken.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
             {
@@ -649,6 +652,34 @@ public class JobsController : ControllerBase
                     );
                     await SendSseEventWithId("heartbeat", heartbeat, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
                     lastPingTime = DateTime.UtcNow;
+                }
+
+                // Stall detection: warn if no progress change for 2+ minutes
+                if (job.Percent != lastPercent)
+                {
+                    lastProgressChangeTime = DateTime.UtcNow;
+                    stallWarningEmitted = false; // Reset stall warning on progress
+                }
+                else
+                {
+                    var timeSinceLastProgress = (DateTime.UtcNow - lastProgressChangeTime).TotalSeconds;
+                    if (timeSinceLastProgress >= stallWarningThresholdSeconds && !stallWarningEmitted)
+                    {
+                        Log.Warning(
+                            "[{CorrelationId}] Job {JobId} appears stalled at {Percent}% (stage: {Stage}) - no progress for {Seconds:F0}s",
+                            correlationId, jobId, job.Percent, job.Stage, timeSinceLastProgress);
+
+                        await SendSseEventWithId("warning", new
+                        {
+                            message = $"Job progress appears stalled at {job.Percent}% ({job.Stage}). If this persists, consider cancelling and retrying.",
+                            step = job.Stage,
+                            percent = job.Percent,
+                            stallDurationSeconds = (int)timeSinceLastProgress,
+                            correlationId
+                        }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
+
+                        stallWarningEmitted = true;
+                    }
                 }
 
                 // Send status change events
