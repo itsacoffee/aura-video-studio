@@ -3857,14 +3857,15 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 ? llmParams.ModelOverride
                 : defaultModel;
         
-        // If no model is configured, query Ollama for available models and use the first one
+        // If no model is configured, query Ollama for available models and select the best one
         if (string.IsNullOrWhiteSpace(modelToUse))
         {
             _logger.LogWarning("No Ollama model configured, querying Ollama for available models");
             
             try
             {
-                using var tagsCts = new CancellationTokenSource();
+                // Use linked token source to respect both timeout and original cancellation
+                using var tagsCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 tagsCts.CancelAfter(TimeSpan.FromSeconds(10));
                 var tagsResponse = await httpClient.GetAsync($"{baseUrl}/api/tags", tagsCts.Token).ConfigureAwait(false);
                 
@@ -3891,9 +3892,23 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                         
                         if (availableModels.Count > 0)
                         {
-                            modelToUse = availableModels[0];
+                            // Select best model by preference: prefer larger/better models for ideation
+                            // Priority: llama3.1 > qwen2.5 > mistral > gemma > phi > other models
+                            var preferredPrefixes = new[] { "llama3", "qwen2", "mistral", "gemma", "phi" };
+                            modelToUse = availableModels
+                                .OrderBy(m => {
+                                    var lowerName = m.ToLowerInvariant();
+                                    for (int i = 0; i < preferredPrefixes.Length; i++)
+                                    {
+                                        if (lowerName.StartsWith(preferredPrefixes[i], StringComparison.OrdinalIgnoreCase))
+                                            return i;
+                                    }
+                                    return preferredPrefixes.Length; // Other models last
+                                })
+                                .First();
+                            
                             _logger.LogInformation(
-                                "No model configured, auto-selected first available model: '{Model}'. " +
+                                "No model configured, auto-selected model: '{Model}' (based on capability preference). " +
                                 "Available models: {AllModels}. " +
                                 "Configure a specific model in Settings for consistent results.",
                                 modelToUse, string.Join(", ", availableModels));
@@ -3925,6 +3940,11 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             catch (InvalidOperationException)
             {
                 // Re-throw our own exceptions with clear messages
+                throw;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // User cancelled the operation
                 throw;
             }
             catch (Exception ex)
