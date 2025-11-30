@@ -463,129 +463,130 @@ NEXT_TELEMETRY_DISABLED=1
                 Show-Warning "  5. Verify OpenCut directory structure is correct"
             }
 
-        # ----------------------------------------
-        # Step 1b.5.5: Pre-build validation
-        # ----------------------------------------
-        if ($installSuccess) {
-            Write-Info "Validating OpenCut build configuration..."
+            # ----------------------------------------
+            # Step 1b.5.5: Pre-build validation
+            # ----------------------------------------
+            if ($installSuccess) {
+                Write-Info "Validating OpenCut build configuration..."
 
-            # Check Next.js config exists and has standalone output
-            $nextConfigPath = "$openCutAppDir\next.config.ts"
-            if (-not (Test-Path $nextConfigPath)) {
-                $nextConfigPath = "$openCutAppDir\next.config.js"
+                # Check Next.js config exists and has standalone output
+                $nextConfigPath = "$openCutAppDir\next.config.ts"
                 if (-not (Test-Path $nextConfigPath)) {
-                    Show-Warning "next.config.ts/js not found - build may fail"
+                    $nextConfigPath = "$openCutAppDir\next.config.js"
+                    if (-not (Test-Path $nextConfigPath)) {
+                        Show-Warning "next.config.ts/js not found - build may fail"
+                    }
                 }
-            }
 
-            if (Test-Path $nextConfigPath) {
-                $nextConfigContent = Get-Content $nextConfigPath -Raw
-                if ($nextConfigContent -notmatch 'output.*standalone' -and $nextConfigContent -notmatch "output:\s*['""]standalone['""]") {
-                    Show-Warning "Next.js config may not have 'output: standalone' - standalone build may fail"
-                    Show-Warning "Expected: output: 'standalone' or output: 'standalone' in next.config"
+                if (Test-Path $nextConfigPath) {
+                    $nextConfigContent = Get-Content $nextConfigPath -Raw
+                    if ($nextConfigContent -notmatch 'output.*standalone' -and $nextConfigContent -notmatch "output:\s*['""]standalone['""]") {
+                        Show-Warning "Next.js config may not have 'output: standalone' - standalone build may fail"
+                        Show-Warning "Expected: output: 'standalone' or output: 'standalone' in next.config"
+                    }
+                    else {
+                        Write-Success "  ✓ Next.js config has standalone output configured"
+                    }
                 }
-                else {
-                    Write-Success "  ✓ Next.js config has standalone output configured"
-                }
-            }
 
-            # Verify critical dependencies are installed
-            $criticalDeps = @("next", "react", "react-dom")
-            $missingDeps = @()
-            foreach ($dep in $criticalDeps) {
-                $depPath = if ($useNpmFallback) {
-                    "$openCutAppDir\node_modules\$dep"
-                } else {
-                    "$openCutRootDir\node_modules\$dep"
+                # Verify critical dependencies are installed
+                $criticalDeps = @("next", "react", "react-dom")
+                $missingDeps = @()
+                foreach ($dep in $criticalDeps) {
+                    $depPath = if ($useNpmFallback) {
+                        "$openCutAppDir\node_modules\$dep"
+                    }
+                    else {
+                        "$openCutRootDir\node_modules\$dep"
+                    }
+                    if (-not (Test-Path $depPath)) {
+                        $missingDeps += $dep
+                    }
                 }
-                if (-not (Test-Path $depPath)) {
-                    $missingDeps += $dep
-                }
-            }
 
-            if ($missingDeps.Count -gt 0) {
-                Show-Warning "Critical dependencies missing: $($missingDeps -join ', ')"
-                Show-Warning "Build may fail. Consider cleaning node_modules and reinstalling."
-            }
-            else {
-                Write-Success "  ✓ Critical dependencies verified"
-            }
-
-            # Check package.json has build script
-            $packageJsonPath = "$openCutAppDir\package.json"
-            if (Test-Path $packageJsonPath) {
-                $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
-                if (-not $packageJson.scripts.build) {
-                    Show-Warning "package.json missing 'build' script"
+                if ($missingDeps.Count -gt 0) {
+                    Show-Warning "Critical dependencies missing: $($missingDeps -join ', ')"
+                    Show-Warning "Build may fail. Consider cleaning node_modules and reinstalling."
                 }
                 else {
-                    Write-Success "  ✓ Build script found in package.json"
+                    Write-Success "  ✓ Critical dependencies verified"
+                }
+
+                # Check package.json has build script
+                $packageJsonPath = "$openCutAppDir\package.json"
+                if (Test-Path $packageJsonPath) {
+                    $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+                    if (-not $packageJson.scripts.build) {
+                        Show-Warning "package.json missing 'build' script"
+                    }
+                    else {
+                        Write-Success "  ✓ Build script found in package.json"
+                    }
                 }
             }
-        }
 
-        # ----------------------------------------
-        # Step 1b.6: Build OpenCut
-        # ----------------------------------------
-        if ($installSuccess) {
-            Write-Info "Running OpenCut production build..."
+            # ----------------------------------------
+            # Step 1b.6: Build OpenCut
+            # ----------------------------------------
+            if ($installSuccess) {
+                Write-Info "Running OpenCut production build..."
 
-            # Clean previous build to ensure fresh build
-            $openCutNextDir = "$openCutAppDir\.next"
-            if (Test-Path $openCutNextDir) {
-                Write-Info "Cleaning previous OpenCut build..."
-                Remove-Item -Path $openCutNextDir -Recurse -Force -ErrorAction SilentlyContinue
-                Write-Success "  ✓ Previous build cleaned"
-            }
-
-            # Save original environment variables to restore after build
-            $originalNodeEnv = $env:NODE_ENV
-            $originalNextTelemetry = $env:NEXT_TELEMETRY_DISABLED
-
-            # Set environment variables for build
-            $env:NODE_ENV = "production"
-            $env:NEXT_TELEMETRY_DISABLED = "1"
-
-            try {
-                if ($useNpmFallback) {
-                    # For npm fallback, build directly from apps/web with proper NODE_PATH
-                    # This is needed because npm workspaces handle module resolution differently than bun
-                    Set-Location $openCutAppDir
-
-                    # Set NODE_PATH to include both local and root node_modules
-                    $originalNodePath = $env:NODE_PATH
-                    $env:NODE_PATH = "$openCutAppDir\node_modules;$openCutRootDir\node_modules"
-
-                    Write-Info "Building with NODE_PATH: $env:NODE_PATH"
-                    npx next build 2>&1 | Out-Host
-
-                    # Restore NODE_PATH after build
-                    $env:NODE_PATH = $originalNodePath
-
-                    # Return to OpenCut root
-                    Set-Location $openCutRootDir
-                }
-                else {
-                    Set-Location $openCutRootDir
-                    bun run build 2>&1 | Out-Host
-                }
-            }
-            finally {
-                # Always restore original environment variables to prevent pollution
-                if ($null -eq $originalNodeEnv) {
-                    Remove-Item env:NODE_ENV -ErrorAction SilentlyContinue
-                }
-                else {
-                    $env:NODE_ENV = $originalNodeEnv
+                # Clean previous build to ensure fresh build
+                $openCutNextDir = "$openCutAppDir\.next"
+                if (Test-Path $openCutNextDir) {
+                    Write-Info "Cleaning previous OpenCut build..."
+                    Remove-Item -Path $openCutNextDir -Recurse -Force -ErrorAction SilentlyContinue
+                    Write-Success "  ✓ Previous build cleaned"
                 }
 
-                if ($null -eq $originalNextTelemetry) {
-                    Remove-Item env:NEXT_TELEMETRY_DISABLED -ErrorAction SilentlyContinue
+                # Save original environment variables to restore after build
+                $originalNodeEnv = $env:NODE_ENV
+                $originalNextTelemetry = $env:NEXT_TELEMETRY_DISABLED
+
+                # Set environment variables for build
+                $env:NODE_ENV = "production"
+                $env:NEXT_TELEMETRY_DISABLED = "1"
+
+                try {
+                    if ($useNpmFallback) {
+                        # For npm fallback, build directly from apps/web with proper NODE_PATH
+                        # This is needed because npm workspaces handle module resolution differently than bun
+                        Set-Location $openCutAppDir
+
+                        # Set NODE_PATH to include both local and root node_modules
+                        $originalNodePath = $env:NODE_PATH
+                        $env:NODE_PATH = "$openCutAppDir\node_modules;$openCutRootDir\node_modules"
+
+                        Write-Info "Building with NODE_PATH: $env:NODE_PATH"
+                        npx next build 2>&1 | Out-Host
+
+                        # Restore NODE_PATH after build
+                        $env:NODE_PATH = $originalNodePath
+
+                        # Return to OpenCut root
+                        Set-Location $openCutRootDir
+                    }
+                    else {
+                        Set-Location $openCutRootDir
+                        bun run build 2>&1 | Out-Host
+                    }
                 }
-                else {
-                    $env:NEXT_TELEMETRY_DISABLED = $originalNextTelemetry
+                finally {
+                    # Always restore original environment variables to prevent pollution
+                    if ($null -eq $originalNodeEnv) {
+                        Remove-Item env:NODE_ENV -ErrorAction SilentlyContinue
+                    }
+                    else {
+                        $env:NODE_ENV = $originalNodeEnv
+                    }
+
+                    if ($null -eq $originalNextTelemetry) {
+                        Remove-Item env:NEXT_TELEMETRY_DISABLED -ErrorAction SilentlyContinue
+                    }
+                    else {
+                        $env:NEXT_TELEMETRY_DISABLED = $originalNextTelemetry
+                    }
                 }
-            }
 
                 if ($LASTEXITCODE -ne 0) {
                     Show-Warning "OpenCut build failed with exit code $LASTEXITCODE."
@@ -618,7 +619,8 @@ NEXT_TELEMETRY_DISABLED=1
                     # Check if dependencies are actually installed
                     $nextPath = if ($useNpmFallback) {
                         "$openCutAppDir\node_modules\next"
-                    } else {
+                    }
+                    else {
                         "$openCutRootDir\node_modules\next"
                     }
                     if (-not (Test-Path $nextPath)) {
@@ -667,7 +669,7 @@ NEXT_TELEMETRY_DISABLED=1
 
                         if ((Test-Path $standaloneServerJsMonorepo) -or (Test-Path $standaloneServerJsSingle)) {
                             $verificationMessages += "  ✓ standalone/server.js exists"
-                            
+
                             # Verify server.js is not empty and appears valid
                             $serverJsPath = if (Test-Path $standaloneServerJsMonorepo) { $standaloneServerJsMonorepo } else { $standaloneServerJsSingle }
                             $serverJsSize = (Get-Item $serverJsPath).Length
@@ -768,17 +770,17 @@ NEXT_TELEMETRY_DISABLED=1
 
         if ($openCutBuildSuccess) {
             Write-Success "OpenCut build complete and verified"
-            
+
             # ----------------------------------------
             # Step 1b.8: Remove Bun symlinks that 7zip can't handle
             # ----------------------------------------
             Write-Info "Removing Bun symlinks from OpenCut standalone build..."
-            
+
             $openCutNextDir = "$openCutAppDir\.next"
             $openCutStandaloneDir = "$openCutNextDir\standalone"
             $standaloneNodeModulesRoot = "$openCutStandaloneDir\node_modules"
             $standaloneNodeModulesApp = "$openCutStandaloneDir\apps\web\node_modules"
-            
+
             # Remove symlinks from root node_modules
             if (Test-Path $standaloneNodeModulesRoot) {
                 $symlinksToRemove = @("next", "react", ".bun")
@@ -800,7 +802,7 @@ NEXT_TELEMETRY_DISABLED=1
                     }
                 }
             }
-            
+
             # Remove symlinks from app node_modules
             if (Test-Path $standaloneNodeModulesApp) {
                 $symlinksToRemove = @("next", "react", ".bun")
@@ -822,7 +824,7 @@ NEXT_TELEMETRY_DISABLED=1
                     }
                 }
             }
-            
+
             Write-Success "  ✓ Symlink cleanup complete"
         }
         else {
@@ -1160,5 +1162,7 @@ Write-Info "To run the app in development mode:"
 Write-Host "  cd Aura.Desktop"
 Write-Host "  npm start"
 Write-Host ""
+
+Write-Success "All done! 🎉"
 
 Write-Success "All done! 🎉"
