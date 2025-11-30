@@ -2,6 +2,7 @@
 @import url('./styles/controls.css');
 @import url('./styles/animations.css');
 @import url('./styles/elevation.css');
+@import url('./styles/adaptive-properties.css');
 
 @tailwind base;
 @tailwind components;

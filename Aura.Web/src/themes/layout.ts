@@ -54,6 +54,10 @@ export const spacingHorizontal = {
 /**
  * Page layout constants for consistent content areas.
  * Optimized for 1080p displays with Apple/Adobe-like density.
+ *
+ * These fixed values are retained for backwards compatibility.
+ * For adaptive layouts, use the CSS custom properties from adaptive-properties.css
+ * or the useAdaptiveLayout hook which provides viewport-relative values.
  */
 export const pageLayout = {
   /** Maximum content width for central flows (prevents overly wide reading columns) */
@@ -69,6 +73,12 @@ export const pageLayout = {
 /**
  * Panel layout ratios for multi-panel views.
  * Optimized for 1080p displays.
+ *
+ * These fixed values are retained for backwards compatibility.
+ * For adaptive layouts, use CSS custom properties:
+ * - var(--layout-sidebar-width)
+ * - var(--layout-inspector-width)
+ * Or the useAdaptiveLayout hook for JavaScript access.
  */
 export const panelLayout = {
   /** Standard sidebar width - reduced for more content area */
@@ -136,6 +146,34 @@ export const dialogLayout = {
 } as const;
 
 /**
+ * Adaptive layout CSS custom property references.
+ * These values are set by the AdaptiveLayoutContext and can be used
+ * in CSS-in-JS or inline styles for viewport-responsive layouts.
+ */
+export const adaptiveLayoutVars = {
+  /** Sidebar width (scales with viewport) */
+  sidebarWidth: 'var(--layout-sidebar-width, 200px)',
+  /** Sidebar collapsed width */
+  sidebarCollapsedWidth: 'var(--layout-sidebar-collapsed-width, 48px)',
+  /** Content max width (scales with viewport) */
+  contentMaxWidth: 'var(--layout-content-max-width, 1400px)',
+  /** Content padding (scales with density) */
+  contentPadding: 'var(--layout-content-padding, 16px)',
+  /** Grid gap (scales with viewport) */
+  gridGap: 'var(--layout-grid-gap, 16px)',
+  /** Grid columns (calculated based on viewport) */
+  gridColumns: 'var(--layout-grid-columns, 2)',
+  /** Inspector width */
+  inspectorWidth: 'var(--layout-inspector-width, 280px)',
+  /** Base font size (fluid) */
+  fontBase: 'var(--layout-font-base, 14px)',
+  /** Large font size (fluid) */
+  fontLg: 'var(--layout-font-lg, 17px)',
+  /** Extra large font size (fluid) */
+  fontXl: 'var(--layout-font-xl, 20px)',
+} as const;
+
+/**
  * Export all layout tokens as a single object for convenience.
  */
 export const layoutTokens = {
@@ -147,6 +185,7 @@ export const layoutTokens = {
   gaps,
   formLayout,
   dialogLayout,
+  adaptiveLayoutVars,
 } as const;
 
 export default layoutTokens;
