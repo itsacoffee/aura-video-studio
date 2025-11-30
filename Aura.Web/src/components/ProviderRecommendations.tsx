@@ -1,19 +1,7 @@
-import {
-  Card,
-  Text,
-  Button,
-  Badge,
-  makeStyles,
-  tokens,
-  Title3,
-} from '@fluentui/react-components';
-import {
-  Lightbulb24Regular,
-  ArrowRight24Regular,
-  Checkmark24Regular,
-} from '@fluentui/react-icons';
-import type { ProviderStatus } from '../hooks/useProviderStatus';
+import { Card, Text, Button, Badge, makeStyles, tokens, Title3 } from '@fluentui/react-components';
+import { Lightbulb24Regular, ArrowRight24Regular, Checkmark24Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
+import type { ProviderStatus } from '../hooks/useProviderStatus';
 
 const useStyles = makeStyles({
   container: {
@@ -84,11 +72,7 @@ interface Recommendation {
   category: string;
 }
 
-export function ProviderRecommendations({
-  llm,
-  tts,
-  images,
-}: ProviderRecommendationsProps) {
+export function ProviderRecommendations({ llm, tts, images }: ProviderRecommendationsProps) {
   const styles = useStyles();
   const navigate = useNavigate();
 
@@ -161,7 +145,9 @@ export function ProviderRecommendations({
           <Title3>Provider Recommendations</Title3>
         </div>
         <div className={styles.emptyState}>
-          <Checkmark24Regular style={{ fontSize: '32px', color: tokens.colorPaletteGreenForeground1 }} />
+          <Checkmark24Regular
+            style={{ fontSize: '32px', color: tokens.colorPaletteGreenForeground1 }}
+          />
           <Text>All recommended providers are configured!</Text>
         </div>
       </div>
@@ -208,7 +194,11 @@ export function ProviderRecommendations({
                 appearance="filled"
                 color={getPriorityColor(rec.priority)}
               >
-                {rec.priority === 'high' ? 'High Priority' : rec.priority === 'medium' ? 'Medium' : 'Low'}
+                {rec.priority === 'high'
+                  ? 'High Priority'
+                  : rec.priority === 'medium'
+                    ? 'Medium'
+                    : 'Low'}
               </Badge>
             </div>
             <div className={styles.recommendationActions}>
@@ -227,4 +217,3 @@ export function ProviderRecommendations({
     </div>
   );
 }
-

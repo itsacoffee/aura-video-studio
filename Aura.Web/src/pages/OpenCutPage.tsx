@@ -647,7 +647,7 @@ export function OpenCutPage() {
             <Text weight="semibold" size={300}>
               OpenCut URL not available
             </Text>
-            <Text as="div" size={200} color="foreground2">
+            <Text as="p" size={200} color="foreground2">
               Set the <code>VITE_OPENCUT_URL</code> environment variable to the URL where the
               OpenCut web app is hosted (for example, <code>http://localhost:3100</code>), or run
               Aura from the desktop app so it can start a local OpenCut server automatically.
