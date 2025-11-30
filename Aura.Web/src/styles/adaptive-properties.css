@@ -115,8 +115,13 @@
 
 /* ==================== SIZE CLASS RESPONSIVE RULES ==================== */
 
-/* Compact displays (< 1024px or high DPI small screens) */
-@media (width < 1024px), (width < 1401px) and (resolution >= 2dppx) {
+/*
+ * Compact displays:
+ * - Any viewport below 1024px width
+ * - High DPI (2x+) displays below 1401px (effective ~700px at 2x scaling)
+ * This second condition catches devices like hi-DPI laptops with smaller physical screens
+ */
+@media (width < 1024px), ((width < 1401px) and (resolution >= 2dppx)) {
   :root {
     --sidebar-width: 48px; /* Collapsed by default */
     --inspector-width: 100%;

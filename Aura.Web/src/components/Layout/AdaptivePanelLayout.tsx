@@ -90,9 +90,10 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   inspectorHidden: {
-    width: '0 !important',
+    width: 0,
     opacity: 0,
     visibility: 'hidden',
+    pointerEvents: 'none',
   },
   inspectorBottom: {
     position: 'absolute',
@@ -111,7 +112,9 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   timelineCollapsed: {
-    height: '36px !important',
+    height: '36px',
+    minHeight: '36px',
+    maxHeight: '36px',
     cursor: 'pointer',
     '&:hover': {
       backgroundColor: tokens.colorNeutralBackground3Hover,

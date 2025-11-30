@@ -166,19 +166,40 @@ function calculatePanelLayout(sizeClass: SizeClass, aspectRatio: AspectRatioClas
 }
 
 /**
+ * Design system spacing constants by density class (in pixels)
+ */
+const SPACING_BY_DENSITY: Record<DensityClass, number> = {
+  ultra: 8,
+  high: 6,
+  standard: 5,
+  low: 4,
+} as const;
+
+/**
+ * Design system font sizes by density class (in pixels)
+ */
+const FONT_SIZE_BY_DENSITY: Record<DensityClass, number> = {
+  ultra: 16,
+  high: 15,
+  standard: 14,
+  low: 13,
+} as const;
+
+/**
+ * Minimum font size for small viewports
+ */
+const MINIMUM_FONT_SIZE = 12;
+
+/**
+ * Viewport height threshold for font size reduction
+ */
+const SMALL_VIEWPORT_HEIGHT_THRESHOLD = 720;
+
+/**
  * Calculate base spacing unit (in pixels)
  */
 function calculateBaseSpacing(densityClass: DensityClass): number {
-  switch (densityClass) {
-    case 'ultra':
-      return 8;
-    case 'high':
-      return 6;
-    case 'standard':
-      return 5;
-    case 'low':
-      return 4;
-  }
+  return SPACING_BY_DENSITY[densityClass];
 }
 
 /**
@@ -186,25 +207,11 @@ function calculateBaseSpacing(densityClass: DensityClass): number {
  */
 function calculateBaseFontSize(densityClass: DensityClass, viewportHeight: number): number {
   // Start with density-based sizing
-  let baseSize: number;
-  switch (densityClass) {
-    case 'ultra':
-      baseSize = 16;
-      break;
-    case 'high':
-      baseSize = 15;
-      break;
-    case 'standard':
-      baseSize = 14;
-      break;
-    case 'low':
-      baseSize = 13;
-      break;
-  }
+  let baseSize = FONT_SIZE_BY_DENSITY[densityClass];
 
   // Adjust for very small viewport heights
-  if (viewportHeight < 720) {
-    baseSize = Math.max(12, baseSize - 1);
+  if (viewportHeight < SMALL_VIEWPORT_HEIGHT_THRESHOLD) {
+    baseSize = Math.max(MINIMUM_FONT_SIZE, baseSize - 1);
   }
 
   return baseSize;
@@ -253,7 +260,9 @@ export function useDisplayEnvironment(): DisplayEnvironment {
     const viewportHeight = window.innerHeight;
     const devicePixelRatio = window.devicePixelRatio || 1;
 
-    // Effective width considers DPI scaling
+    // Effective width is the CSS viewport width (what CSS sees)
+    // Note: On most browsers, viewport dimensions already account for DPI scaling
+    // devicePixelRatio is used separately for density classification
     const effectiveWidth = Math.round(viewportWidth);
 
     const sizeClass = calculateSizeClass(effectiveWidth);
