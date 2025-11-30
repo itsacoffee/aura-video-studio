@@ -263,16 +263,46 @@ public class VideoGenerationOrchestrator
     {
         var results = new ConcurrentBag<TaskResult>();
         var batchCompletedCount = 0;
+        
+        // Timeout for individual tasks (10 minutes per task)
+        var taskTimeout = TimeSpan.FromMinutes(10);
 
         var tasks = batch.Select(async node =>
         {
+            bool resourcesAcquired = false;
+            bool limiterAcquired = false;
+            
             try
             {
-                // Wait for resources if needed
-                await _resourceMonitor.WaitForResourcesAsync(node.EstimatedResourceCost, ct).ConfigureAwait(false);
+                // Wait for resources with timeout
+                using var resourceTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                resourceTimeoutCts.CancelAfter(TimeSpan.FromMinutes(2)); // 2 minute timeout for resource acquisition
+                
+                try
+                {
+                    await _resourceMonitor.WaitForResourcesAsync(node.EstimatedResourceCost, resourceTimeoutCts.Token).ConfigureAwait(false);
+                    resourcesAcquired = true;
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    _logger.LogWarning("Resource acquisition timeout for task {TaskId}", node.TaskId);
+                    throw new TimeoutException($"Resource acquisition timeout for task {node.TaskId}");
+                }
 
-                // Acquire concurrency slot
-                await _concurrencyLimiter.WaitAsync(ct).ConfigureAwait(false);
+                // Acquire concurrency slot with timeout
+                using var limiterTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                limiterTimeoutCts.CancelAfter(TimeSpan.FromMinutes(1)); // 1 minute timeout for limiter
+                
+                try
+                {
+                    await _concurrencyLimiter.WaitAsync(limiterTimeoutCts.Token).ConfigureAwait(false);
+                    limiterAcquired = true;
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    _logger.LogWarning("Concurrency limiter timeout for task {TaskId}", node.TaskId);
+                    throw new TimeoutException($"Concurrency limiter timeout for task {node.TaskId}");
+                }
 
                 try
                 {
@@ -290,7 +320,21 @@ public class VideoGenerationOrchestrator
                     _logger.LogInformation("Executing task: {TaskId} ({TaskType}) - Priority: {Priority}, ResourceCost: {ResourceCost}", 
                         node.TaskId, node.TaskType, node.Priority, node.EstimatedResourceCost);
 
-                    var result = await taskExecutor(node, ct).ConfigureAwait(false);
+                    // Execute task with timeout
+                    using var taskTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    taskTimeoutCts.CancelAfter(taskTimeout);
+                    
+                    object result;
+                    try
+                    {
+                        result = await taskExecutor(node, taskTimeoutCts.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                    {
+                        _logger.LogWarning("Task execution timeout for task {TaskId} after {Timeout} minutes", 
+                            node.TaskId, taskTimeout.TotalMinutes);
+                        throw new TimeoutException($"Task {node.TaskId} timed out after {taskTimeout.TotalMinutes} minutes");
+                    }
 
                     node.Status = TaskStatus.Completed;
                     node.Result = result;
@@ -315,7 +359,10 @@ public class VideoGenerationOrchestrator
                 }
                 finally
                 {
-                    _concurrencyLimiter.Release();
+                    if (limiterAcquired)
+                    {
+                        _concurrencyLimiter.Release();
+                    }
                 }
             }
             catch (Exception ex)

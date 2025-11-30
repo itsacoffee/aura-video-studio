@@ -19,6 +19,7 @@ public class ProviderStatusService
     private readonly OfflineProviderAvailabilityService _offlineAvailability;
     private readonly ProviderHealthMonitoringService _healthMonitoring;
     private readonly ProviderConnectionValidationService _validationService;
+    private readonly Configuration.IKeyStore? _keyStore;
     private readonly ConcurrentDictionary<string, ProviderStatus> _statusCache;
     private readonly ConcurrentDictionary<string, ProviderConnectionValidationResult> _validationCache;
     private DateTime _lastUpdate;
@@ -28,12 +29,14 @@ public class ProviderStatusService
         ILogger<ProviderStatusService> logger,
         OfflineProviderAvailabilityService offlineAvailability,
         ProviderHealthMonitoringService healthMonitoring,
-        ProviderConnectionValidationService validationService)
+        ProviderConnectionValidationService validationService,
+        Configuration.IKeyStore? keyStore = null)
     {
         _logger = logger;
         _offlineAvailability = offlineAvailability;
         _healthMonitoring = healthMonitoring;
         _validationService = validationService;
+        _keyStore = keyStore;
         _statusCache = new ConcurrentDictionary<string, ProviderStatus>();
         _validationCache = new ConcurrentDictionary<string, ProviderConnectionValidationResult>();
         _lastUpdate = DateTime.MinValue;
@@ -70,6 +73,7 @@ public class ProviderStatusService
             AddLlmProviderStatus();
             AddTtsProviderStatus(offlineStatus);
             AddImageProviderStatus(offlineStatus);
+            AddStockImageProviderStatus(); // Add stock image providers (Pexels, Pixabay, Unsplash)
             AddMusicProviderStatus();
 
             _lastUpdate = DateTime.UtcNow;
@@ -176,7 +180,7 @@ public class ProviderStatusService
         {
             "OpenAI" or "Anthropic" or "Gemini" or "AzureOpenAI" or "Ollama" or "RuleBased" => "LLM",
             "ElevenLabs" or "PlayHT" or "Piper" or "Mimic3" or "WindowsTTS" => "TTS",
-            "StableDiffusion" or "PlaceholderImages" => "Images",
+            "StableDiffusion" or "PlaceholderImages" or "Pexels" or "Pixabay" or "Unsplash" => "Images",
             "StockMusic" => "Music",
             _ => "Unknown"
         };
@@ -189,6 +193,7 @@ public class ProviderStatusService
             "OpenAI" or "Anthropic" or "AzureOpenAI" or "ElevenLabs" or "PlayHT" => "Premium",
             "Gemini" or "Piper" or "Mimic3" or "WindowsTTS" or "StableDiffusion" => "Free",
             "Ollama" or "RuleBased" or "PlaceholderImages" or "StockMusic" => "Free",
+            "Pexels" or "Pixabay" or "Unsplash" => "Free",
             _ => "Unknown"
         };
     }
@@ -353,6 +358,54 @@ public class ProviderStatusService
             Features = new List<string> { "Colored Cards", "Text Overlays", "Always Available" },
             Message = "Fallback image generation - always available"
         });
+    }
+
+    private void AddStockImageProviderStatus()
+    {
+        // Check API keys for stock image providers
+        var allKeys = _keyStore?.GetAllKeys() ?? new Dictionary<string, string>();
+        
+        // Pexels
+        var hasPexelsKey = allKeys.TryGetValue("pexels", out var pexelsKey) && !string.IsNullOrWhiteSpace(pexelsKey);
+        _statusCache.TryAdd("Pexels", new ProviderStatus
+        {
+            Name = "Pexels",
+            Category = "Images",
+            IsAvailable = hasPexelsKey,
+            IsOnline = hasPexelsKey,
+            Tier = "Free",
+            Features = new List<string> { "Stock Photos", "Stock Videos", "Free API" },
+            Message = hasPexelsKey ? "API key configured" : "API key not configured - get one at pexels.com/api"
+        });
+        
+        // Pixabay
+        var hasPixabayKey = allKeys.TryGetValue("pixabay", out var pixabayKey) && !string.IsNullOrWhiteSpace(pixabayKey);
+        _statusCache.TryAdd("Pixabay", new ProviderStatus
+        {
+            Name = "Pixabay",
+            Category = "Images",
+            IsAvailable = hasPixabayKey,
+            IsOnline = hasPixabayKey,
+            Tier = "Free",
+            Features = new List<string> { "Stock Photos", "Stock Videos", "Illustrations", "Free API" },
+            Message = hasPixabayKey ? "API key configured" : "API key not configured - get one at pixabay.com/api"
+        });
+        
+        // Unsplash
+        var hasUnsplashKey = allKeys.TryGetValue("unsplash", out var unsplashKey) && !string.IsNullOrWhiteSpace(unsplashKey);
+        _statusCache.TryAdd("Unsplash", new ProviderStatus
+        {
+            Name = "Unsplash",
+            Category = "Images",
+            IsAvailable = hasUnsplashKey,
+            IsOnline = hasUnsplashKey,
+            Tier = "Free",
+            Features = new List<string> { "Professional Photos", "High Resolution", "Free API" },
+            Message = hasUnsplashKey ? "API key configured" : "API key not configured - get one at unsplash.com/developers"
+        });
+        
+        _logger.LogDebug("Stock image providers status: Pexels={Pexels}, Pixabay={Pixabay}, Unsplash={Unsplash}",
+            hasPexelsKey, hasPixabayKey, hasUnsplashKey);
     }
 
     private void AddMusicProviderStatus()

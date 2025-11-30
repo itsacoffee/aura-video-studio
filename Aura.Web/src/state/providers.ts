@@ -143,26 +143,61 @@ export const VisualsProviders = [
     value: 'Placeholder',
     label: 'Placeholder (Always Available)',
     description: 'Solid color backgrounds with text - guaranteed fallback, no dependencies',
+    isLocal: true,
   },
   {
     value: 'Stock',
-    label: 'Stock Images (Free)',
-    description: 'Curated stock photos from Pexels/Pixabay/Unsplash',
+    label: 'All Stock Sources (Recommended)',
+    description: 'Uses all available stock sources (Pexels, Pixabay, Unsplash) for best results',
+    isLocal: false,
+  },
+  {
+    value: 'Pexels',
+    label: 'Pexels (Free Stock)',
+    description: 'High-quality free stock photos and videos from Pexels',
+    isLocal: false,
+    requiresApiKey: false,
+  },
+  {
+    value: 'Pixabay',
+    label: 'Pixabay (Free Stock)',
+    description: 'Community-driven free stock images and videos from Pixabay',
+    isLocal: false,
+    requiresApiKey: false,
+  },
+  {
+    value: 'Unsplash',
+    label: 'Unsplash (Free Stock)',
+    description: 'Professional-grade free photos from Unsplash',
+    isLocal: false,
+    requiresApiKey: false,
+  },
+  {
+    value: 'LocalAssets',
+    label: 'Local Assets',
+    description: 'Use images and videos from a local directory on your computer',
+    isLocal: true,
   },
   {
     value: 'LocalSD',
-    label: 'Local SD (Managed)',
-    description: 'Stable Diffusion WebUI, requires NVIDIA GPU with 6GB+ VRAM, auto-managed',
+    label: 'Local Stable Diffusion (AI Generated)',
+    description: 'Generate images with Stable Diffusion WebUI. Requires NVIDIA GPU with 6GB+ VRAM',
+    isLocal: true,
+    requiresGpu: true,
   },
   {
     value: 'ComfyUI',
-    label: 'ComfyUI',
-    description: 'Advanced node-based Stable Diffusion, requires NVIDIA GPU with 8GB+ VRAM',
+    label: 'ComfyUI (Advanced AI)',
+    description: 'Advanced node-based Stable Diffusion. Requires NVIDIA GPU with 8GB+ VRAM',
+    isLocal: true,
+    requiresGpu: true,
   },
   {
     value: 'CloudPro',
     label: 'Cloud Pro (Stability/Runway)',
-    description: 'Cloud AI image generation, requires API key',
+    description: 'Cloud AI image generation with professional quality. Requires API key',
+    isLocal: false,
+    requiresApiKey: true,
   },
 ] as const;
 
@@ -385,7 +420,7 @@ export function getTtsProvidersByMode(isOfflineMode: boolean) {
 
 /**
  * Get visuals providers filtered by operating mode
- * In offline mode, only Placeholder is allowed
+ * In offline mode, only local providers are allowed
  * @param isOfflineMode Whether offline mode is enabled
  * @returns Filtered list of visuals providers
  */
@@ -393,8 +428,8 @@ export function getVisualsProvidersByMode(isOfflineMode: boolean) {
   if (!isOfflineMode) {
     return [...VisualsProviders];
   }
-  // In offline mode, only Placeholder is allowed
-  return VisualsProviders.filter((p) => p.value === 'Placeholder');
+  // In offline mode, only local providers are allowed
+  return VisualsProviders.filter((p) => p.isLocal);
 }
 
 /**
@@ -419,7 +454,7 @@ export function isProviderAvailableInMode(
     case 'tts':
       return TtsProviders.some((p) => p.value === providerValue && p.isLocal);
     case 'visuals':
-      return providerValue === 'Placeholder';
+      return VisualsProviders.some((p) => p.value === providerValue && p.isLocal);
     default:
       return false;
   }
