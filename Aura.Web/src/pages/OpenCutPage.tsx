@@ -1,5 +1,11 @@
-import { makeStyles, tokens, Button, Text, Spinner } from '@fluentui/react-components';
-import { Alert24Regular, Open24Regular, ArrowClockwise24Regular } from '@fluentui/react-icons';
+import { makeStyles, tokens, Button, Text, Spinner, Card } from '@fluentui/react-components';
+import {
+  Alert24Regular,
+  Open24Regular,
+  ArrowClockwise24Regular,
+  Play24Regular,
+  Info24Regular,
+} from '@fluentui/react-icons';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { env } from '../config/env';
 
@@ -60,6 +66,53 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalL,
     padding: tokens.spacingHorizontalXXL,
   },
+  setupContainer: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spacingVerticalXL,
+    padding: tokens.spacingHorizontalXXL,
+    maxWidth: '800px',
+    margin: '0 auto',
+  },
+  setupCard: {
+    padding: tokens.spacingHorizontalXL,
+    width: '100%',
+  },
+  setupSteps: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: tokens.spacingVerticalM,
+    marginTop: tokens.spacingVerticalL,
+  },
+  stepItem: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalM,
+  },
+  stepNumber: {
+    backgroundColor: tokens.colorBrandBackground,
+    color: tokens.colorNeutralForegroundOnBrand,
+    borderRadius: '50%',
+    width: '24px',
+    height: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: tokens.fontSizeBase200,
+    fontWeight: tokens.fontWeightSemibold,
+    flexShrink: 0,
+  },
+  codeBlock: {
+    backgroundColor: tokens.colorNeutralBackground3,
+    padding: tokens.spacingHorizontalM,
+    borderRadius: tokens.borderRadiusMedium,
+    fontFamily: 'monospace',
+    fontSize: tokens.fontSizeBase300,
+    overflowX: 'auto',
+  },
   warning: {
     display: 'flex',
     flexDirection: 'row',
@@ -70,6 +123,17 @@ const useStyles = makeStyles({
   actionButtons: {
     display: 'flex',
     gap: tokens.spacingHorizontalM,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  infoBox: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: tokens.spacingHorizontalM,
+    padding: tokens.spacingHorizontalM,
+    backgroundColor: tokens.colorNeutralBackground3,
+    borderRadius: tokens.borderRadiusMedium,
+    marginTop: tokens.spacingVerticalM,
   },
 });
 
@@ -267,8 +331,9 @@ export function OpenCutPage() {
     );
   }
 
-  const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
-  const isLocalhost = effectiveUrl.includes('127.0.0.1') || effectiveUrl.includes('localhost');
+  // Keep for potential future use with Electron-specific behavior
+  const _isElectron = typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
+  const _isLocalhost = effectiveUrl.includes('127.0.0.1') || effectiveUrl.includes('localhost');
 
   return (
     <div className={styles.root}>
@@ -313,44 +378,108 @@ export function OpenCutPage() {
         )}
 
         {connectionState === 'error' && (
-          <div className={styles.errorContainer}>
-            <Alert24Regular
-              style={{ fontSize: '48px', color: tokens.colorPaletteRedForeground1 }}
-            />
-            <div style={{ textAlign: 'center', maxWidth: '600px' }}>
-              <Text
-                weight="semibold"
-                size={400}
-                style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
-              >
-                Unable to connect to OpenCut server
-              </Text>
-              <Text
-                size={300}
-                color="foreground2"
-                style={{ display: 'block', marginBottom: tokens.spacingVerticalM }}
-              >
-                {isLocalhost && isElectron
-                  ? 'The OpenCut server should start automatically when running Aura Desktop. Please wait a moment and try again, or check if the server is running on port 3100.'
-                  : isLocalhost
-                    ? `The OpenCut server at ${effectiveUrl} is not responding. Please ensure the server is running.`
-                    : `Unable to connect to ${effectiveUrl}. Please verify the server is accessible.`}
-              </Text>
-              {isLocalhost && (
+          <div className={styles.setupContainer}>
+            <Card className={styles.setupCard}>
+              <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+                <Play24Regular
+                  style={{
+                    fontSize: '48px',
+                    color: tokens.colorBrandForeground1,
+                    marginBottom: tokens.spacingVerticalM,
+                  }}
+                />
                 <Text
-                  size={200}
-                  color="foreground2"
-                  style={{ display: 'block', marginBottom: tokens.spacingVerticalL }}
+                  weight="semibold"
+                  size={500}
+                  style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
                 >
-                  {isElectron
-                    ? "If the server doesn't start automatically, you may need to start it manually or check the application logs."
-                    : 'Make sure the OpenCut development server is running. You can start it from the OpenCut directory with: bun run dev (or npm run dev)'}
+                  Start OpenCut Server
                 </Text>
-              )}
-            </div>
+                <Text size={300} color="foreground2">
+                  OpenCut is a CapCut-inspired video editor. To use it, you need to start the
+                  OpenCut development server first.
+                </Text>
+              </div>
+
+              <div className={styles.setupSteps}>
+                <div className={styles.stepItem}>
+                  <div className={styles.stepNumber}>1</div>
+                  <div>
+                    <Text weight="semibold" size={300}>
+                      Open a terminal/command prompt
+                    </Text>
+                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                      Navigate to your Aura Video Studio installation folder
+                    </Text>
+                  </div>
+                </div>
+
+                <div className={styles.stepItem}>
+                  <div className={styles.stepNumber}>2</div>
+                  <div>
+                    <Text weight="semibold" size={300}>
+                      Navigate to the OpenCut directory
+                    </Text>
+                    <div className={styles.codeBlock}>cd OpenCut/apps/web</div>
+                  </div>
+                </div>
+
+                <div className={styles.stepItem}>
+                  <div className={styles.stepNumber}>3</div>
+                  <div>
+                    <Text weight="semibold" size={300}>
+                      Install dependencies (first time only)
+                    </Text>
+                    <div className={styles.codeBlock}>bun install</div>
+                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                      or use: npm install
+                    </Text>
+                  </div>
+                </div>
+
+                <div className={styles.stepItem}>
+                  <div className={styles.stepNumber}>4</div>
+                  <div>
+                    <Text weight="semibold" size={300}>
+                      Start the development server
+                    </Text>
+                    <div className={styles.codeBlock}>bun run dev</div>
+                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                      or use: npm run dev
+                    </Text>
+                  </div>
+                </div>
+
+                <div className={styles.stepItem}>
+                  <div className={styles.stepNumber}>5</div>
+                  <div>
+                    <Text weight="semibold" size={300}>
+                      Click &quot;Retry Connection&quot; below
+                    </Text>
+                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                      Once the server is running on port 3100, OpenCut will load here automatically
+                    </Text>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.infoBox}>
+                <Info24Regular style={{ color: tokens.colorBrandForeground1, flexShrink: 0 }} />
+                <div>
+                  <Text size={200}>
+                    <strong>Server URL:</strong> {effectiveUrl}
+                  </Text>
+                  <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                    OpenCut will automatically load in this window once the server is running.
+                  </Text>
+                </div>
+              </div>
+            </Card>
+
             <div className={styles.actionButtons}>
               <Button
                 appearance="primary"
+                size="large"
                 icon={<ArrowClockwise24Regular aria-hidden />}
                 onClick={handleRetry}
               >
@@ -358,10 +487,11 @@ export function OpenCutPage() {
               </Button>
               <Button
                 appearance="secondary"
+                size="large"
                 icon={<Open24Regular aria-hidden />}
                 onClick={() => window.open(effectiveUrl, '_blank', 'noopener,noreferrer')}
               >
-                Open in new tab
+                Open in Browser
               </Button>
             </div>
           </div>
