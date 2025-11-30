@@ -8,6 +8,8 @@ using Aura.Core.Services.Setup;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
+using DependencyStatusEnum = Aura.Core.Dependencies.DependencyStatus;
+
 namespace Aura.Api.Controllers;
 
 [ApiController]
@@ -158,7 +160,7 @@ public class DependenciesController : ControllerBase
             var report = await _rescanService.RescanAllAsync(ct).ConfigureAwait(false);
             var ffmpegDep = report.Dependencies.Find(d => d.Id == "ffmpeg");
             
-            if (ffmpegDep == null || ffmpegDep.Status != Aura.Core.Dependencies.DependencyStatus.Installed || string.IsNullOrEmpty(ffmpegDep.Path))
+            if (ffmpegDep == null || ffmpegDep.Status != DependencyStatusEnum.Installed || string.IsNullOrEmpty(ffmpegDep.Path))
             {
                 return Ok(new
                 {
@@ -242,7 +244,7 @@ public class DependenciesController : ControllerBase
             var report = await _rescanService.RescanAllAsync(ct).ConfigureAwait(false);
             var ffmpegDep = report.Dependencies.Find(d => d.Id == "ffmpeg");
             
-            if (ffmpegDep == null || ffmpegDep.Status != Aura.Core.Dependencies.DependencyStatus.Installed)
+            if (ffmpegDep == null || ffmpegDep.Status != DependencyStatusEnum.Installed)
             {
                 return Ok(new
                 {

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using Aura.Core.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Setup;
