@@ -90,6 +90,15 @@ export function validateApiKey(keyName: string, keyValue: string): ValidationRes
     };
   }
 
+  // Check for "Bearer" prefix (common mistake) - check before space validation
+  // so we get a more helpful error message
+  if (keyValue.toLowerCase().startsWith('bearer ')) {
+    return {
+      isValid: false,
+      error: 'Remove "Bearer " prefix from API key',
+    };
+  }
+
   if (keyValue.includes(' ') || keyValue.includes('\n') || keyValue.includes('\t')) {
     return {
       isValid: false,
@@ -102,14 +111,6 @@ export function validateApiKey(keyName: string, keyValue: string): ValidationRes
     return {
       isValid: false,
       error: 'API key appears too short (should be at least 10 characters)',
-    };
-  }
-
-  // Check for "Bearer" prefix (common mistake)
-  if (keyValue.toLowerCase().startsWith('bearer ')) {
-    return {
-      isValid: false,
-      error: 'Remove "Bearer " prefix from API key',
     };
   }
 

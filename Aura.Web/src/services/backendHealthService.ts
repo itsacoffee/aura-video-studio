@@ -10,8 +10,8 @@
  */
 
 import axios, { type AxiosError } from 'axios';
-import { loggingService } from './loggingService';
 import { resolveApiBaseUrl } from '../config/apiBaseUrl';
+import { loggingService } from './loggingService';
 
 export interface BackendHealthStatus {
   reachable: boolean;
@@ -47,16 +47,11 @@ export class BackendHealthService {
       // Resolve from Electron bridge, environment, or fallback
       const resolved = resolveApiBaseUrl();
       this.baseUrl = resolved.value;
-      loggingService.info(
-        'BackendHealthService',
-        'Backend URL resolved',
-        undefined,
-        {
-          url: this.baseUrl,
-          source: resolved.source,
-          isElectron: resolved.isElectron,
-        }
-      );
+      loggingService.info('BackendHealthService', 'Backend URL resolved', undefined, {
+        url: this.baseUrl,
+        source: resolved.source,
+        isElectron: resolved.isElectron,
+      });
     }
     // Use /health/live which is the fast startup endpoint (doesn't check database)
     // This matches the network contract healthEndpoint in Electron

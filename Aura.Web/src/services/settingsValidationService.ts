@@ -7,8 +7,8 @@
 
 import { apiUrl } from '../config/api';
 import { isValidPath, migrateLegacyPath } from '../utils/pathUtils';
-import { getLocalFirstRunStatus } from './firstRunService';
 import { ffmpegClient } from './api/ffmpegClient';
+import { getLocalFirstRunStatus } from './firstRunService';
 
 export interface SettingsValidation {
   valid: boolean;
@@ -68,10 +68,13 @@ export async function validateRequiredSettings(): Promise<SettingsValidation> {
 
       // If user completed wizard, allow access but log warning
       if (hasCompletedWizard) {
-        console.warn('[validateRequiredSettings] User completed wizard but validation failed - allowing access:', {
-          missingSettings,
-          errorMessage,
-        });
+        console.warn(
+          '[validateRequiredSettings] User completed wizard but validation failed - allowing access:',
+          {
+            missingSettings,
+            errorMessage,
+          }
+        );
         // Return valid but with a warning - don't block access
         return { valid: true };
       }
@@ -89,7 +92,9 @@ export async function validateRequiredSettings(): Promise<SettingsValidation> {
 
     // CRITICAL FIX: If user completed wizard, don't block on validation errors
     if (hasCompletedWizard) {
-      console.warn('[validateRequiredSettings] Validation error but user completed wizard - allowing access');
+      console.warn(
+        '[validateRequiredSettings] Validation error but user completed wizard - allowing access'
+      );
       return { valid: true };
     }
 
@@ -133,14 +138,18 @@ async function checkFFmpegStatus(): Promise<{ available: boolean; path?: string 
   }
 }
 
-async function hasReadyLlmProvider(hasCompletedWizard: boolean = false): Promise<{ ready: boolean; message?: string }> {
+async function hasReadyLlmProvider(
+  hasCompletedWizard: boolean = false
+): Promise<{ ready: boolean; message?: string }> {
   try {
     const response = await fetch(apiUrl('/api/provider-status'));
     if (!response.ok) {
       // CRITICAL FIX: If user completed wizard, be lenient - assume providers are configured
       // The API might be temporarily unavailable or having issues, but don't block the user
       if (hasCompletedWizard) {
-        console.warn('[hasReadyLlmProvider] Provider status API failed but user completed wizard - assuming providers configured');
+        console.warn(
+          '[hasReadyLlmProvider] Provider status API failed but user completed wizard - assuming providers configured'
+        );
         return { ready: true };
       }
 
@@ -189,7 +198,9 @@ async function hasReadyLlmProvider(hasCompletedWizard: boolean = false): Promise
     // CRITICAL FIX: If user completed wizard, be lenient on API failures
     // Don't block them if the API is temporarily unavailable
     if (hasCompletedWizard) {
-      console.warn('[hasReadyLlmProvider] Provider status check error but user completed wizard - assuming providers configured');
+      console.warn(
+        '[hasReadyLlmProvider] Provider status check error but user completed wizard - assuming providers configured'
+      );
       return { ready: true };
     }
 

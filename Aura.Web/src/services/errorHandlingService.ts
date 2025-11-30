@@ -1,5 +1,5 @@
-import { apiUrl } from '../config/api';
 import type { ErrorInfo } from '../components/Errors/ErrorDialog';
+import { apiUrl } from '../config/api';
 
 /**
  * Client-side error handling service for managing errors and recovery
