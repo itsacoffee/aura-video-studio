@@ -132,6 +132,10 @@ export function usePanelPreferences(): UsePanelPreferencesReturn {
     setPreferences((prev) => ({
       ...prev,
       [panelId]: {
+        // Spread existing preference if it exists, otherwise use defaults
+        width: 0,
+        collapsed: false,
+        visible: true,
         ...prev[panelId],
         ...preference,
       },

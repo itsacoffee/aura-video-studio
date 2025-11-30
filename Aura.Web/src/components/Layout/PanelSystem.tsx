@@ -85,6 +85,12 @@ export interface PanelSystemProviderProps {
 }
 
 /**
+ * Threshold multiplier for determining when a panel should collapse.
+ * If the actual width is less than minWidth * this multiplier, the panel will collapse.
+ */
+const COLLAPSE_THRESHOLD_MULTIPLIER = 1.5;
+
+/**
  * Panel System Provider
  *
  * Wraps an application section to provide priority-based panel management.
@@ -147,21 +153,21 @@ export function PanelSystemProvider({ children }: PanelSystemProviderProps): Rea
           remainingWidth
         );
 
-        const shouldCollapse = isManuallyCollapsed || actualWidth < config.minWidth * 1.5;
+        const shouldCollapse =
+          isManuallyCollapsed || actualWidth < config.minWidth * COLLAPSE_THRESHOLD_MULTIPLIER;
+        const isEffectivelyCollapsed = shouldCollapse && config.canCollapse;
+
+        // Calculate width: use collapsed width if collapsed, otherwise use calculated actual width
+        const collapsedWidth = Math.max(config.collapsedWidth, manualOverride?.actualWidth || 0);
+        const effectiveWidth = isEffectivelyCollapsed ? collapsedWidth : actualWidth;
 
         newStates.set(id, {
           isVisible: true,
-          isCollapsed: shouldCollapse && config.canCollapse,
-          actualWidth:
-            shouldCollapse && config.canCollapse
-              ? Math.max(config.collapsedWidth, manualOverride?.actualWidth || 0)
-              : actualWidth,
+          isCollapsed: isEffectivelyCollapsed,
+          actualWidth: effectiveWidth,
         });
 
-        usedWidth +=
-          shouldCollapse && config.canCollapse
-            ? Math.max(config.collapsedWidth, manualOverride?.actualWidth || 0)
-            : actualWidth;
+        usedWidth += effectiveWidth;
       } else if (config.canCollapse && remainingWidth >= config.collapsedWidth) {
         // Panel should be collapsed
         newStates.set(id, {

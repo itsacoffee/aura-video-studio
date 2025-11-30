@@ -231,6 +231,8 @@ export function ResizablePanel({
     };
   }, [position, minWidth, maxWidth, onResize]);
 
+  // For a left-positioned panel, the resize handle should be on the right edge (resizeHandleRight).
+  // For a right-positioned panel, the resize handle should be on the left edge (resizeHandleLeft).
   const handleClassName = `${styles.resizeHandle} ${
     position === 'left' ? styles.resizeHandleRight : styles.resizeHandleLeft
   }`;
