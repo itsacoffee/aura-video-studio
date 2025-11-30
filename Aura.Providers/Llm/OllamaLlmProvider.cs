@@ -53,7 +53,8 @@ public class OllamaLlmProvider : ILlmProvider
     // Static compiled regex patterns for better performance
     private static readonly Regex MarkdownHeaderRegex = new(@"^#{1,3}\s+(.+?)$", RegexOptions.Compiled);
     private static readonly Regex SceneMetadataRegex = new(@"^scene\s+\d+\s*[:\-]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex VisualMarkerRegex = new(@"\[VISUAL[:\s][^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    // Match [VISUAL] markers with optional colon, whitespace, or content - e.g., [VISUAL], [VISUAL:], [VISUAL: description]
+    private static readonly Regex VisualMarkerRegex = new(@"\[VISUAL(?::\s*[^\]]*|)\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex PauseMarkerRegex = new(@"\[PAUSE[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex MediaMarkerRegex = new(@"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
