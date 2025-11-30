@@ -20,8 +20,8 @@
  */
 
 import { makeStyles, mergeClasses, shorthands } from '@fluentui/react-components';
-import { forwardRef } from 'react';
-import type { ReactNode, ElementType, ComponentPropsWithoutRef } from 'react';
+import React, { forwardRef } from 'react';
+import type { ReactNode, ElementType } from 'react';
 
 /**
  * Text variant types - mapped to CSS classes from typography-system.css
@@ -126,7 +126,7 @@ const useStyles = makeStyles({
     textTransform: 'uppercase',
   },
   code: {
-    fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
+    fontFamily: '"SF Mono", "Fira Code", Consolas, monospace',
     fontSize: 'calc(var(--type-md) * 0.9)',
     lineHeight: 'var(--leading-relaxed)',
     letterSpacing: 'var(--tracking-normal)',
@@ -204,7 +204,7 @@ const useStyles = makeStyles({
  *
  * Uses the modular scale typography system for consistent sizing across viewports.
  */
-export const Text = forwardRef<HTMLElement, TextProps & ComponentPropsWithoutRef<'span'>>(
+export const Text = forwardRef<HTMLElement, TextProps & React.HTMLAttributes<HTMLElement>>(
   (
     {
       variant = 'body',

@@ -20,8 +20,8 @@
  */
 
 import { makeStyles, mergeClasses, shorthands } from '@fluentui/react-components';
-import { forwardRef } from 'react';
-import type { ReactNode, ElementType, ComponentPropsWithoutRef } from 'react';
+import React, { forwardRef } from 'react';
+import type { ReactNode, ElementType } from 'react';
 
 /**
  * Heading level types - mapped to CSS classes from typography-system.css
@@ -161,10 +161,7 @@ const useStyles = makeStyles({
  *
  * Uses the modular scale typography system for consistent sizing across viewports.
  */
-export const Heading = forwardRef<
-  HTMLHeadingElement,
-  HeadingProps & ComponentPropsWithoutRef<'h1'>
->(
+export const Heading = forwardRef<HTMLElement, HeadingProps & React.HTMLAttributes<HTMLElement>>(
   (
     { level = 'h1', color = 'primary', weight, align, truncate, as, className, children, ...rest },
     ref

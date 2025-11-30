@@ -24,7 +24,7 @@
  * ```
  */
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useDisplayEnvironment } from './useDisplayEnvironment';
 
 /**
@@ -143,13 +143,16 @@ export function useFluidType(): UseFluidTypeReturn {
    * // Returns: "clamp(14px, 12.5714px + 0.3571vw, 18px)"
    * ```
    */
-  const getFluidSize = (minPx: number, maxPx: number): string => {
-    const { minViewport, maxViewport } = config;
-    const slope = (maxPx - minPx) / (maxViewport - minViewport);
-    const yAxisIntersection = minPx - slope * minViewport;
+  const getFluidSize = useCallback(
+    (minPx: number, maxPx: number): string => {
+      const { minViewport, maxViewport } = config;
+      const slope = (maxPx - minPx) / (maxViewport - minViewport);
+      const yAxisIntersection = minPx - slope * minViewport;
 
-    return `clamp(${minPx}px, ${yAxisIntersection.toFixed(4)}px + ${(slope * 100).toFixed(4)}vw, ${maxPx}px)`;
-  };
+      return `clamp(${minPx}px, ${yAxisIntersection.toFixed(4)}px + ${(slope * 100).toFixed(4)}vw, ${maxPx}px)`;
+    },
+    [config]
+  );
 
   return { scale, config, getFluidSize };
 }
