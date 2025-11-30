@@ -13,7 +13,6 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { MobileFAB } from './MobileFAB';
 import { ResultsTray } from './ResultsTray';
 import { Sidebar } from './Sidebar';
-import { SystemStatusIndicator } from './SystemStatus';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
 
 /**
@@ -180,7 +179,6 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
           <UndoRedoButtons />
           <div className={styles.topBarActions}>
             <GlobalLlmSelector />
-            <SystemStatusIndicator />
             <NotificationCenter />
             <ResultsTray />
           </div>
