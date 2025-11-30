@@ -437,6 +437,108 @@ public class OllamaController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Delete a model from local storage
+    /// </summary>
+    [HttpDelete("models/{modelName}")]
+    public async Task<IActionResult> DeleteModel(string modelName, CancellationToken ct)
+    {
+        try
+        {
+            Log.Information("Deleting Ollama model: {ModelName}, CorrelationId={CorrelationId}",
+                modelName, HttpContext.TraceIdentifier);
+
+            var baseUrl = _settings.GetOllamaUrl();
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var requestBody = new { name = modelName };
+            var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"{baseUrl}/api/delete")
+            {
+                Content = content
+            };
+
+            var response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("Model {ModelName} deleted successfully, CorrelationId={CorrelationId}",
+                    modelName, HttpContext.TraceIdentifier);
+
+                return Ok(new {
+                    message = $"Model '{modelName}' deleted successfully",
+                    modelName,
+                    success = true
+                });
+            }
+
+            var error = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            Log.Warning("Failed to delete model {ModelName}: {Error}, CorrelationId={CorrelationId}",
+                modelName, error, HttpContext.TraceIdentifier);
+
+            return BadRequest(new {
+                message = $"Failed to delete model: {error}",
+                modelName,
+                success = false
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error deleting Ollama model: {ModelName}, CorrelationId={CorrelationId}",
+                modelName, HttpContext.TraceIdentifier);
+            return Problem($"Error deleting model {modelName}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Get recommended models for video script generation
+    /// </summary>
+    [HttpGet("models/recommended")]
+    public IActionResult GetRecommendedModels()
+    {
+        var models = new[]
+        {
+            new {
+                name = "llama3.2:3b",
+                displayName = "Llama 3.2 (3B)",
+                description = "Fast and efficient. Best for systems with limited resources.",
+                size = "2.0 GB",
+                sizeBytes = 2L * 1024 * 1024 * 1024,
+                isRecommended = true
+            },
+            new {
+                name = "llama3.1:8b",
+                displayName = "Llama 3.1 (8B)",
+                description = "Balanced performance and quality. Recommended for most users.",
+                size = "4.7 GB",
+                sizeBytes = (long)(4.7 * 1024 * 1024 * 1024),
+                isRecommended = true
+            },
+            new {
+                name = "mistral:7b",
+                displayName = "Mistral (7B)",
+                description = "Excellent for creative writing and script generation.",
+                size = "4.1 GB",
+                sizeBytes = (long)(4.1 * 1024 * 1024 * 1024),
+                isRecommended = true
+            },
+            new {
+                name = "llama3.1:70b",
+                displayName = "Llama 3.1 (70B)",
+                description = "Highest quality, requires powerful hardware (32GB+ RAM).",
+                size = "40 GB",
+                sizeBytes = 40L * 1024 * 1024 * 1024,
+                isRecommended = false
+            }
+        };
+
+        return Ok(new { models });
+    }
+
     private static string FormatSize(long bytes)
     {
         string[] sizes = { "B", "KB", "MB", "GB", "TB" };
