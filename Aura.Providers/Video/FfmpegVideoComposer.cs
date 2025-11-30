@@ -169,7 +169,7 @@ public class FfmpegVideoComposer : IVideoComposer
             };
             logWriter.WriteLine($"FFmpeg Render Log - Job ID: {jobId}");
             logWriter.WriteLine($"Correlation ID: {correlationId}");
-            logWriter.WriteLine($"Started: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+            logWriter.WriteLine($"Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
             logWriter.WriteLine($"Resolution: {spec.Res.Width}x{spec.Res.Height}");
             logWriter.WriteLine($"FFmpeg Path: {ffmpegPath}");
             logWriter.WriteLine($"Command: {ffmpegCommand}");
@@ -400,7 +400,7 @@ public class FfmpegVideoComposer : IVideoComposer
             try
             {
                 logWriter?.WriteLine(new string('-', 80));
-                logWriter?.WriteLine($"Completed: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                logWriter?.WriteLine($"Completed: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 logWriter?.WriteLine($"Exit Code: {process.ExitCode}");
                 logWriter?.Dispose();
             }
@@ -533,7 +533,7 @@ public class FfmpegVideoComposer : IVideoComposer
             try
             {
                 logWriter?.WriteLine(new string('-', 80));
-                logWriter?.WriteLine($"Completed: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                logWriter?.WriteLine($"Completed: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 logWriter?.WriteLine($"Exit Code: {result.ExitCode}");
                 logWriter?.Dispose();
             }
