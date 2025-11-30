@@ -75,8 +75,8 @@ export function Stack({
   style,
   'data-testid': testId,
 }: StackProps) {
-  const spaceClass = customSpace ? '' : spaceClassMap[space];
-  const combinedClassName = `stack ${spaceClass} ${className}`.trim();
+  const spaceClass = customSpace ? undefined : spaceClassMap[space];
+  const combinedClassName = ['stack', spaceClass, className].filter(Boolean).join(' ');
 
   const combinedStyle: CSSProperties = customSpace
     ? ({ ...style, '--stack-space': customSpace } as CSSProperties)

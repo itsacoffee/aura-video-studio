@@ -113,7 +113,11 @@ export interface SpacingUtilities {
  * ```
  */
 export function useSpacing(): SpacingUtilities {
-  const { spacingScale } = useDensity();
+  // Use density context to ensure hook is called within provider
+  // The spacingScale is not used directly since CSS custom properties
+  // handle density scaling automatically, but we keep the hook to maintain
+  // the context requirement and potential future JavaScript-based calculations
+  useDensity();
 
   return useMemo(
     () => ({
@@ -175,6 +179,6 @@ export function useSpacing(): SpacingUtilities {
         24: 'var(--space-24)',
       },
     }),
-    [spacingScale]
+    []
   );
 }

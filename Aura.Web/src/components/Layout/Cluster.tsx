@@ -113,8 +113,8 @@ export function Cluster({
   style,
   'data-testid': testId,
 }: ClusterProps) {
-  const spaceClass = customSpace ? '' : spaceClassMap[space];
-  const combinedClassName = `cluster ${spaceClass} ${className}`.trim();
+  const spaceClass = customSpace ? undefined : spaceClassMap[space];
+  const combinedClassName = ['cluster', spaceClass, className].filter(Boolean).join(' ');
 
   const combinedStyle: CSSProperties = {
     ...(customSpace ? { '--cluster-space': customSpace } : {}),

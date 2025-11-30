@@ -77,8 +77,8 @@ export function Region({
   'data-testid': testId,
   'aria-labelledby': ariaLabelledBy,
 }: RegionProps) {
-  const spaceClass = customSpace ? '' : spaceClassMap[space];
-  const combinedClassName = `region ${spaceClass} ${className}`.trim();
+  const spaceClass = customSpace ? undefined : spaceClassMap[space];
+  const combinedClassName = ['region', spaceClass, className].filter(Boolean).join(' ');
 
   const combinedStyle: CSSProperties = customSpace
     ? ({ ...style, '--region-space': customSpace } as CSSProperties)
