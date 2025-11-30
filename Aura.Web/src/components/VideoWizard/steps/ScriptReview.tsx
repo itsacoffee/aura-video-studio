@@ -275,6 +275,16 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: tokens.spacingVerticalXXS,
   },
+  regenerateCard: {
+    marginBottom: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalM,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: tokens.colorBrandBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    border: `1px solid ${tokens.colorBrandStroke1}`,
+  },
 });
 
 interface ScriptReviewProps {
@@ -326,7 +336,8 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   const [internalSelectedProvider, setInternalSelectedProvider] = useState<string | undefined>();
 
   // Use external provider if provided, otherwise use internal state
-  const selectedProvider = externalSelectedProvider !== undefined ? externalSelectedProvider : internalSelectedProvider;
+  const selectedProvider =
+    externalSelectedProvider !== undefined ? externalSelectedProvider : internalSelectedProvider;
 
   const setSelectedProvider = (provider: string | undefined) => {
     if (onProviderChange) {
@@ -506,45 +517,50 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
       // Only auto-select if no external provider is set
       if (externalSelectedProvider === undefined) {
-          // Filter to only LLM providers (same list as VideoCreationWizard)
-          // Normalize provider names to handle "Ollama (model)" format
-          const normalizeProviderName = (name: string) => {
-            const parenIndex = name.indexOf('(');
-            return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
-          };
+        // Filter to only LLM providers (same list as VideoCreationWizard)
+        // Normalize provider names to handle "Ollama (model)" format
+        const normalizeProviderName = (name: string) => {
+          const parenIndex = name.indexOf('(');
+          return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+        };
 
-          const llmProviders = response.providers.filter((p) => {
-            const normalized = normalizeProviderName(p.name);
-            return normalized === 'RuleBased' ||
-              normalized === 'Ollama' ||
-              normalized === 'OpenAI' ||
-              normalized === 'Gemini' ||
-              normalized === 'Anthropic';
-          });
+        const llmProviders = response.providers.filter((p) => {
+          const normalized = normalizeProviderName(p.name);
+          return (
+            normalized === 'RuleBased' ||
+            normalized === 'Ollama' ||
+            normalized === 'OpenAI' ||
+            normalized === 'Gemini' ||
+            normalized === 'Anthropic'
+          );
+        });
 
-          // Prefer Ollama if available (check normalized name), otherwise use first available provider
-          const ollamaProvider = llmProviders.find((p) => {
-            const normalized = normalizeProviderName(p.name);
-            return p.isAvailable && normalized === 'Ollama';
-          });
-          if (ollamaProvider) {
-            console.info('[ScriptReview] Ollama is available, selecting it as default');
-            setSelectedProvider(ollamaProvider.name);
+        // Prefer Ollama if available (check normalized name), otherwise use first available provider
+        const ollamaProvider = llmProviders.find((p) => {
+          const normalized = normalizeProviderName(p.name);
+          return p.isAvailable && normalized === 'Ollama';
+        });
+        if (ollamaProvider) {
+          console.info('[ScriptReview] Ollama is available, selecting it as default');
+          setSelectedProvider(ollamaProvider.name);
+          // Set default model from provider
+          if (ollamaProvider.defaultModel) {
+            setSelectedModel(ollamaProvider.defaultModel);
+          }
+        } else {
+          const availableProvider = llmProviders.find((p) => p.isAvailable);
+          if (availableProvider) {
+            console.info(
+              '[ScriptReview] Ollama not available, selecting first available provider:',
+              availableProvider.name
+            );
+            setSelectedProvider(availableProvider.name);
             // Set default model from provider
-            if (ollamaProvider.defaultModel) {
-              setSelectedModel(ollamaProvider.defaultModel);
-            }
-          } else {
-            const availableProvider = llmProviders.find((p) => p.isAvailable);
-            if (availableProvider) {
-              console.info('[ScriptReview] Ollama not available, selecting first available provider:', availableProvider.name);
-              setSelectedProvider(availableProvider.name);
-              // Set default model from provider
-              if (availableProvider.defaultModel) {
-                setSelectedModel(availableProvider.defaultModel);
-              }
+            if (availableProvider.defaultModel) {
+              setSelectedModel(availableProvider.defaultModel);
             }
           }
+        }
       } else {
         console.info('[ScriptReview] Using external provider selection:', externalSelectedProvider);
         // Set model for external provider
@@ -582,7 +598,10 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       });
       if (provider) {
         // If model is not set or current model is not in available models, use default
-        if (!selectedModel || (provider.availableModels.length > 0 && !provider.availableModels.includes(selectedModel))) {
+        if (
+          !selectedModel ||
+          (provider.availableModels.length > 0 && !provider.availableModels.includes(selectedModel))
+        ) {
           setSelectedModel(provider.defaultModel);
         }
       }
@@ -781,7 +800,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         } catch {
           // Ignore logging errors
         }
-        throw new Error('No response received from server. Please check your connection and try again.');
+        throw new Error(
+          'No response received from server. Please check your connection and try again.'
+        );
       }
 
       if (!response.scenes) {
@@ -790,7 +811,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         } catch {
           // Ignore logging errors
         }
-        throw new Error('Invalid response from server: Response is missing scenes property. Please try again.');
+        throw new Error(
+          'Invalid response from server: Response is missing scenes property. Please try again.'
+        );
       }
 
       if (!Array.isArray(response.scenes)) {
@@ -798,12 +821,14 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
           console.error('[ScriptReview] Response scenes is not an array', {
             scenes: response.scenes,
             scenesType: typeof response.scenes,
-            response
+            response,
           });
         } catch {
           // Ignore logging errors
         }
-        throw new Error('Invalid response from server: Scenes property is not an array. Please try again.');
+        throw new Error(
+          'Invalid response from server: Scenes property is not an array. Please try again.'
+        );
       }
 
       if (response.scenes.length === 0) {
@@ -812,7 +837,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         } catch {
           // Ignore logging errors
         }
-        throw new Error('Invalid response from server: Script was generated but contains no scenes. Please try again.');
+        throw new Error(
+          'Invalid response from server: Script was generated but contains no scenes. Please try again.'
+        );
       }
 
       // Safe logging
@@ -859,7 +886,10 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       try {
         console.error('[ScriptReview] Script generation failed', {
           error,
-          errorType: error && typeof error === 'object' && 'constructor' in error ? (error as { constructor?: { name?: string } }).constructor?.name : undefined,
+          errorType:
+            error && typeof error === 'object' && 'constructor' in error
+              ? (error as { constructor?: { name?: string } }).constructor?.name
+              : undefined,
           errorMessage: error instanceof Error ? error.message : String(error),
           elapsedTimeMs: elapsedTime,
           elapsedTimeSeconds: (elapsedTime / 1000).toFixed(1),
@@ -870,16 +900,28 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       }
 
       let errorTitle = 'Script Generation Failed';
-      let errorMessage = 'Failed to generate script. Please check your provider configuration and try again.';
+      let errorMessage =
+        'Failed to generate script. Please check your provider configuration and try again.';
 
       // Check for timeout errors specifically
       if (error && typeof error === 'object') {
         // Check if it's an Axios timeout error
-        const axiosError = error as { code?: string; message?: string; response?: { status?: number; data?: { detail?: string; errors?: Record<string, string[]>; message?: string } } };
+        const axiosError = error as {
+          code?: string;
+          message?: string;
+          response?: {
+            status?: number;
+            data?: { detail?: string; errors?: Record<string, string[]>; message?: string };
+          };
+        };
 
-        if (axiosError.code === 'ECONNABORTED' || axiosError.message?.toLowerCase()?.includes('timeout')) {
+        if (
+          axiosError.code === 'ECONNABORTED' ||
+          axiosError.message?.toLowerCase()?.includes('timeout')
+        ) {
           errorTitle = 'Request Timeout';
-          errorMessage = 'Script generation took too long (over 6 minutes). The model may be processing a complex request. Please try again with a shorter topic or simpler prompt, or check if Ollama is responding properly.';
+          errorMessage =
+            'Script generation took too long (over 6 minutes). The model may be processing a complex request. Please try again with a shorter topic or simpler prompt, or check if Ollama is responding properly.';
         } else if (axiosError.response) {
           // Handle HTTP error responses
           const responseData = axiosError.response.data;
@@ -887,13 +929,18 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
           if (status === 408) {
             errorTitle = 'Request Timeout';
-            errorMessage = responseData?.detail || 'The request timed out after 6 minutes. Please try again with a shorter topic.';
+            errorMessage =
+              responseData?.detail ||
+              'The request timed out after 6 minutes. Please try again with a shorter topic.';
           } else if (responseData) {
             // Check for validation errors
             if (responseData.errors && Object.keys(responseData.errors).length > 0) {
               errorTitle = 'Validation Error';
               const errorList = Object.entries(responseData.errors)
-                .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+                .map(
+                  ([field, messages]) =>
+                    `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`
+                )
                 .join('; ');
               errorMessage = `Request validation failed: ${errorList}`;
             } else if (responseData.detail) {
@@ -911,14 +958,21 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       try {
         console.error('[ScriptReview] Script generation error details:', {
           error,
-          errorType: error && typeof error === 'object' && 'constructor' in error ? (error as { constructor?: { name?: string } }).constructor?.name : undefined,
+          errorType:
+            error && typeof error === 'object' && 'constructor' in error
+              ? (error as { constructor?: { name?: string } }).constructor?.name
+              : undefined,
           errorMessage: error instanceof Error ? error.message : String(error),
           errorStack: error instanceof Error ? error.stack : undefined,
           isAxiosError: error && typeof error === 'object' && 'isAxiosError' in error,
-          axiosErrorCode: error && typeof error === 'object' && 'code' in error ? (error as { code?: string }).code : undefined,
-          axiosResponseStatus: error && typeof error === 'object' && 'response' in error
-            ? (error as { response?: { status?: number } }).response?.status
-            : undefined,
+          axiosErrorCode:
+            error && typeof error === 'object' && 'code' in error
+              ? (error as { code?: string }).code
+              : undefined,
+          axiosResponseStatus:
+            error && typeof error === 'object' && 'response' in error
+              ? (error as { response?: { status?: number } }).response?.status
+              : undefined,
         });
       } catch {
         // Ignore logging errors - continue with error handling
@@ -973,7 +1027,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         const wordCount = newNarration.split(/\s+/).filter((word) => word.length > 0).length;
         const pacing = styleData?.tone || 'Conversational'; // Use tone as pacing indicator, or get from styleData if available
         const estimatedDuration = estimateDurationFromWords(wordCount, pacing);
-        
+
         // Update local state immediately for responsive UI
         const updatedScenes = generatedScript.scenes.map((scene) =>
           scene.number === sceneNumber
@@ -1039,14 +1093,14 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
           // Recalculate total duration with transitions
           const currentTotal = calculateTotalDurationWithTransitions(updatedScenes);
-          
+
           // Scale scenes to match target duration if available
           const targetDuration = briefData.duration || 60;
           if (Math.abs(currentTotal - targetDuration) > 1) {
             // Only scale if difference is more than 1 second
             updatedScenes = scaleScenesToTargetDuration(updatedScenes, targetDuration);
           }
-          
+
           const scaledTotalDuration = calculateTotalDurationWithTransitions(updatedScenes);
 
           setGeneratedScript({
@@ -1259,7 +1313,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
     if (currentTotal === 0 || scenes.length === 0) return scenes;
 
     const scaleFactor = targetDurationSeconds / currentTotal;
-    
+
     return scenes.map((scene, _index) => {
       // Scale scene duration proportionally
       const scaledDuration = scene.durationSeconds * scaleFactor;
@@ -1410,7 +1464,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       const newSceneNumber = afterSceneNumber
         ? afterSceneNumber + 1
         : generatedScript.scenes.length + 1;
-      
+
       // Insert new scene after the specified scene, or at the end
       const insertIndex = afterSceneNumber
         ? generatedScript.scenes.findIndex((s) => s.number === afterSceneNumber) + 1
@@ -1433,7 +1487,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       // Renumber scenes if inserting in the middle
       const updatedScenes = [...generatedScript.scenes];
       updatedScenes.splice(insertIndex, 0, newScene);
-      
+
       // Renumber all scenes to maintain sequential numbering
       const renumberedScenes = updatedScenes.map((scene, index) => ({
         ...scene,
@@ -1444,14 +1498,14 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       let finalScenes = renumberedScenes;
       const currentTotal = calculateTotalDurationWithTransitions(finalScenes);
       const targetDuration = briefData.duration || 60;
-      
+
       // Scale to match target duration
       if (Math.abs(currentTotal - targetDuration) > 1) {
         finalScenes = scaleScenesToTargetDuration(finalScenes, targetDuration);
       }
-      
+
       const finalTotalDuration = calculateTotalDurationWithTransitions(finalScenes);
-      
+
       setGeneratedScript({
         ...generatedScript,
         scenes: finalScenes,
@@ -1752,70 +1806,81 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
               )}
             </Field>
             {/* Model Selection - Show if provider supports multiple models */}
-            {selectedProvider && selectedProvider !== 'Auto' && (() => {
-              const normalizeProviderName = (name: string) => {
-                const parenIndex = name.indexOf('(');
-                return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
-              };
-              const currentProvider = providers.find((p) => {
-                const normalized = normalizeProviderName(p.name);
-                const selectedNormalized = normalizeProviderName(selectedProvider);
-                return normalized === selectedNormalized;
-              });
-              const isOllama = currentProvider && normalizeProviderName(currentProvider.name) === 'Ollama';
-              const hasMultipleModels = currentProvider && currentProvider.availableModels.length > 1;
+            {selectedProvider &&
+              selectedProvider !== 'Auto' &&
+              (() => {
+                const normalizeProviderName = (name: string) => {
+                  const parenIndex = name.indexOf('(');
+                  return parenIndex > 0 ? name.substring(0, parenIndex).trim() : name.trim();
+                };
+                const currentProvider = providers.find((p) => {
+                  const normalized = normalizeProviderName(p.name);
+                  const selectedNormalized = normalizeProviderName(selectedProvider);
+                  return normalized === selectedNormalized;
+                });
+                const isOllama =
+                  currentProvider && normalizeProviderName(currentProvider.name) === 'Ollama';
+                const hasMultipleModels =
+                  currentProvider && currentProvider.availableModels.length > 1;
 
-              if (!hasMultipleModels) {
-                // Show current model even if only one available
-                return currentProvider ? (
+                if (!hasMultipleModels) {
+                  // Show current model even if only one available
+                  return currentProvider ? (
+                    <Field label="Model">
+                      <Text size={300} style={{ color: tokens.colorNeutralForeground2 }}>
+                        {currentProvider.defaultModel}
+                      </Text>
+                    </Field>
+                  ) : null;
+                }
+
+                return (
                   <Field label="Model">
-                    <Text size={300} style={{ color: tokens.colorNeutralForeground2 }}>
-                      {currentProvider.defaultModel}
-                    </Text>
-                  </Field>
-                ) : null;
-              }
-
-              return (
-                <Field label="Model">
-                  <div style={{ display: 'flex', gap: tokens.spacingHorizontalXS, alignItems: 'center' }}>
-                    <Dropdown
-                      value={selectedModel || currentProvider?.defaultModel || ''}
-                      onOptionSelect={(_, data) => {
-                        if (data.optionValue) {
-                          setSelectedModel(data.optionValue);
-                        }
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: tokens.spacingHorizontalXS,
+                        alignItems: 'center',
                       }}
-                      style={{ minWidth: '180px' }}
                     >
-                      {currentProvider?.availableModels.map((model) => (
-                        <Option key={model} value={model} text={model}>
-                          {model}
-                          {model === currentProvider.defaultModel && (
-                            <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                              {' '}(default)
-                            </Text>
-                          )}
-                        </Option>
-                      ))}
-                    </Dropdown>
-                    {isOllama && (
-                      <Tooltip content="Refresh Ollama models list" relationship="label">
-                        <Button
-                          appearance="subtle"
-                          icon={<ArrowClockwise24Regular />}
-                          onClick={handleRefreshOllamaModels}
-                          disabled={isRefreshingModels}
-                          size="small"
-                        >
-                          {isRefreshingModels ? 'Refreshing...' : 'Refresh'}
-                        </Button>
-                      </Tooltip>
-                    )}
-                  </div>
-                </Field>
-              );
-            })()}
+                      <Dropdown
+                        value={selectedModel || currentProvider?.defaultModel || ''}
+                        onOptionSelect={(_, data) => {
+                          if (data.optionValue) {
+                            setSelectedModel(data.optionValue);
+                          }
+                        }}
+                        style={{ minWidth: '180px' }}
+                      >
+                        {currentProvider?.availableModels.map((model) => (
+                          <Option key={model} value={model} text={model}>
+                            {model}
+                            {model === currentProvider.defaultModel && (
+                              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                                {' '}
+                                (default)
+                              </Text>
+                            )}
+                          </Option>
+                        ))}
+                      </Dropdown>
+                      {isOllama && (
+                        <Tooltip content="Refresh Ollama models list" relationship="label">
+                          <Button
+                            appearance="subtle"
+                            icon={<ArrowClockwise24Regular />}
+                            onClick={handleRefreshOllamaModels}
+                            disabled={isRefreshingModels}
+                            size="small"
+                          >
+                            {isRefreshingModels ? 'Refreshing...' : 'Refresh'}
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </Field>
+                );
+              })()}
             <Button
               appearance="primary"
               icon={<Sparkle24Regular />}
@@ -1943,9 +2008,10 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
   const targetDuration = briefData.duration || 60;
   const actualDuration = generatedScript.totalDurationSeconds;
   const durationDifference = actualDuration - targetDuration;
-  const durationAccuracy = targetDuration > 0 
-    ? Math.max(0, Math.min(100, 100 - (Math.abs(durationDifference) / targetDuration) * 100))
-    : 100;
+  const durationAccuracy =
+    targetDuration > 0
+      ? Math.max(0, Math.min(100, 100 - (Math.abs(durationDifference) / targetDuration) * 100))
+      : 100;
   const pacing = styleData?.tone || 'Conversational';
 
   return (
@@ -1974,40 +2040,78 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
         </div>
       </div>
 
+      {/* Prominent Regenerate Script Card - helps users who return to this step */}
+      {generatedScript && data.generatedAt && (
+        <Card className={styles.regenerateCard}>
+          <div>
+            <Text weight="semibold">Script Generated</Text>
+            <Text size={200} style={{ display: 'block', color: tokens.colorNeutralForeground3 }}>
+              {generatedScript.scenes.length} scenes • Generated{' '}
+              {new Date(data.generatedAt).toLocaleString()}
+            </Text>
+          </div>
+          <div style={{ display: 'flex', gap: tokens.spacingHorizontalM }}>
+            <Tooltip
+              content="Regenerate the entire script with current settings"
+              relationship="label"
+            >
+              <Button
+                appearance="primary"
+                icon={<ArrowClockwise24Regular />}
+                onClick={handleGenerateScript}
+                disabled={isGenerating}
+              >
+                {isGenerating ? 'Regenerating...' : 'Regenerate Script'}
+              </Button>
+            </Tooltip>
+          </div>
+        </Card>
+      )}
+
       <div className={styles.statsBar}>
-            <div className={styles.stat}>
-              <Text className={styles.statLabel}>Total Duration</Text>
-              <Text className={styles.statValue}>
-                {Math.floor(actualDuration / 60)}:
-                {String(Math.floor(actualDuration % 60)).padStart(2, '0')}
-              </Text>
-              <Text size={200} style={{ 
-                color: Math.abs(durationDifference) <= 2 
-                  ? tokens.colorPaletteGreenForeground1 
-                  : Math.abs(durationDifference) <= 5 
-                    ? tokens.colorPaletteYellowForeground1 
+        <div className={styles.stat}>
+          <Text className={styles.statLabel}>Total Duration</Text>
+          <Text className={styles.statValue}>
+            {Math.floor(actualDuration / 60)}:
+            {String(Math.floor(actualDuration % 60)).padStart(2, '0')}
+          </Text>
+          <Text
+            size={200}
+            style={{
+              color:
+                Math.abs(durationDifference) <= 2
+                  ? tokens.colorPaletteGreenForeground1
+                  : Math.abs(durationDifference) <= 5
+                    ? tokens.colorPaletteYellowForeground1
                     : tokens.colorPaletteRedForeground1,
-                marginTop: tokens.spacingVerticalXXS 
-              }}>
-                Target: {Math.floor(targetDuration / 60)}:
-                {String(Math.floor(targetDuration % 60)).padStart(2, '0')}
-                {durationDifference !== 0 && (
-                  <Text weight="semibold">
-                    {' '}({durationDifference > 0 ? '+' : ''}{durationDifference.toFixed(1)}s)
-                  </Text>
-                )}
+              marginTop: tokens.spacingVerticalXXS,
+            }}
+          >
+            Target: {Math.floor(targetDuration / 60)}:
+            {String(Math.floor(targetDuration % 60)).padStart(2, '0')}
+            {durationDifference !== 0 && (
+              <Text weight="semibold">
+                {' '}
+                ({durationDifference > 0 ? '+' : ''}
+                {durationDifference.toFixed(1)}s)
               </Text>
-              <Text size={200} style={{ 
-                color: durationAccuracy >= 95 
-                  ? tokens.colorPaletteGreenForeground1 
-                  : durationAccuracy >= 90 
-                    ? tokens.colorPaletteYellowForeground1 
+            )}
+          </Text>
+          <Text
+            size={200}
+            style={{
+              color:
+                durationAccuracy >= 95
+                  ? tokens.colorPaletteGreenForeground1
+                  : durationAccuracy >= 90
+                    ? tokens.colorPaletteYellowForeground1
                     : tokens.colorPaletteRedForeground1,
-                marginTop: tokens.spacingVerticalXXS 
-              }}>
-                Accuracy: {durationAccuracy.toFixed(1)}%
-              </Text>
-            </div>
+              marginTop: tokens.spacingVerticalXXS,
+            }}
+          >
+            Accuracy: {durationAccuracy.toFixed(1)}%
+          </Text>
+        </div>
         <div className={styles.stat}>
           <Text className={styles.statLabel}>Word Count</Text>
           <Text className={styles.statValue}>{wordCount}</Text>
@@ -2035,7 +2139,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
           <>
             <div className={styles.stat}>
               <Text className={styles.statLabel}>Model</Text>
-              <Text className={styles.statValue}>{generatedScript.metadata.modelUsed || 'N/A'}</Text>
+              <Text className={styles.statValue}>
+                {generatedScript.metadata.modelUsed || 'N/A'}
+              </Text>
             </div>
             <div className={styles.stat}>
               <Text className={styles.statLabel}>Tokens</Text>
@@ -2067,36 +2173,65 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
       {advancedMode && (
         <Card style={{ padding: tokens.spacingVerticalL, marginBottom: tokens.spacingVerticalL }}>
           <Title3 style={{ marginBottom: tokens.spacingVerticalM }}>Advanced LLM Parameters</Title3>
-          <Text size={300} style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}>
-            Fine-tune LLM generation parameters for more dynamic and customized results. These settings override default values.
+          <Text
+            size={300}
+            style={{ marginBottom: tokens.spacingVerticalM, color: tokens.colorNeutralForeground3 }}
+          >
+            Fine-tune LLM generation parameters for more dynamic and customized results. These
+            settings override default values.
             {selectedProvider && selectedProvider !== 'Auto' && (
-              <Text size={200} style={{ display: 'block', marginTop: tokens.spacingVerticalXS, color: tokens.colorNeutralForeground2 }}>
-                Provider: <Text weight="semibold">{selectedProvider}</Text> - Only supported parameters are shown below.
+              <Text
+                size={200}
+                style={{
+                  display: 'block',
+                  marginTop: tokens.spacingVerticalXS,
+                  color: tokens.colorNeutralForeground2,
+                }}
+              >
+                Provider: <Text weight="semibold">{selectedProvider}</Text> - Only supported
+                parameters are shown below.
               </Text>
             )}
           </Text>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: tokens.spacingVerticalL }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: tokens.spacingVerticalL,
+            }}
+          >
             {paramSupport.supportsTemperature && (
               <div className={styles.sliderGroup}>
                 <Label>
                   Temperature: {llmTemperature !== undefined ? llmTemperature.toFixed(2) : 'Auto'}
                 </Label>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                  Controls randomness ({paramSupport.temperatureRange.min} = deterministic, {paramSupport.temperatureRange.max} = very creative)
+                  Controls randomness ({paramSupport.temperatureRange.min} = deterministic,{' '}
+                  {paramSupport.temperatureRange.max} = very creative)
                 </Text>
                 <Slider
                   min={paramSupport.temperatureRange.min}
                   max={paramSupport.temperatureRange.max}
                   step={0.1}
                   value={llmTemperature ?? 0.7}
-                  onChange={(_, data) => setLlmTemperature(data.value === 0.7 ? undefined : data.value)}
-                  style={{
-                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
-                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
-                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
-                  } as React.CSSProperties}
+                  onChange={(_, data) =>
+                    setLlmTemperature(data.value === 0.7 ? undefined : data.value)
+                  }
+                  style={
+                    {
+                      '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                      '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                      '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                    } as React.CSSProperties
+                  }
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: tokens.spacingVerticalXS,
+                  }}
+                >
                   <Text size={200}>{paramSupport.temperatureRange.min}</Text>
                   <Text size={200}>{paramSupport.temperatureRange.max}</Text>
                 </div>
@@ -2105,9 +2240,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
             {paramSupport.supportsTopP && (
               <div className={styles.sliderGroup}>
-                <Label>
-                  Top P: {llmTopP !== undefined ? llmTopP.toFixed(2) : 'Auto'}
-                </Label>
+                <Label>Top P: {llmTopP !== undefined ? llmTopP.toFixed(2) : 'Auto'}</Label>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   Nucleus sampling - controls diversity of tokens considered
                 </Text>
@@ -2117,13 +2250,21 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   step={0.05}
                   value={llmTopP ?? 0.9}
                   onChange={(_, data) => setLlmTopP(data.value === 0.9 ? undefined : data.value)}
-                  style={{
-                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
-                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
-                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
-                  } as React.CSSProperties}
+                  style={
+                    {
+                      '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                      '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                      '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                    } as React.CSSProperties
+                  }
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: tokens.spacingVerticalXS,
+                  }}
+                >
                   <Text size={200}>0.0</Text>
                   <Text size={200}>1.0</Text>
                 </div>
@@ -2132,9 +2273,7 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
 
             {paramSupport.supportsTopK && (
               <div className={styles.sliderGroup}>
-                <Label>
-                  Top K: {llmTopK !== undefined ? llmTopK : 'Auto'}
-                </Label>
+                <Label>Top K: {llmTopK !== undefined ? llmTopK : 'Auto'}</Label>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   Limits sampling to top K tokens (Gemini, Ollama only)
                 </Text>
@@ -2144,13 +2283,21 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   step={1}
                   value={llmTopK ?? 40}
                   onChange={(_, data) => setLlmTopK(data.value === 40 ? undefined : data.value)}
-                  style={{
-                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
-                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
-                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
-                  } as React.CSSProperties}
+                  style={
+                    {
+                      '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                      '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                      '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                    } as React.CSSProperties
+                  }
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: tokens.spacingVerticalXS,
+                  }}
+                >
                   <Text size={200}>0</Text>
                   <Text size={200}>100</Text>
                 </div>
@@ -2174,13 +2321,21 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                     const defaultValue = Math.min(2000, paramSupport.maxTokensLimit);
                     setLlmMaxTokens(data.value === defaultValue ? undefined : data.value);
                   }}
-                  style={{
-                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
-                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
-                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
-                  } as React.CSSProperties}
+                  style={
+                    {
+                      '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                      '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                      '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                    } as React.CSSProperties
+                  }
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: tokens.spacingVerticalXS,
+                  }}
+                >
                   <Text size={200}>100</Text>
                   <Text size={200}>{paramSupport.maxTokensLimit.toLocaleString()}</Text>
                 </div>
@@ -2190,7 +2345,8 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
             {paramSupport.supportsFrequencyPenalty && (
               <div className={styles.sliderGroup}>
                 <Label>
-                  Frequency Penalty: {llmFrequencyPenalty !== undefined ? llmFrequencyPenalty.toFixed(2) : 'Auto'}
+                  Frequency Penalty:{' '}
+                  {llmFrequencyPenalty !== undefined ? llmFrequencyPenalty.toFixed(2) : 'Auto'}
                 </Label>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   Reduces repetition (OpenAI/Azure only)
@@ -2200,14 +2356,24 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   max={2}
                   step={0.1}
                   value={llmFrequencyPenalty ?? 0}
-                  onChange={(_, data) => setLlmFrequencyPenalty(data.value === 0 ? undefined : data.value)}
-                  style={{
-                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
-                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
-                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
-                  } as React.CSSProperties}
+                  onChange={(_, data) =>
+                    setLlmFrequencyPenalty(data.value === 0 ? undefined : data.value)
+                  }
+                  style={
+                    {
+                      '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                      '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                      '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                    } as React.CSSProperties
+                  }
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: tokens.spacingVerticalXS,
+                  }}
+                >
                   <Text size={200}>-2.0</Text>
                   <Text size={200}>2.0</Text>
                 </div>
@@ -2217,7 +2383,8 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
             {paramSupport.supportsPresencePenalty && (
               <div className={styles.sliderGroup}>
                 <Label>
-                  Presence Penalty: {llmPresencePenalty !== undefined ? llmPresencePenalty.toFixed(2) : 'Auto'}
+                  Presence Penalty:{' '}
+                  {llmPresencePenalty !== undefined ? llmPresencePenalty.toFixed(2) : 'Auto'}
                 </Label>
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   Encourages new topics (OpenAI/Azure only)
@@ -2227,31 +2394,58 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   max={2}
                   step={0.1}
                   value={llmPresencePenalty ?? 0}
-                  onChange={(_, data) => setLlmPresencePenalty(data.value === 0 ? undefined : data.value)}
-                  style={{
-                    '--fui-slider-thumb-background': tokens.colorBrandForeground1,
-                    '--fui-slider-rail-background': tokens.colorNeutralStroke1,
-                    '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
-                  } as React.CSSProperties}
+                  onChange={(_, data) =>
+                    setLlmPresencePenalty(data.value === 0 ? undefined : data.value)
+                  }
+                  style={
+                    {
+                      '--fui-slider-thumb-background': tokens.colorBrandForeground1,
+                      '--fui-slider-rail-background': tokens.colorNeutralStroke1,
+                      '--fui-slider-rail-background-hover': tokens.colorNeutralStroke2,
+                    } as React.CSSProperties
+                  }
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: tokens.spacingVerticalXS }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: tokens.spacingVerticalXS,
+                  }}
+                >
                   <Text size={200}>-2.0</Text>
                   <Text size={200}>2.0</Text>
                 </div>
               </div>
             )}
 
-            {!paramSupport.supportsTemperature && !paramSupport.supportsTopP && !paramSupport.supportsTopK && (
-              <div style={{ gridColumn: '1 / -1', padding: tokens.spacingVerticalM, backgroundColor: tokens.colorNeutralBackground2, borderRadius: tokens.borderRadiusMedium }}>
-                <Text size={300} weight="semibold" style={{ color: tokens.colorNeutralForeground2 }}>
-                  {selectedProvider === 'RuleBased' || selectedProvider?.toLowerCase().includes('rule')
-                    ? 'Rule-based provider does not support LLM parameters. It uses template-based generation.'
-                    : 'No advanced parameters available for this provider.'}
-                </Text>
-              </div>
-            )}
+            {!paramSupport.supportsTemperature &&
+              !paramSupport.supportsTopP &&
+              !paramSupport.supportsTopK && (
+                <div
+                  style={{
+                    gridColumn: '1 / -1',
+                    padding: tokens.spacingVerticalM,
+                    backgroundColor: tokens.colorNeutralBackground2,
+                    borderRadius: tokens.borderRadiusMedium,
+                  }}
+                >
+                  <Text
+                    size={300}
+                    weight="semibold"
+                    style={{ color: tokens.colorNeutralForeground2 }}
+                  >
+                    {selectedProvider === 'RuleBased' ||
+                    selectedProvider?.toLowerCase().includes('rule')
+                      ? 'Rule-based provider does not support LLM parameters. It uses template-based generation.'
+                      : 'No advanced parameters available for this provider.'}
+                  </Text>
+                </div>
+              )}
           </div>
-          {(paramSupport.supportsTemperature || paramSupport.supportsTopP || paramSupport.supportsTopK || paramSupport.supportsMaxTokens) && (
+          {(paramSupport.supportsTemperature ||
+            paramSupport.supportsTopP ||
+            paramSupport.supportsTopK ||
+            paramSupport.supportsMaxTokens) && (
             <Button
               appearance="subtle"
               size="small"
@@ -2553,7 +2747,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
             <DialogBody>
               <DialogTitle>Regenerate Scene {regenerateSceneNumber}</DialogTitle>
               <DialogContent>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}
+                >
                   <Field
                     label="Improvement Goal / Desired Changes"
                     hint="Describe what you want to change or improve in this scene (optional)"
@@ -2572,17 +2768,34 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                       onChange={(_, data) => setRegenerateIncludeContext(data.checked === true)}
                       label="Include context from surrounding scenes"
                     />
-                    <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalXS }}>
-                      When enabled, the regeneration will consider the content of adjacent scenes for better continuity.
+                    <Text
+                      size={200}
+                      style={{
+                        color: tokens.colorNeutralForeground3,
+                        marginTop: tokens.spacingVerticalXS,
+                      }}
+                    >
+                      When enabled, the regeneration will consider the content of adjacent scenes
+                      for better continuity.
                     </Text>
                   </Field>
                   {regenerateSceneNumber && generatedScript && (
-                    <Card style={{ padding: tokens.spacingVerticalM, backgroundColor: tokens.colorNeutralBackground2 }}>
-                      <Text size={300} weight="semibold" style={{ marginBottom: tokens.spacingVerticalXS }}>
+                    <Card
+                      style={{
+                        padding: tokens.spacingVerticalM,
+                        backgroundColor: tokens.colorNeutralBackground2,
+                      }}
+                    >
+                      <Text
+                        size={300}
+                        weight="semibold"
+                        style={{ marginBottom: tokens.spacingVerticalXS }}
+                      >
                         Current Scene Content:
                       </Text>
                       <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
-                        {generatedScript.scenes.find((s) => s.number === regenerateSceneNumber)?.narration || 'N/A'}
+                        {generatedScript.scenes.find((s) => s.number === regenerateSceneNumber)
+                          ?.narration || 'N/A'}
                       </Text>
                     </Card>
                   )}
@@ -2604,9 +2817,13 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                       setShowRegenerateDialog(false);
                     }
                   }}
-                  disabled={regenerateSceneNumber === null || regeneratingScenes[regenerateSceneNumber ?? 0]}
+                  disabled={
+                    regenerateSceneNumber === null || regeneratingScenes[regenerateSceneNumber ?? 0]
+                  }
                 >
-                  {regeneratingScenes[regenerateSceneNumber ?? 0] ? 'Regenerating...' : 'Regenerate Scene'}
+                  {regeneratingScenes[regenerateSceneNumber ?? 0]
+                    ? 'Regenerating...'
+                    : 'Regenerate Scene'}
                 </Button>
               </DialogActions>
             </DialogBody>
@@ -2624,7 +2841,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
             <DialogBody>
               <DialogTitle>Regenerate All Scenes</DialogTitle>
               <DialogContent>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL }}
+                >
                   <Field
                     label="Custom Instructions / Desired Changes"
                     hint="Describe what you want to change or improve across all scenes (optional)"
@@ -2640,8 +2859,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                   <MessageBar intent="info">
                     <MessageBarBody>
                       <Text size={300}>
-                        This will regenerate all scenes in the script. Your custom instructions will guide the
-                        regeneration process. Note: This feature may require backend support for full implementation.
+                        This will regenerate all scenes in the script. Your custom instructions will
+                        guide the regeneration process. Note: This feature may require backend
+                        support for full implementation.
                       </Text>
                     </MessageBarBody>
                   </MessageBar>
@@ -2786,13 +3006,19 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                     borderRadius: tokens.borderRadiusSmall,
                   }}
                 >
-                  <Clock24Regular style={{ fontSize: '16px', color: tokens.colorNeutralForeground2 }} />
+                  <Clock24Regular
+                    style={{ fontSize: '16px', color: tokens.colorNeutralForeground2 }}
+                  />
                   <Text size={300} weight="medium">
                     {(() => {
                       const currentNarration = editingScenes[scene.number] ?? scene.narration;
-                      const wordCount = currentNarration.split(/\s+/).filter((word) => word.length > 0).length;
+                      const wordCount = currentNarration
+                        .split(/\s+/)
+                        .filter((word) => word.length > 0).length;
                       const estimatedDuration = estimateDurationFromWords(wordCount, pacing);
-                      const displayDuration = editingScenes[scene.number] ? estimatedDuration : scene.durationSeconds;
+                      const displayDuration = editingScenes[scene.number]
+                        ? estimatedDuration
+                        : scene.durationSeconds;
                       return `${displayDuration.toFixed(1)}s`;
                     })()}
                   </Text>
@@ -2807,7 +3033,9 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                     borderRadius: tokens.borderRadiusSmall,
                   }}
                 >
-                  <TextGrammarCheckmark24Regular style={{ fontSize: '16px', color: tokens.colorNeutralForeground2 }} />
+                  <TextGrammarCheckmark24Regular
+                    style={{ fontSize: '16px', color: tokens.colorNeutralForeground2 }}
+                  />
                   <Text size={300} weight="medium">
                     {(() => {
                       const currentNarration = editingScenes[scene.number] ?? scene.narration;
@@ -2825,7 +3053,11 @@ const ScriptReviewComponent: FC<ScriptReviewProps> = ({
                     borderRadius: tokens.borderRadiusSmall,
                   }}
                 >
-                  <Text size={300} weight="medium" style={{ color: tokens.colorNeutralForeground2 }}>
+                  <Text
+                    size={300}
+                    weight="medium"
+                    style={{ color: tokens.colorNeutralForeground2 }}
+                  >
                     Transition: <Text weight="semibold">{scene.transition}</Text>
                   </Text>
                 </div>
