@@ -300,16 +300,27 @@ public class SystemResourceMonitor
                     TotalMemoryBytes = adapterRam
                 };
 
-                var nvidiaSmiMetrics = await TryGetNvidiaSmiMetricsAsync(cancellationToken).ConfigureAwait(false);
-                if (nvidiaSmiMetrics != null)
+                // Try Windows GPU Engine performance counters first (works for all GPU vendors)
+                var perfCounterUsage = await TryGetGpuUsageFromPerformanceCountersAsync(cancellationToken).ConfigureAwait(false);
+                if (perfCounterUsage.HasValue)
                 {
-                    metrics.UsagePercent = nvidiaSmiMetrics.Value.usage;
-                    metrics.UsedMemoryBytes = nvidiaSmiMetrics.Value.usedMemory;
-                    metrics.AvailableMemoryBytes = metrics.TotalMemoryBytes - metrics.UsedMemoryBytes;
-                    metrics.MemoryUsagePercent = metrics.TotalMemoryBytes > 0
-                        ? ((double)metrics.UsedMemoryBytes / metrics.TotalMemoryBytes) * 100.0
-                        : 0.0;
-                    metrics.TemperatureCelsius = nvidiaSmiMetrics.Value.temperature;
+                    metrics.UsagePercent = perfCounterUsage.Value;
+                    _logger.LogTrace("GPU usage from performance counters: {Usage}%", perfCounterUsage.Value);
+                }
+                else
+                {
+                    // Fall back to nvidia-smi for NVIDIA GPUs
+                    var nvidiaSmiMetrics = await TryGetNvidiaSmiMetricsAsync(cancellationToken).ConfigureAwait(false);
+                    if (nvidiaSmiMetrics != null)
+                    {
+                        metrics.UsagePercent = nvidiaSmiMetrics.Value.usage;
+                        metrics.UsedMemoryBytes = nvidiaSmiMetrics.Value.usedMemory;
+                        metrics.AvailableMemoryBytes = metrics.TotalMemoryBytes - metrics.UsedMemoryBytes;
+                        metrics.MemoryUsagePercent = metrics.TotalMemoryBytes > 0
+                            ? ((double)metrics.UsedMemoryBytes / metrics.TotalMemoryBytes) * 100.0
+                            : 0.0;
+                        metrics.TemperatureCelsius = nvidiaSmiMetrics.Value.temperature;
+                    }
                 }
 
                 return metrics;
@@ -321,6 +332,90 @@ public class SystemResourceMonitor
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Tries to get GPU utilization using Windows Performance Counters (GPU Engine category).
+    /// This method works for NVIDIA, AMD, and Intel GPUs on Windows 10/11.
+    /// </summary>
+    private async Task<double?> TryGetGpuUsageFromPerformanceCountersAsync(CancellationToken cancellationToken)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Task.Run(() =>
+            {
+                // The "GPU Engine" performance counter category provides real-time GPU utilization
+                // Each instance represents a GPU engine (3D, Copy, Video Decode, etc.)
+                // We sum up all engine utilizations to get overall GPU usage
+                var category = new PerformanceCounterCategory("GPU Engine");
+                var instanceNames = category.GetInstanceNames();
+
+                if (instanceNames.Length == 0)
+                {
+                    _logger.LogDebug("No GPU Engine performance counter instances found");
+                    return (double?)null;
+                }
+
+                double totalUtilization = 0.0;
+                int validCounters = 0;
+
+                foreach (var instanceName in instanceNames)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        using var counter = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, true);
+                        // First call returns 0, need to wait then call again
+                        counter.NextValue();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogTrace(ex, "Failed to read GPU Engine counter for instance {Instance}", instanceName);
+                    }
+                }
+
+                // Small delay to allow counters to accumulate data
+                Thread.Sleep(50);
+
+                foreach (var instanceName in instanceNames)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        using var counter = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, true);
+                        var value = counter.NextValue();
+                        if (value >= 0)
+                        {
+                            totalUtilization += value;
+                            validCounters++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogTrace(ex, "Failed to read GPU Engine counter for instance {Instance}", instanceName);
+                    }
+                }
+
+                // GPU Engine counters report per-engine utilization, cap at 100%
+                return validCounters > 0 ? Math.Min(100.0, totalUtilization) : (double?)null;
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "GPU Engine performance counters not available");
+            return null;
+        }
     }
 
     private async Task<GpuMetrics?> CollectGpuMetricsLinuxAsync(CancellationToken cancellationToken)
