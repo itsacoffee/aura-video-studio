@@ -729,7 +729,7 @@ export function OpenCutPage() {
                           For Developers: Run OpenCut Server Manually
                         </Text>
                         <Text size={200} color="foreground2" style={{ display: 'block' }}>
-                          If you&apos;re developing or testing, you can start the OpenCut dev server
+                          If you're developing or testing, you can start the OpenCut dev server
                           manually:
                         </Text>
                         <div className={styles.codeBlock}>
