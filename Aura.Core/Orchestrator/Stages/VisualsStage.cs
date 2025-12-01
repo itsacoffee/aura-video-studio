@@ -205,13 +205,6 @@ public class VisualsStage : PipelineStage
                 completedScenes);
         }
 
-        Logger.LogInformation(
-            "[{CorrelationId}] Visual generation summary: {TotalAssets} assets for {CompletedScenes} scenes ({FailedScenes} scenes failed)",
-            context.CorrelationId,
-            totalAssets,
-            completedScenes,
-            failedScenes);
-
         // Store scene assets in context
         context.SceneAssets = sceneAssets;
         context.SetStageOutput(StageName, new VisualsStageOutput

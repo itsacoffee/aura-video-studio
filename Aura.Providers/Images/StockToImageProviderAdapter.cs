@@ -136,11 +136,17 @@ public class StockToImageProviderAdapter : IImageProvider
         // Limit query length for better search results
         if (query.Length > 100)
         {
-            query = query.Substring(0, 100);
+            query = query[..100];
         }
 
         return query.Trim();
     }
+
+    // Supported image file extensions for validation
+    private static readonly HashSet<string> SupportedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp"
+    };
 
     /// <summary>
     /// Downloads an image from a URL to a local temp file.
@@ -153,7 +159,9 @@ public class StockToImageProviderAdapter : IImageProvider
             response.EnsureSuccessStatusCode();
 
             var extension = GetFileExtension(url, response.Content.Headers.ContentType?.MediaType);
-            var fileName = $"stock_scene_{sceneIndex}_{Guid.NewGuid():N}{extension}";
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            var shortGuid = Guid.NewGuid().ToString("N")[..8];
+            var fileName = $"stock_scene{sceneIndex:D3}_{timestamp}_{shortGuid}{extension}";
             var filePath = Path.Combine(_tempDirectory, fileName);
 
             var imageBytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
@@ -180,7 +188,7 @@ public class StockToImageProviderAdapter : IImageProvider
             var uri = new Uri(url);
             var path = uri.AbsolutePath;
             var ext = Path.GetExtension(path);
-            if (!string.IsNullOrEmpty(ext) && (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp"))
+            if (!string.IsNullOrEmpty(ext) && SupportedImageExtensions.Contains(ext))
             {
                 return ext;
             }

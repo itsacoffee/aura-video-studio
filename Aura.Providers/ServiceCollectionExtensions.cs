@@ -416,6 +416,7 @@ public static class ServiceCollectionExtensions
 
         // Unsplash provider (requires API key)
         // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
+        // KeyStore may have keys stored as "Unsplash" (from UI) or "unsplash" (from legacy code)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedUnsplashProvider>>();
@@ -428,7 +429,11 @@ public static class ServiceCollectionExtensions
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 var apiKeys = keyStore.GetAllKeys();
-                apiKeys.TryGetValue("unsplash", out apiKey);
+                // Try both "Unsplash" (UI storage name) and "unsplash" (legacy) for compatibility
+                if (!apiKeys.TryGetValue("Unsplash", out apiKey))
+                {
+                    apiKeys.TryGetValue("unsplash", out apiKey);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -443,6 +448,7 @@ public static class ServiceCollectionExtensions
 
         // Pexels provider - using consolidated PexelsProvider (requires API key)
         // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
+        // KeyStore may have keys stored as "Pexels" (from UI) or "pexels" (from legacy code)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.PexelsProvider>>();
@@ -455,7 +461,11 @@ public static class ServiceCollectionExtensions
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 var apiKeys = keyStore.GetAllKeys();
-                apiKeys.TryGetValue("pexels", out apiKey);
+                // Try both "Pexels" (UI storage name) and "pexels" (legacy) for compatibility
+                if (!apiKeys.TryGetValue("Pexels", out apiKey))
+                {
+                    apiKeys.TryGetValue("pexels", out apiKey);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -470,6 +480,7 @@ public static class ServiceCollectionExtensions
 
         // Pixabay provider (requires API key)
         // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
+        // KeyStore may have keys stored as "Pixabay" (from UI) or "pixabay" (from legacy code)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedPixabayProvider>>();
@@ -482,7 +493,11 @@ public static class ServiceCollectionExtensions
             if (string.IsNullOrWhiteSpace(apiKey))
             {
                 var apiKeys = keyStore.GetAllKeys();
-                apiKeys.TryGetValue("pixabay", out apiKey);
+                // Try both "Pixabay" (UI storage name) and "pixabay" (legacy) for compatibility
+                if (!apiKeys.TryGetValue("Pixabay", out apiKey))
+                {
+                    apiKeys.TryGetValue("pixabay", out apiKey);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(apiKey))
