@@ -249,27 +249,27 @@ class ShutdownOrchestrator {
       }
     }
 
-    // Step 2: Close windows gracefully
+    // Step 1: Close windows gracefully
     const windowStep = await this.closeWindows();
     this.logger.info(`Step 1/6 Complete: ${windowStep}`);
 
-    // Step 3: Stop OpenCut server
+    // Step 2: Stop OpenCut server
     const openCutStep = await this.stopOpenCut();
     this.logger.info(`Step 2/6 Complete: ${openCutStep}`);
 
-    // Step 4: Signal backend to shutdown
+    // Step 3: Signal backend to shutdown
     const backendSignalStep = await this.signalBackendShutdown();
     this.logger.info(`Step 3/6 Complete: ${backendSignalStep}`);
 
-    // Step 5: Stop backend service
+    // Step 4: Stop backend service
     const backendStep = await this.stopBackend(force);
     this.logger.info(`Step 4/6 Complete: ${backendStep}`);
 
-    // Step 6: Terminate all tracked child processes
+    // Step 5: Terminate all tracked child processes
     const processStep = await this.terminateAllProcesses(force);
     this.logger.info(`Step 5/6 Complete: ${processStep}`);
 
-    // Step 7: Cleanup resources
+    // Step 6: Cleanup resources
     const cleanupStep = await this.cleanup();
     this.logger.info(`Step 6/6 Complete: ${cleanupStep}`);
   }

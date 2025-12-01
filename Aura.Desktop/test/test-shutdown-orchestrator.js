@@ -119,9 +119,11 @@ test('before-quit handler uses ShutdownOrchestrator', () => {
     throw new Error('before-quit handler not found');
   }
   
+  // Check that shutdownOrchestrator is used in some form for shutdown
+  // The before-quit handler uses shutdownOrchestrator.initiateShutdown() or similar
   if (!mainJs.includes('shutdownOrchestrator.initiateShutdown') &&
-      !mainJs.includes('shutdownOrchestrator') && !mainJs.includes('initiateShutdown')) {
-    throw new Error('before-quit handler does not call initiateShutdown');
+      !mainJs.includes('shutdownOrchestrator?') && !mainJs.includes('shutdownOrchestrator')) {
+    throw new Error('before-quit handler does not use shutdownOrchestrator');
   }
 });
 
