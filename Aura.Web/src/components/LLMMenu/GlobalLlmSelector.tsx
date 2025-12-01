@@ -174,6 +174,35 @@ export function GlobalLlmSelector() {
     return DEFAULT_OLLAMA_URL;
   }, []);
 
+  // Fetch the global LLM selection from the backend
+  const fetchGlobalLlmSelection = useCallback(async () => {
+    try {
+      const response = await fetch('/api/settings/llm/selection');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.provider) {
+          // Only update if we don't already have a valid selection in the store
+          const currentSelection = useGlobalLlmStore.getState().selection;
+          if (!currentSelection?.provider || !currentSelection?.modelId) {
+            setSelection({
+              provider: data.provider,
+              modelId: data.modelId || '',
+            });
+            console.info(
+              '[GlobalLlmSelector] Loaded global LLM selection from backend:',
+              data.provider,
+              data.modelId
+            );
+          }
+          return { provider: data.provider, modelId: data.modelId };
+        }
+      }
+    } catch (err) {
+      console.warn('[GlobalLlmSelector] Failed to fetch global LLM selection:', err);
+    }
+    return null;
+  }, [setSelection]);
+
   // Fetch the currently saved Ollama model setting
   const fetchSavedOllamaModel = useCallback(async () => {
     try {
@@ -432,6 +461,9 @@ export function GlobalLlmSelector() {
         // Fetch Ollama URL first
         const url = await fetchOllamaUrl();
 
+        // Fetch global LLM selection from backend (if Zustand store is empty)
+        await fetchGlobalLlmSelection();
+
         // Fetch saved Ollama model setting
         await fetchSavedOllamaModel();
 
@@ -456,6 +488,7 @@ export function GlobalLlmSelector() {
     fetchModels,
     validateAndSyncSelection,
     fetchOllamaUrl,
+    fetchGlobalLlmSelection,
     fetchSavedOllamaModel,
     fetchOllamaModels,
     selection?.provider,
@@ -482,10 +515,47 @@ export function GlobalLlmSelector() {
       const firstModel = getDefaultOllamaModel(ollamaModels);
       if (firstModel) {
         setSelection({ provider: 'Ollama', modelId: firstModel });
+        saveOllamaModel(firstModel);
         console.info('[GlobalLlmSelector] Auto-selected Ollama model:', firstModel);
       }
     }
-  }, [selectedProvider, ollamaModels, selectedModel, getDefaultOllamaModel, setSelection]);
+  }, [
+    selectedProvider,
+    ollamaModels,
+    selectedModel,
+    getDefaultOllamaModel,
+    setSelection,
+    saveOllamaModel,
+  ]);
+
+  // Auto-select first model for API-based providers when provider is set but no model
+  useEffect(() => {
+    // Skip if it's Ollama (handled separately above), or if we already have a model
+    if (selectedProvider === 'Ollama' || !selectedProvider || selectedModel) {
+      return;
+    }
+
+    const models = availableModels[selectedProvider] || [];
+    if (models.length > 0 && !selectedModel) {
+      const firstModel = models[0].modelId;
+      if (firstModel) {
+        setSelection({ provider: selectedProvider, modelId: firstModel });
+        console.info(
+          '[GlobalLlmSelector] Auto-selected model for',
+          selectedProvider,
+          ':',
+          firstModel
+        );
+
+        // Save to backend
+        fetch('/api/settings/llm/selection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: selectedProvider, modelId: firstModel }),
+        }).catch((err) => console.warn('[GlobalLlmSelector] Failed to save selection:', err));
+      }
+    }
+  }, [selectedProvider, selectedModel, availableModels, setSelection]);
 
   // Refresh models for a specific provider (force re-fetch from API)
   const refreshModels = useCallback(async () => {
