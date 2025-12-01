@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Errors;
@@ -25,23 +24,6 @@ public class LocalizationService : ILocalizationService
     private readonly ILlmProvider _llmProvider;
     private readonly ResiliencePipeline<TranslationResult> _translationPipeline;
     private readonly ResiliencePipeline<CulturalAnalysisResult> _analysisPipeline;
-
-    /// <summary>
-    /// Supported ISO 639-1 language codes for validation
-    /// </summary>
-    private static readonly HashSet<string> SupportedLanguageCodes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "en", "es", "fr", "de", "it", "pt", "zh", "ja", "ko", "ar", "ru", "hi", "bn", "pa",
-        "nl", "sv", "no", "da", "fi", "pl", "tr", "el", "cs", "sk", "hu", "ro", "uk", "vi",
-        "th", "id", "ms", "tl", "sw", "he", "fa", "ur", "ta", "te", "ml", "gu", "kn", "mr"
-    };
-
-    /// <summary>
-    /// ISO 639-1 language code pattern (2-3 letters, optionally with region)
-    /// </summary>
-    private static readonly Regex LanguageCodePattern = new(
-        @"^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$",
-        RegexOptions.Compiled);
 
     public LocalizationService(
         ILogger<LocalizationService> logger,
@@ -190,54 +172,26 @@ public class LocalizationService : ILocalizationService
     /// <inheritdoc />
     public LanguageValidationResult ValidateLanguageCode(string languageCode)
     {
+        // Accept ANY non-empty string for language description
+        // The LLM can intelligently interpret any language input, including:
+        // - ISO 639-1 codes (e.g., "en", "es", "fr")
+        // - Full language names (e.g., "English", "Spanish")
+        // - Regional variants (e.g., "English (US)", "Spanish (Mexico)")
+        // - Historical/creative variants (e.g., "Medieval English", "Texan English in 1891")
+        // - Fictional languages (e.g., "Pirate Speak", "Formal Victorian English")
+        
         if (string.IsNullOrWhiteSpace(languageCode))
         {
             return new LanguageValidationResult(
                 false,
-                "Language code is required",
+                "Language description is required. You can use language codes (en, es), names (English, Spanish), or descriptive phrases (Medieval English, Formal Japanese).",
                 ErrorCode: "INVALID_LANGUAGE_EMPTY");
         }
 
-        // CRITICAL FIX: Accept descriptive language names, not just ISO codes
-        // The frontend allows users to enter full descriptions like "English (US)", "Klingon", etc.
-        // The LLM can intelligently interpret these descriptive inputs
-        
-        // First, check if it matches the strict ISO 639-1 pattern
-        if (LanguageCodePattern.IsMatch(languageCode))
-        {
-            // Extract base language code (without region)
-            var baseCode = languageCode.Split('-')[0].ToLowerInvariant();
-
-            // Check if it's a known language code
-            if (!SupportedLanguageCodes.Contains(baseCode))
-            {
-                // Allow custom languages but warn that they may have limited support
-                return new LanguageValidationResult(
-                    true,
-                    $"Language code '{languageCode}' is not in the standard list but will be processed by the LLM",
-                    IsWarning: true,
-                    ErrorCode: "LANGUAGE_NOT_IN_STANDARD_LIST");
-            }
-
-            return new LanguageValidationResult(true, "Valid language code");
-        }
-
-        // If not an ISO code, accept as a descriptive language name
-        // The LLM can interpret names like "English (US)", "Klingon", "Medieval English", etc.
-        // Require at least 2 characters to avoid single-character inputs
-        if (languageCode.Length >= 2)
-        {
-            return new LanguageValidationResult(
-                true,
-                $"Language description '{languageCode}' will be interpreted by the LLM for translation",
-                IsWarning: true,
-                ErrorCode: "DESCRIPTIVE_LANGUAGE_INPUT");
-        }
-
+        // Accept any non-empty string - the LLM will interpret it
         return new LanguageValidationResult(
-            false,
-            $"Language input '{languageCode}' is too short. Please provide a valid language code or description.",
-            ErrorCode: "INVALID_LANGUAGE_TOO_SHORT");
+            true, 
+            "Valid language description");
     }
 
     /// <inheritdoc />
