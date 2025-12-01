@@ -222,14 +222,15 @@ export const VideoCreationWizard: FC = () => {
         duration: 60,
       },
       style: {
-        // Use 'Null' as default voice provider - it's always available (generates silence)
+        // Use 'Windows' as default voice provider - it's commonly available on Windows systems
         // The StyleSelection and PreviewGeneration components will auto-select a better provider if available
-        voiceProvider: 'Null',
+        voiceProvider: 'Windows',
         voiceName: 'default',
         visualStyle: 'modern',
-        musicGenre: 'ambient',
-        musicEnabled: true,
+        musicGenre: 'none',
+        musicEnabled: false,
         imageProvider: 'Placeholder',
+        imageStyle: 'photorealistic',
       },
       script: {
         content: '',
@@ -538,13 +539,14 @@ export const VideoCreationWizard: FC = () => {
     });
 
     const getDefaultStyle = (): StyleData => ({
-      // Use 'Null' as default voice provider - it's always available (generates silence)
-      voiceProvider: 'Null',
+      // Use 'Windows' as default voice provider - it's commonly available on Windows
+      voiceProvider: 'Windows',
       voiceName: 'default',
       visualStyle: 'modern',
-      musicGenre: 'ambient',
-      musicEnabled: true,
+      musicGenre: 'none',
+      musicEnabled: false,
       imageProvider: 'Placeholder',
+      imageStyle: 'photorealistic',
     });
 
     const getDefaultScript = (): ScriptData => ({

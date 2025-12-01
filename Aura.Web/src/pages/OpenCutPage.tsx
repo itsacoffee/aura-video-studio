@@ -645,30 +645,111 @@ export function OpenCutPage() {
   }, [effectiveUrl, checkHealthAndLoad]);
 
   if (!effectiveUrl) {
+    // In web browser (not Electron), show a clear message that OpenCut requires the desktop app
+    const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
+
     return (
       <div className={styles.root}>
         <div className={styles.header}>
           <div className={styles.titleGroup}>
             <Text weight="semibold" size={500}>
-              OpenCut
+              OpenCut Video Editor
             </Text>
             <Text size={300} color="foreground2">
-              Configure the OpenCut URL to embed the CapCut-style editor inside Aura.
+              Professional video editing, integrated into Aura Video Studio.
             </Text>
           </div>
         </div>
-        <div className={styles.warning}>
-          <Alert24Regular aria-hidden />
-          <div>
-            <Text weight="semibold" size={300}>
-              OpenCut URL not available
-            </Text>
-            <Text as="p" size={200} color="foreground2">
-              Set the <code>VITE_OPENCUT_URL</code> environment variable to the URL where the
-              OpenCut web app is hosted (for example, <code>http://localhost:3100</code>), or run
-              Aura from the desktop app so it can start a local OpenCut server automatically.
-            </Text>
-          </div>
+        <div className={styles.setupContainer}>
+          <Card className={styles.setupCard}>
+            <div style={{ textAlign: 'center', marginBottom: tokens.spacingVerticalL }}>
+              <Play24Regular
+                style={{
+                  fontSize: '48px',
+                  color: tokens.colorBrandForeground1,
+                  marginBottom: tokens.spacingVerticalM,
+                }}
+              />
+              <Text
+                weight="semibold"
+                size={500}
+                style={{ display: 'block', marginBottom: tokens.spacingVerticalS }}
+              >
+                {isElectron ? 'OpenCut Server Not Running' : 'Desktop App Required'}
+              </Text>
+              <Text size={300} color="foreground2">
+                {isElectron
+                  ? 'The OpenCut server could not be started. Please check the diagnostics for more information.'
+                  : 'The OpenCut video editor is designed to run within the Aura Video Studio desktop application, which automatically manages the OpenCut server.'}
+              </Text>
+            </div>
+
+            {!isElectron && (
+              <>
+                <div className={styles.infoBox}>
+                  <Info24Regular style={{ color: tokens.colorBrandForeground1, flexShrink: 0 }} />
+                  <div>
+                    <Text size={200}>
+                      <strong>Why Desktop App?</strong>
+                    </Text>
+                    <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                      OpenCut requires a local server to handle video processing and file access.
+                      The desktop app automatically starts and manages this server for you.
+                    </Text>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: tokens.spacingVerticalL }}>
+                  <Text
+                    weight="semibold"
+                    size={400}
+                    style={{ marginBottom: tokens.spacingVerticalM, display: 'block' }}
+                  >
+                    Options:
+                  </Text>
+
+                  <div className={styles.setupSteps}>
+                    <div className={styles.stepItem}>
+                      <div className={styles.stepNumber}>1</div>
+                      <div>
+                        <Text weight="semibold" size={300}>
+                          Use the Desktop App (Recommended)
+                        </Text>
+                        <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                          Download and install Aura Video Studio desktop app for the best
+                          experience. OpenCut will work seamlessly.
+                        </Text>
+                      </div>
+                    </div>
+
+                    <div className={styles.stepItem}>
+                      <div className={styles.stepNumber}>2</div>
+                      <div>
+                        <Text weight="semibold" size={300}>
+                          For Developers: Run OpenCut Server Manually
+                        </Text>
+                        <Text size={200} color="foreground2" style={{ display: 'block' }}>
+                          If you&apos;re developing or testing, you can start the OpenCut dev server
+                          manually:
+                        </Text>
+                        <div className={styles.codeBlock}>
+                          cd OpenCut/apps/web && bun install && bun run dev
+                        </div>
+                        <Text
+                          size={200}
+                          color="foreground2"
+                          style={{ display: 'block', marginTop: tokens.spacingVerticalS }}
+                        >
+                          Then set <code>VITE_OPENCUT_URL=http://localhost:3100</code> in your
+                          environment.
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </Card>
         </div>
       </div>
     );
