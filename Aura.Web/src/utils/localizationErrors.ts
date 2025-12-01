@@ -65,14 +65,16 @@ export function parseLocalizationError(error: unknown): ParsedLocalizationError 
   if (error instanceof Error) {
     if (error.name === 'AbortError') {
       return {
-        title: 'Request Cancelled',
-        message: 'The operation was cancelled or timed out.',
+        title: 'Request Timed Out',
+        message:
+          'The translation request took too long. This can happen when the AI model is loading for the first time or processing complex text.',
         errorCode: 'TIMEOUT',
         isRetryable: true,
         suggestedActions: [
-          'Check your internet connection',
-          'Try again with shorter text',
-          'Ensure the AI provider is running',
+          'Wait a moment and try again (the AI model may be loading)',
+          'Try with shorter text first',
+          'Ensure Ollama is running if using local AI',
+          'Check if other features like Ideation work correctly',
         ],
       };
     }
@@ -152,9 +154,10 @@ function getDefaultActions(errorCode?: string): string[] {
 
     case LocalizationErrorCode.TIMEOUT:
       return [
-        'Try again with shorter text',
-        'Check your internet connection',
-        'Verify the AI provider is responding',
+        'Wait a moment for the AI model to finish loading, then try again',
+        'Try with a shorter text to test if translation is working',
+        'Ensure Ollama is running: run "ollama list" in terminal',
+        'Check if Ideation or Script Generation works (they use the same AI)',
       ];
 
     case LocalizationErrorCode.CIRCUIT_BREAKER_OPEN:
@@ -192,7 +195,7 @@ export function getUserFriendlyMessage(error: ParsedLocalizationError): string {
       return 'The text is too long. Please split it into smaller sections and translate each separately.';
 
     case LocalizationErrorCode.TIMEOUT:
-      return 'The request took too long. This usually happens with large texts or when the AI service is busy.';
+      return 'The translation request timed out. This commonly happens when the AI model is loading for the first time (especially with Ollama). Wait a moment and try again.';
 
     case LocalizationErrorCode.CIRCUIT_BREAKER_OPEN:
       return 'The translation service is temporarily unavailable due to repeated errors. Please wait a moment and try again.';
@@ -218,7 +221,7 @@ export function getErrorGuidance(errorCode: string): string {
       return 'Large documents should be translated in sections. Consider breaking your content into paragraphs or scenes and translating each separately.';
 
     case LocalizationErrorCode.TIMEOUT:
-      return 'Long texts take more time to process. If you frequently encounter timeouts, try translating smaller chunks or check if your AI provider needs more resources.';
+      return 'Translation with local AI models (like Ollama) can take 1-3 minutes on the first request while the model loads into memory. Subsequent requests are typically much faster. If Ideation and Script Generation work, translation should work too with a bit more patience.';
 
     case LocalizationErrorCode.CIRCUIT_BREAKER_OPEN:
       return 'This protection activates when the translation service fails repeatedly. It prevents overloading the system and allows recovery time.';
