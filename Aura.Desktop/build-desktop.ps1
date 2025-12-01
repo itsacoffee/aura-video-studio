@@ -701,8 +701,9 @@ NEXT_TELEMETRY_DISABLED=1
                             }
                             else {
                                 # Check if file contains expected Next.js server code
-                                # Read first 10 lines and join them for pattern matching
-                                $serverJsContent = (Get-Content $serverJsPath -TotalCount 10) -join "`n"
+                                # Read first 30 lines and join them for pattern matching
+                                # Note: Next.js 15+ puts 'require("next")' around line 16-17, so we need more than 10 lines
+                                $serverJsContent = (Get-Content $serverJsPath -TotalCount 30) -join "`n"
                                 if ($serverJsContent -notmatch "next|server|http") {
                                     $verificationMessages += "  ⚠ standalone/server.js may not be valid (content check failed)"
                                 }
