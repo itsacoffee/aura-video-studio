@@ -657,16 +657,38 @@ export function GlobalLlmSelector() {
   const selectedModelExists = useMemo(() => {
     if (!selectedModel || !selectedProvider) return false;
 
-    // For Ollama, also check against saved model as fallback
+    // For Ollama, handle async loading state
     if (selectedProvider === 'Ollama') {
       const existsInFetched = providerModels.some((m) => m.modelId === selectedModel);
       if (existsInFetched) return true;
-      // If we're still loading or the saved model matches, consider it valid
-      if (isLoadingOllamaModels || selectedModel === savedOllamaModel) return true;
+
+      // Consider model as valid during loading or when we haven't fetched yet
+      // This prevents the "Model not found" warning from showing prematurely
+      // Cases where we should assume the model is valid:
+      // 1. We're actively loading Ollama models
+      // 2. We have no Ollama models yet and no error (initial state or hasn't fetched yet)
+      // 3. The selected model matches the saved Ollama model (persisted preference)
+      const isLoadingOrNotFetchedYet =
+        isLoadingOllamaModels || (ollamaModels.length === 0 && !ollamaError);
+      if (isLoadingOrNotFetchedYet || selectedModel === savedOllamaModel) {
+        console.info(
+          '[GlobalLlmSelector] Ollama model check: assuming valid during loading/initial state',
+          { selectedModel, isLoadingOllamaModels, ollamaModelsCount: ollamaModels.length }
+        );
+        return true;
+      }
     }
 
     return providerModels.some((m) => m.modelId === selectedModel);
-  }, [selectedModel, selectedProvider, providerModels, savedOllamaModel, isLoadingOllamaModels]);
+  }, [
+    selectedModel,
+    selectedProvider,
+    providerModels,
+    savedOllamaModel,
+    isLoadingOllamaModels,
+    ollamaModels.length,
+    ollamaError,
+  ]);
 
   // Handle provider change
   const handleProviderChange = useCallback(
@@ -879,17 +901,21 @@ export function GlobalLlmSelector() {
           </Tooltip>
         )}
 
-        {/* Warning badge if model doesn't exist */}
-        {selectedModel && !selectedModelExists && selectedProvider && isInitialized && (
-          <Tooltip
-            content={`Model "${selectedModel}" not found. Click refresh to update available models.`}
-            relationship="label"
-          >
-            <Badge appearance="filled" color="warning" size="small">
-              Model not found
-            </Badge>
-          </Tooltip>
-        )}
+        {/* Warning badge if model doesn't exist - hide during Ollama loading */}
+        {selectedModel &&
+          !selectedModelExists &&
+          selectedProvider &&
+          isInitialized &&
+          !(selectedProvider === 'Ollama' && isLoadingOllamaModels) && (
+            <Tooltip
+              content={`Model "${selectedModel}" not found. Click refresh to update available models.`}
+              relationship="label"
+            >
+              <Badge appearance="filled" color="warning" size="small">
+                Model not found
+              </Badge>
+            </Tooltip>
+          )}
 
         {/* Refresh button */}
         <Tooltip
