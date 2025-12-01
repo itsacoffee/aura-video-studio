@@ -8,9 +8,12 @@ import {
   Field,
   Slider,
   shorthands,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
 } from '@fluentui/react-components';
-import { SparkleRegular, SendRegular } from '@fluentui/react-icons';
-import React, { useState } from 'react';
+import { SparkleRegular, SendRegular, WarningRegular } from '@fluentui/react-icons';
+import React, { useState, useMemo } from 'react';
 import { useGlobalLlmStore } from '../../state/globalLlmStore';
 
 const useStyles = makeStyles({
@@ -107,6 +110,9 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase200,
   },
+  warningBar: {
+    marginTop: tokens.spacingVerticalM,
+  },
 });
 
 interface BrainstormInputProps {
@@ -141,6 +147,19 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
   const [tone, setTone] = useState('');
   const [targetDuration, setTargetDuration] = useState('');
   const [platform, setPlatform] = useState('');
+
+  // Check if Ollama is selected but no model is chosen
+  const isOllamaWithoutModel = useMemo(() => {
+    if (!globalLlmSelection?.provider) return false;
+    const isOllama = globalLlmSelection.provider.toLowerCase() === 'ollama';
+    const hasNoModel = !globalLlmSelection.modelId || globalLlmSelection.modelId.trim() === '';
+    return isOllama && hasNoModel;
+  }, [globalLlmSelection]);
+
+  // Check if no provider is selected at all
+  const noProviderSelected = useMemo(() => {
+    return !globalLlmSelection?.provider || globalLlmSelection.provider.trim() === '';
+  }, [globalLlmSelection]);
 
   const handleBrainstorm = () => {
     if (!topic.trim()) {
@@ -268,6 +287,28 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
           {ideaCount} idea{ideaCount === 1 ? '' : 's'} per refresh
         </Text>
       </Field>
+
+      {/* Warning when Ollama is selected but no model is chosen */}
+      {isOllamaWithoutModel && (
+        <MessageBar intent="warning" className={styles.warningBar} icon={<WarningRegular />}>
+          <MessageBarBody>
+            <MessageBarTitle>No Ollama model selected</MessageBarTitle>
+            Please select a model from the AI Model dropdown in the toolbar above. If no models are
+            available, run <code>ollama pull llama3.1</code> in terminal to install one.
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
+      {/* Info when no provider is selected - will use auto-detection */}
+      {noProviderSelected && !loading && (
+        <MessageBar intent="info" className={styles.warningBar}>
+          <MessageBarBody>
+            <MessageBarTitle>Using default AI provider</MessageBarTitle>
+            No AI provider selected. The system will automatically use the best available provider.
+            For better control, select a provider and model from the toolbar above.
+          </MessageBarBody>
+        </MessageBar>
+      )}
 
       <div className={styles.actions}>
         <Button

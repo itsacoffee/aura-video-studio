@@ -3860,7 +3860,8 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         // If no model is configured, query Ollama for available models and select the best one
         if (string.IsNullOrWhiteSpace(modelToUse))
         {
-            _logger.LogWarning("No Ollama model configured, querying Ollama for available models");
+            _logger.LogWarning("No Ollama model configured (request.LlmModel={RequestModel}, llmParams.ModelOverride={ParamOverride}, defaultModel={DefaultModel}), querying Ollama for available models",
+                request.LlmModel ?? "(null)", llmParams?.ModelOverride ?? "(null)", defaultModel ?? "(null)");
             
             try
             {
@@ -3916,25 +3917,25 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                         else
                         {
                             throw new InvalidOperationException(
-                                "Cannot determine Ollama model for ideation. " +
-                                "No models are installed in Ollama. " +
-                                "Please install a model using: ollama pull llama3.1 (or another model)");
+                                "No Ollama models installed. Please install a model by running one of these commands in terminal: " +
+                                "'ollama pull llama3.1' or 'ollama pull qwen2.5' or 'ollama pull mistral'. " +
+                                "Then refresh the AI Model dropdown in the toolbar.");
                         }
                     }
                     else
                     {
                         throw new InvalidOperationException(
-                            "Cannot determine Ollama model for ideation. " +
-                            "Failed to parse Ollama models list. " +
-                            "Please ensure Ollama is properly installed and running.");
+                            "Failed to parse Ollama's model list. " +
+                            "Please ensure Ollama is properly installed and running. " +
+                            "Visit https://ollama.com to download the latest version.");
                     }
                 }
                 else
                 {
                     throw new InvalidOperationException(
-                        $"Cannot determine Ollama model for ideation. " +
-                        $"Failed to query Ollama for available models (HTTP {tagsResponse.StatusCode}). " +
-                        $"Please ensure Ollama is running: 'ollama serve'");
+                        "Ollama is running but returned an error. " +
+                        $"Status: HTTP {tagsResponse.StatusCode}. " +
+                        "Please check if Ollama is functioning correctly by running 'ollama list' in terminal.");
                 }
             }
             catch (InvalidOperationException)
@@ -3947,14 +3948,24 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 // User cancelled the operation
                 throw;
             }
+            catch (HttpRequestException httpEx)
+            {
+                _logger.LogError(httpEx, "Failed to connect to Ollama at {BaseUrl}", baseUrl);
+                throw new InvalidOperationException(
+                    "Cannot connect to Ollama. Please ensure Ollama is running: " +
+                    "1. Open a terminal and run 'ollama serve' " +
+                    "2. Verify Ollama is accessible at " + baseUrl + " " +
+                    "3. Or select a model from the AI Model dropdown in the toolbar.", httpEx);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to query Ollama for available models");
                 throw new InvalidOperationException(
-                    "Cannot determine Ollama model for ideation. " +
-                    "Please ensure Ollama provider is properly configured with a model in Settings, " +
-                    "or select a model from the AI Model dropdown. " +
-                    $"Error querying Ollama: {ex.Message}", ex);
+                    "No Ollama model selected. Please either: " +
+                    "1. Select a model from the AI Model dropdown in the toolbar, " +
+                    "2. Configure a default model in Settings > Providers > Ollama, " +
+                    "3. Or ensure Ollama is running with at least one model installed (run 'ollama pull llama3.1'). " +
+                    $"Error: {ex.Message}", ex);
             }
         }
         var temperature = parameters?.Temperature ?? llmParams?.Temperature ?? 0.7;
