@@ -230,9 +230,9 @@ export function GlobalLlmSelector() {
 
           if (models.length === 0) {
             const noModelsError =
-              'No Ollama models installed. Run "ollama pull llama3.2" to download a model.';
+              'No Ollama models installed. Run "ollama pull <model-name>" to download a model.';
             setOllamaError(noModelsError);
-            return { success: true, models: [], error: noModelsError };
+            return { success: false, models: [], error: noModelsError };
           }
 
           return { success: true, models };
@@ -468,16 +468,24 @@ export function GlobalLlmSelector() {
     }
   }, [selectedProvider, isInitialized, fetchOllamaModels]);
 
+  // Helper function to get the default Ollama model
+  const getDefaultOllamaModel = useCallback(
+    (models: OllamaModel[]): string => {
+      return savedOllamaModel || (models.length > 0 ? models[0].name : '');
+    },
+    [savedOllamaModel]
+  );
+
   // Auto-select first Ollama model when models are loaded and no model is selected
   useEffect(() => {
     if (selectedProvider === 'Ollama' && ollamaModels.length > 0 && !selectedModel) {
-      const firstModel = savedOllamaModel || ollamaModels[0].name;
+      const firstModel = getDefaultOllamaModel(ollamaModels);
       if (firstModel) {
         setSelection({ provider: 'Ollama', modelId: firstModel });
         console.info('[GlobalLlmSelector] Auto-selected Ollama model:', firstModel);
       }
     }
-  }, [selectedProvider, ollamaModels, selectedModel, savedOllamaModel, setSelection]);
+  }, [selectedProvider, ollamaModels, selectedModel, getDefaultOllamaModel, setSelection]);
 
   // Refresh models for a specific provider (force re-fetch from API)
   const refreshModels = useCallback(async () => {
@@ -494,7 +502,7 @@ export function GlobalLlmSelector() {
         } else if (result.models.length > 0) {
           // Auto-select first model if none is selected
           if (!selectedModel) {
-            const firstModel = savedOllamaModel || result.models[0].name;
+            const firstModel = getDefaultOllamaModel(result.models);
             setSelection({ provider: 'Ollama', modelId: firstModel });
           }
         }
@@ -520,8 +528,8 @@ export function GlobalLlmSelector() {
     validateAndSyncSelection,
     selectedProvider,
     fetchOllamaModels,
+    getDefaultOllamaModel,
     selectedModel,
-    savedOllamaModel,
     setSelection,
   ]);
 
