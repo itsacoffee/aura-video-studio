@@ -8,6 +8,7 @@
  * - Validates persisted model is still available
  * - Shows loading states and error recovery options
  * - Handles all providers (OpenAI, Anthropic, Gemini, Azure, Ollama)
+ * - Fetches Ollama models dynamically from local Ollama installation
  */
 
 import {
@@ -30,6 +31,7 @@ import {
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useGlobalLlmStore } from '../../state/globalLlmStore';
 import type { LlmModelInfo } from '../ModelSelection/LlmModelSelector';
+import type { OllamaModel } from '../../types/api-v1';
 
 const useStyles = makeStyles({
   container: {
@@ -132,6 +134,9 @@ function providerRequiresApiKey(providerId: string): boolean {
   return !LOCAL_PROVIDERS.has(providerId);
 }
 
+// Default Ollama URL
+const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434';
+
 export function GlobalLlmSelector() {
   const styles = useStyles();
   const { selection, setSelection } = useGlobalLlmStore();
@@ -143,8 +148,99 @@ export function GlobalLlmSelector() {
   const [isInitialized, setIsInitialized] = useState(false);
   const initRef = useRef(false);
 
+  // Ollama-specific state
+  const [ollamaModels, setOllamaModels] = useState<OllamaModel[]>([]);
+  const [isLoadingOllamaModels, setIsLoadingOllamaModels] = useState(false);
+  const [savedOllamaModel, setSavedOllamaModel] = useState<string | null>(null);
+  const [ollamaUrl, setOllamaUrl] = useState<string>(DEFAULT_OLLAMA_URL);
+
   const selectedProvider = selection?.provider || '';
   const selectedModel = selection?.modelId || '';
+
+  // Fetch Ollama URL from provider paths
+  const fetchOllamaUrl = useCallback(async () => {
+    try {
+      const response = await fetch('/api/providers/paths/load');
+      if (response.ok) {
+        const data = await response.json();
+        const url = data.ollamaUrl || DEFAULT_OLLAMA_URL;
+        setOllamaUrl(url);
+        return url;
+      }
+    } catch (err) {
+      console.warn('[GlobalLlmSelector] Failed to fetch Ollama URL, using default:', err);
+    }
+    return DEFAULT_OLLAMA_URL;
+  }, []);
+
+  // Fetch the currently saved Ollama model setting
+  const fetchSavedOllamaModel = useCallback(async () => {
+    try {
+      const response = await fetch('/api/settings/ollama/model');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.model) {
+          setSavedOllamaModel(data.model);
+          return data.model;
+        }
+      }
+    } catch (err) {
+      console.warn('[GlobalLlmSelector] Failed to fetch saved Ollama model:', err);
+    }
+    return null;
+  }, []);
+
+  // Save Ollama model selection to backend
+  const saveOllamaModel = useCallback(async (model: string) => {
+    try {
+      const response = await fetch('/api/settings/ollama/model', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model }),
+      });
+      if (response.ok) {
+        setSavedOllamaModel(model);
+        console.info('[GlobalLlmSelector] Ollama model saved:', model);
+      } else {
+        console.warn('[GlobalLlmSelector] Failed to save Ollama model');
+      }
+    } catch (err) {
+      console.error('[GlobalLlmSelector] Error saving Ollama model:', err);
+    }
+  }, []);
+
+  // Fetch Ollama models from the local Ollama installation
+  const fetchOllamaModels = useCallback(
+    async (url?: string) => {
+      setIsLoadingOllamaModels(true);
+      try {
+        const ollamaEndpointUrl = url || ollamaUrl;
+        const response = await fetch(
+          `/api/engines/ollama/models?url=${encodeURIComponent(ollamaEndpointUrl)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const models: OllamaModel[] = data.models || [];
+          setOllamaModels(models);
+          console.info('[GlobalLlmSelector] Fetched Ollama models:', models.length);
+          return models;
+        } else {
+          console.warn(
+            '[GlobalLlmSelector] Failed to fetch Ollama models, status:',
+            response.status
+          );
+          setOllamaModels([]);
+        }
+      } catch (err) {
+        console.warn('[GlobalLlmSelector] Error fetching Ollama models:', err);
+        setOllamaModels([]);
+      } finally {
+        setIsLoadingOllamaModels(false);
+      }
+      return [];
+    },
+    [ollamaUrl]
+  );
 
   // Fetch available models from the API
   const fetchModels = useCallback(async (showLoadingState = true) => {
@@ -316,9 +412,21 @@ export function GlobalLlmSelector() {
     const initializeSelector = async () => {
       setIsLoading(true);
       try {
+        // Fetch Ollama URL first
+        const url = await fetchOllamaUrl();
+
+        // Fetch saved Ollama model setting
+        await fetchSavedOllamaModel();
+
+        // Fetch general models data
         const modelsData = await fetchModels(false);
         if (modelsData) {
           await validateAndSyncSelection(modelsData);
+        }
+
+        // If Ollama is the current provider, fetch Ollama models
+        if (selection?.provider === 'Ollama') {
+          await fetchOllamaModels(url);
         }
       } finally {
         setIsLoading(false);
@@ -327,7 +435,21 @@ export function GlobalLlmSelector() {
     };
 
     initializeSelector();
-  }, [fetchModels, validateAndSyncSelection]);
+  }, [
+    fetchModels,
+    validateAndSyncSelection,
+    fetchOllamaUrl,
+    fetchSavedOllamaModel,
+    fetchOllamaModels,
+    selection?.provider,
+  ]);
+
+  // Fetch Ollama models when provider changes to Ollama
+  useEffect(() => {
+    if (selectedProvider === 'Ollama' && isInitialized) {
+      fetchOllamaModels();
+    }
+  }, [selectedProvider, isInitialized, fetchOllamaModels]);
 
   // Refresh models for a specific provider (force re-fetch from API)
   const refreshModels = useCallback(async () => {
@@ -335,13 +457,18 @@ export function GlobalLlmSelector() {
     setError(null);
 
     try {
-      // First refresh the catalog from the provider
-      await fetch('/api/models/llm/refresh', { method: 'POST' });
+      // If Ollama is selected, refresh Ollama models specifically
+      if (selectedProvider === 'Ollama') {
+        await fetchOllamaModels();
+      } else {
+        // First refresh the catalog from the provider
+        await fetch('/api/models/llm/refresh', { method: 'POST' });
 
-      // Then fetch the updated models
-      const modelsData = await fetchModels(false);
-      if (modelsData) {
-        await validateAndSyncSelection(modelsData);
+        // Then fetch the updated models
+        const modelsData = await fetchModels(false);
+        if (modelsData) {
+          await validateAndSyncSelection(modelsData);
+        }
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to refresh models';
@@ -350,28 +477,81 @@ export function GlobalLlmSelector() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchModels, validateAndSyncSelection]);
+  }, [fetchModels, validateAndSyncSelection, selectedProvider, fetchOllamaModels]);
 
   // Get models for the selected provider
   const providerModels = useMemo(() => {
     if (!selectedProvider) return [];
+
+    // For Ollama, use the dynamically fetched Ollama models
+    if (selectedProvider === 'Ollama') {
+      // Convert Ollama models to LlmModelInfo format
+      const ollamaLlmModels: LlmModelInfo[] = ollamaModels.map((m) => ({
+        modelId: m.name,
+        provider: 'Ollama',
+        maxTokens: 4096,
+        contextWindow: 4096,
+        aliases: [],
+        isDeprecated: false,
+      }));
+
+      // If we have Ollama models, return them
+      if (ollamaLlmModels.length > 0) {
+        return ollamaLlmModels;
+      }
+
+      // Fallback: if no models but we have a saved model, show it as an option
+      if (savedOllamaModel) {
+        return [
+          {
+            modelId: savedOllamaModel,
+            provider: 'Ollama',
+            maxTokens: 4096,
+            contextWindow: 4096,
+            aliases: [],
+            isDeprecated: false,
+          },
+        ];
+      }
+
+      return [];
+    }
+
     return availableModels[selectedProvider] || [];
-  }, [availableModels, selectedProvider]);
+  }, [availableModels, selectedProvider, ollamaModels, savedOllamaModel]);
 
   // Check if selected model exists in current provider's models
   const selectedModelExists = useMemo(() => {
     if (!selectedModel || !selectedProvider) return false;
+
+    // For Ollama, also check against saved model as fallback
+    if (selectedProvider === 'Ollama') {
+      const existsInFetched = providerModels.some((m) => m.modelId === selectedModel);
+      if (existsInFetched) return true;
+      // If we're still loading or the saved model matches, consider it valid
+      if (isLoadingOllamaModels || selectedModel === savedOllamaModel) return true;
+    }
+
     return providerModels.some((m) => m.modelId === selectedModel);
-  }, [selectedModel, selectedProvider, providerModels]);
+  }, [selectedModel, selectedProvider, providerModels, savedOllamaModel, isLoadingOllamaModels]);
 
   // Handle provider change
   const handleProviderChange = useCallback(
     (providerId: string) => {
+      // For Ollama, use the saved Ollama model or the first fetched model
+      if (providerId === 'Ollama') {
+        // Use saved model if available, otherwise first fetched model
+        const defaultModel =
+          savedOllamaModel || (ollamaModels.length > 0 ? ollamaModels[0].name : '');
+        setSelection({ provider: providerId, modelId: defaultModel });
+        return;
+      }
+
       const models = availableModels[providerId] || [];
       const firstModel = models[0]?.modelId || '';
       setSelection({ provider: providerId, modelId: firstModel });
     },
-    [availableModels, setSelection]
+    [availableModels, setSelection, savedOllamaModel, ollamaModels]
   );
 
   // Handle model change
@@ -379,9 +559,14 @@ export function GlobalLlmSelector() {
     (modelId: string) => {
       if (selectedProvider) {
         setSelection({ provider: selectedProvider, modelId });
+
+        // For Ollama, also save the model selection to backend
+        if (selectedProvider === 'Ollama') {
+          saveOllamaModel(modelId);
+        }
       }
     },
-    [selectedProvider, setSelection]
+    [selectedProvider, setSelection, saveOllamaModel]
   );
 
   // Get display text for provider with model count
@@ -401,6 +586,18 @@ export function GlobalLlmSelector() {
     }
     return modelId;
   }, []);
+
+  // Get Ollama model display text with size
+  const getOllamaModelDisplayText = useCallback(
+    (modelId: string): string => {
+      const model = ollamaModels.find((m) => m.name === modelId);
+      if (model) {
+        return `${modelId} (${model.sizeGB.toFixed(2)} GB)`;
+      }
+      return modelId;
+    },
+    [ollamaModels]
+  );
 
   // Get provider option text with status
   const getProviderOptionText = useCallback((provider: ProviderInfo): string => {
@@ -466,7 +663,13 @@ export function GlobalLlmSelector() {
         {/* Model Dropdown */}
         <Dropdown
           className={styles.compactDropdown}
-          placeholder={selectedProvider ? 'Select model' : 'Select provider first'}
+          placeholder={
+            selectedProvider === 'Ollama' && isLoadingOllamaModels
+              ? 'Loading models...'
+              : selectedProvider
+                ? 'Select model'
+                : 'Select provider first'
+          }
           value={selectedModel ? getModelDisplayText(selectedModel) : ''}
           selectedOptions={selectedModel && selectedModelExists ? [selectedModel] : []}
           onOptionSelect={(_, data) => {
@@ -474,23 +677,59 @@ export function GlobalLlmSelector() {
               handleModelChange(data.optionValue as string);
             }
           }}
-          disabled={isLoading || isRefreshing || !selectedProvider || providerModels.length === 0}
+          disabled={
+            isLoading ||
+            isRefreshing ||
+            !selectedProvider ||
+            (selectedProvider === 'Ollama' ? isLoadingOllamaModels : providerModels.length === 0)
+          }
         >
-          {providerModels.length === 0 && selectedProvider && (
-            <Option key="no-models" value="" disabled text="No models available">
-              No models available
+          {/* Loading state for Ollama */}
+          {selectedProvider === 'Ollama' && isLoadingOllamaModels && (
+            <Option key="loading" value="" disabled text="Loading...">
+              Loading Ollama models...
             </Option>
           )}
-          {providerModels.map((model) => (
-            <Option
-              key={model.modelId}
-              value={model.modelId}
-              text={model.modelId + (model.isDeprecated ? ' (Deprecated)' : '')}
-            >
-              {model.modelId}
-              {model.isDeprecated && ' ⚠️'}
-            </Option>
-          ))}
+          {/* No models message */}
+          {providerModels.length === 0 &&
+            selectedProvider &&
+            !(selectedProvider === 'Ollama' && isLoadingOllamaModels) && (
+              <Option key="no-models" value="" disabled text="No models available">
+                {selectedProvider === 'Ollama'
+                  ? 'No models found - click refresh'
+                  : 'No models available'}
+              </Option>
+            )}
+          {/* Model options - show size for Ollama models */}
+          {providerModels.map((model) => {
+            const displayText =
+              selectedProvider === 'Ollama'
+                ? getOllamaModelDisplayText(model.modelId)
+                : model.modelId + (model.isDeprecated ? ' (Deprecated)' : '');
+
+            const ollamaModel =
+              selectedProvider === 'Ollama'
+                ? ollamaModels.find((m) => m.name === model.modelId)
+                : null;
+
+            return (
+              <Option key={model.modelId} value={model.modelId} text={displayText}>
+                {ollamaModel ? (
+                  <>
+                    {model.modelId}{' '}
+                    <span style={{ color: tokens.colorNeutralForeground3 }}>
+                      ({ollamaModel.sizeGB.toFixed(2)} GB)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {model.modelId}
+                    {model.isDeprecated && ' ⚠️'}
+                  </>
+                )}
+              </Option>
+            );
+          })}
         </Dropdown>
 
         {/* Current model badge - shows selected model clearly */}
@@ -520,12 +759,27 @@ export function GlobalLlmSelector() {
         )}
 
         {/* Refresh button */}
-        <Tooltip content="Refresh available models from provider" relationship="label">
+        <Tooltip
+          content={
+            selectedProvider === 'Ollama'
+              ? 'Refresh Ollama models from local installation'
+              : 'Refresh available models from provider'
+          }
+          relationship="label"
+        >
           <Button
             appearance="subtle"
-            icon={isRefreshing ? <Spinner size="tiny" /> : <ArrowSync20Regular />}
+            icon={
+              isRefreshing || (selectedProvider === 'Ollama' && isLoadingOllamaModels) ? (
+                <Spinner size="tiny" />
+              ) : (
+                <ArrowSync20Regular />
+              )
+            }
             onClick={refreshModels}
-            disabled={isRefreshing || isLoading}
+            disabled={
+              isRefreshing || isLoading || (selectedProvider === 'Ollama' && isLoadingOllamaModels)
+            }
             size="small"
             className={styles.refreshButton}
           />
