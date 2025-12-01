@@ -377,9 +377,29 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
       if (!hasSelectedProviderRef.current) {
         // Priority 1: Use styleData.imageProvider if set (from Step 2) and available
         if (styleData.imageProvider && styleData.imageProvider !== 'Placeholder') {
-          const providerFromStyle = response.providers.find(
+          // Check for exact match first
+          let providerFromStyle = response.providers.find(
             (p) => p.name.toLowerCase() === styleData.imageProvider?.toLowerCase() && p.isAvailable
           );
+
+          // Special handling for "Stock" - map to any available stock provider
+          // Stock is a meta-category that includes Pexels, Unsplash, etc.
+          if (!providerFromStyle && styleData.imageProvider.toLowerCase() === 'stock') {
+            // Look for Stock meta-provider (preferred) or individual stock providers
+            // Note: This list matches the stock providers registered in VisualsController.cs
+            // If new stock providers are added, update both locations
+            const stockProviderNames = ['stock', 'pexels', 'unsplash'];
+            providerFromStyle = response.providers.find(
+              (p) => stockProviderNames.includes(p.name.toLowerCase()) && p.isAvailable
+            );
+
+            if (providerFromStyle) {
+              console.info(
+                '[PreviewGeneration] Mapped "Stock" selection to available provider:',
+                providerFromStyle.name
+              );
+            }
+          }
 
           if (providerFromStyle) {
             setSelectedProvider(providerFromStyle.name);

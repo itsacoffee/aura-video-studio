@@ -399,4 +399,101 @@ public class VisualProviderTests
     }
 
     #endregion
+
+    #region StockMetaProvider Tests
+
+    [Fact]
+    public async Task StockMetaProvider_With_No_StockProviders_Should_Not_Be_Available()
+    {
+        var provider = new StockMetaProvider(
+            NullLogger<StockMetaProvider>.Instance,
+            new System.Collections.Generic.List<BaseVisualProvider>());
+
+        var isAvailable = await provider.IsAvailableAsync();
+
+        Assert.False(isAvailable);
+    }
+
+    [Fact]
+    public async Task StockMetaProvider_With_Available_Provider_Should_Be_Available()
+    {
+        var placeholderProvider = new PlaceholderProvider(NullLogger<PlaceholderProvider>.Instance);
+        var stockProviders = new System.Collections.Generic.List<BaseVisualProvider> { placeholderProvider };
+        var provider = new StockMetaProvider(
+            NullLogger<StockMetaProvider>.Instance,
+            stockProviders);
+
+        var isAvailable = await provider.IsAvailableAsync();
+
+        Assert.True(isAvailable);
+    }
+
+    [Fact]
+    public async Task StockMetaProvider_Should_Delegate_To_Available_Provider()
+    {
+        var placeholderProvider = new PlaceholderProvider(NullLogger<PlaceholderProvider>.Instance);
+        var stockProviders = new System.Collections.Generic.List<BaseVisualProvider> { placeholderProvider };
+        var provider = new StockMetaProvider(
+            NullLogger<StockMetaProvider>.Instance,
+            stockProviders);
+        var options = new VisualGenerationOptions { Width = 512, Height = 512 };
+
+        var result = await provider.GenerateImageAsync("Test prompt", options);
+
+        Assert.NotNull(result);
+        Assert.True(File.Exists(result));
+
+        if (File.Exists(result))
+        {
+            File.Delete(result);
+        }
+    }
+
+    [Fact]
+    public void StockMetaProvider_Should_Not_Require_ApiKey()
+    {
+        var provider = new StockMetaProvider(
+            NullLogger<StockMetaProvider>.Instance,
+            new System.Collections.Generic.List<BaseVisualProvider>());
+
+        Assert.False(provider.RequiresApiKey);
+    }
+
+    [Fact]
+    public void StockMetaProvider_Should_Report_Free_Tier()
+    {
+        var provider = new StockMetaProvider(
+            NullLogger<StockMetaProvider>.Instance,
+            new System.Collections.Generic.List<BaseVisualProvider>());
+        var capabilities = provider.GetProviderCapabilities();
+
+        Assert.Equal("Stock", capabilities.ProviderName);
+        Assert.True(capabilities.IsFree);
+        Assert.False(capabilities.IsLocal);
+        Assert.Equal(0m, capabilities.CostPerImage);
+        Assert.Equal("Free", capabilities.Tier);
+    }
+
+    [Fact]
+    public async Task StockMetaProvider_Should_Handle_Batch_Generation()
+    {
+        var placeholderProvider = new PlaceholderProvider(NullLogger<PlaceholderProvider>.Instance);
+        var stockProviders = new System.Collections.Generic.List<BaseVisualProvider> { placeholderProvider };
+        var provider = new StockMetaProvider(
+            NullLogger<StockMetaProvider>.Instance,
+            stockProviders);
+        var prompts = new System.Collections.Generic.List<string> { "Image 1", "Image 2" };
+        var options = new VisualGenerationOptions { Width = 256, Height = 256 };
+
+        var results = await provider.BatchGenerateAsync(prompts, options);
+
+        Assert.Equal(2, results.Count);
+
+        foreach (var result in results)
+        {
+            if (File.Exists(result)) File.Delete(result);
+        }
+    }
+
+    #endregion
 }
