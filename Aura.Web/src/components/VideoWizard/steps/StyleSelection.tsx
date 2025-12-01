@@ -494,7 +494,7 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
                       fontStyle: 'italic',
                     }}
                   >
-                    Solid color backgrounds with text overlay
+                    {getProviderSubtitle('Placeholder')}
                   </Text>
                   <div className={styles.providerDetails}>
                     <div
@@ -510,7 +510,7 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
                       <Text size={200}>Always Available</Text>
                     </div>
                     <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      Free - guaranteed fallback
+                      Free • Guaranteed fallback for offline use
                     </Text>
                   </div>
                 </Card>
