@@ -921,8 +921,21 @@ async function startApplication() {
       processManager,
       logger: startupLogger,
     });
-    openCutManager.start();
-    console.log("✓ OpenCut manager initialized");
+    
+    // Start the OpenCut server asynchronously but await to ensure proper initialization
+    // The start() method spawns the server process and returns quickly, so this won't block startup significantly
+    try {
+      await openCutManager.start();
+      console.log("✓ OpenCut manager initialized and server starting");
+    } catch (openCutError) {
+      // Log the error but don't fail the application - OpenCut is optional
+      console.warn("⚠ OpenCut server failed to start:", openCutError.message);
+      if (startupLogger) {
+        startupLogger.warn("OpenCutManager", "Failed to start OpenCut server", {
+          error: openCutError.message,
+        });
+      }
+    }
 
     // Step 4: Setup error handling
     setupErrorHandling();
@@ -1392,6 +1405,7 @@ async function startApplication() {
         windowManager,
         trayManager,
         processManager,
+        openCutManager,
       });
       console.log("✓ Shutdown orchestrator initialized");
     } catch (error) {
