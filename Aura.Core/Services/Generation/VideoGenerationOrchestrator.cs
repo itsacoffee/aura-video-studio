@@ -18,6 +18,13 @@ namespace Aura.Core.Services.Generation;
 /// </summary>
 public class VideoGenerationOrchestrator
 {
+    // Task ID constants for critical pipeline tasks
+    private const string ScriptTaskId = "script";
+    private const string AudioTaskId = "audio";
+    private const string CompositionTaskId = "composition";
+    private const string CaptionsTaskId = "captions";
+    private const string VisualTaskIdPrefix = "visual_";
+
     private readonly ILogger<VideoGenerationOrchestrator> _logger;
     private readonly ResourceMonitor _resourceMonitor;
     private readonly StrategySelector _strategySelector;
@@ -229,39 +236,39 @@ public class VideoGenerationOrchestrator
         int estimatedScenes = EstimateSceneCount(planSpec.TargetDuration);
 
         // Add script generation task (highest priority, must complete first)
-        graph.AddNode("script", GenerationTaskType.ScriptGeneration, priority: 100, estimatedResourceCost: 0.3);
+        graph.AddNode(ScriptTaskId, GenerationTaskType.ScriptGeneration, priority: 100, estimatedResourceCost: 0.3);
 
         // Add audio generation task (depends on script)
-        graph.AddNode("audio", GenerationTaskType.AudioGeneration, priority: 90, estimatedResourceCost: 0.5);
-        graph.AddDependency("script", "audio");
+        graph.AddNode(AudioTaskId, GenerationTaskType.AudioGeneration, priority: 90, estimatedResourceCost: 0.5);
+        graph.AddDependency(ScriptTaskId, AudioTaskId);
 
         // Add visual generation tasks (can run in parallel, depend on script)
         for (int i = 0; i < estimatedScenes; i++)
         {
-            string visualTaskId = $"visual_{i}";
+            string visualTaskId = $"{VisualTaskIdPrefix}{i}";
             graph.AddNode(visualTaskId, GenerationTaskType.ImageGeneration, priority: 50, estimatedResourceCost: 0.4);
-            graph.AddDependency("script", visualTaskId);
+            graph.AddDependency(ScriptTaskId, visualTaskId);
         }
 
         // Add caption generation task (depends on audio)
         if (planSpec.Style.Contains("caption", StringComparison.OrdinalIgnoreCase))
         {
-            graph.AddNode("captions", GenerationTaskType.CaptionGeneration, priority: 40, estimatedResourceCost: 0.2);
-            graph.AddDependency("audio", "captions");
+            graph.AddNode(CaptionsTaskId, GenerationTaskType.CaptionGeneration, priority: 40, estimatedResourceCost: 0.2);
+            graph.AddDependency(AudioTaskId, CaptionsTaskId);
         }
 
         // Add video composition task (depends on all assets)
-        graph.AddNode("composition", GenerationTaskType.VideoComposition, priority: 10, estimatedResourceCost: 0.8);
-        graph.AddDependency("audio", "composition");
+        graph.AddNode(CompositionTaskId, GenerationTaskType.VideoComposition, priority: 10, estimatedResourceCost: 0.8);
+        graph.AddDependency(AudioTaskId, CompositionTaskId);
 
         for (int i = 0; i < estimatedScenes; i++)
         {
-            graph.AddDependency($"visual_{i}", "composition");
+            graph.AddDependency($"{VisualTaskIdPrefix}{i}", CompositionTaskId);
         }
 
-        if (graph.ContainsTask("captions"))
+        if (graph.ContainsTask(CaptionsTaskId))
         {
-            graph.AddDependency("captions", "composition");
+            graph.AddDependency(CaptionsTaskId, CompositionTaskId);
         }
 
         return graph;
@@ -274,14 +281,14 @@ public class VideoGenerationOrchestrator
     private Task HandleFailedVisualDependenciesAsync(List<GenerationNode> batch, AssetDependencyGraph graph)
     {
         // Check if this batch contains the composition task
-        var compositionTask = batch.Find(n => n.TaskId == "composition");
+        var compositionTask = batch.Find(n => n.TaskId == CompositionTaskId);
         if (compositionTask == null)
         {
             return Task.CompletedTask;
         }
 
         // Get all dependencies of composition and check for failed visual tasks
-        var dependencies = graph.GetDependencies("composition");
+        var dependencies = graph.GetDependencies(CompositionTaskId);
         foreach (var depTaskId in dependencies)
         {
             var depNode = graph.GetNode(depTaskId);
@@ -588,7 +595,7 @@ public class VideoGenerationOrchestrator
     {
         // Only script, audio, and composition are truly critical - the pipeline cannot proceed without them
         // Visual/image tasks are optional - composition can use placeholders for missing visuals
-        var criticalTasks = new[] { "script", "audio", "composition" };
+        var criticalTasks = new[] { ScriptTaskId, AudioTaskId, CompositionTaskId };
 
         var criticalFailures = results
             .Where(r => !r.Succeeded && criticalTasks.Contains(r.TaskId))
@@ -603,7 +610,7 @@ public class VideoGenerationOrchestrator
 
         // Log non-critical (visual) failures as warnings
         var visualFailures = results
-            .Where(r => !r.Succeeded && r.TaskId.StartsWith("visual_", StringComparison.OrdinalIgnoreCase))
+            .Where(r => !r.Succeeded && r.TaskId.StartsWith(VisualTaskIdPrefix, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         if (visualFailures.Count > 0)
