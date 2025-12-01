@@ -386,6 +386,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
           // Stock is a meta-category that includes Pexels, Unsplash, etc.
           if (!providerFromStyle && styleData.imageProvider.toLowerCase() === 'stock') {
             // Look for Stock meta-provider (preferred) or individual stock providers
+            // Note: This list matches the stock providers registered in VisualsController.cs
+            // If new stock providers are added, update both locations
             const stockProviderNames = ['stock', 'pexels', 'unsplash'];
             providerFromStyle = response.providers.find(
               (p) => stockProviderNames.includes(p.name.toLowerCase()) && p.isAvailable

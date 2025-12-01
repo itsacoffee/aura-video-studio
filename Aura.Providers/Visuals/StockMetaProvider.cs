@@ -80,7 +80,7 @@ public class StockMetaProvider : BaseVisualProvider
                 Logger.LogInformation("Batch generating with stock provider: {Provider}", provider.ProviderName);
                 var results = await provider.BatchGenerateAsync(prompts, options, progress, ct).ConfigureAwait(false);
                 
-                if (results != null && results.Count > 0)
+                if (results.Count > 0)
                 {
                     return results;
                 }
