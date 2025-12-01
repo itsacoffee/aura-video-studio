@@ -371,8 +371,9 @@ public class SystemResourceMonitor
                     try
                     {
                         using var counter = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, true);
-                        // First call returns 0, need to wait then call again
-                        counter.NextValue();
+                        // First call initializes the counter and returns 0; result is intentionally discarded
+                        // A subsequent call after a delay will return the actual utilization value
+                        _ = counter.NextValue();
                     }
                     catch (Exception ex)
                     {
@@ -380,7 +381,8 @@ public class SystemResourceMonitor
                     }
                 }
 
-                // Small delay to allow counters to accumulate data
+                // Small delay to allow counters to accumulate data (this is inside Task.Run so Thread.Sleep is acceptable)
+                cancellationToken.ThrowIfCancellationRequested();
                 Thread.Sleep(50);
 
                 foreach (var instanceName in instanceNames)
