@@ -870,221 +870,186 @@ NEXT_TELEMETRY_DISABLED=1
                     }
                 }
             }
-        }
-    }
 
-    # Remove all .bun directories recursively
-    Remove-BunDirectories -NodeModulesPath $standaloneNodeModulesRoot
-}
+            # Remove all .bun directories recursively
+            Remove-BunDirectories -NodeModulesPath $standaloneNodeModulesRoot
 
-# Remove symlinks and .bun directories from app node_modules
-if (Test-Path $standaloneNodeModulesApp) {
-    $symlinksToRemove = @("next", "react")
-    foreach ($symlink in $symlinksToRemove) {
-        $symlinkPath = Join-Path $standaloneNodeModulesApp $symlink
-        if (Test-Path $symlinkPath) {
-            try {
-                $item = Get-Item $symlinkPath -Force
-                if ($item.LinkType -eq "SymbolicLink" -or $item.Attributes -match "ReparsePoint") {
-                    Remove-Item $symlinkPath -Force -Recurse -ErrorAction SilentlyContinue
-                    Write-Info "  ✓ Removed symlink: $symlink"
+            # Remove symlinks and .bun directories from app node_modules
+            if (Test-Path $standaloneNodeModulesApp) {
+                $symlinksToRemove = @("next", "react")
+                foreach ($symlink in $symlinksToRemove) {
+                    $symlinkPath = Join-Path $standaloneNodeModulesApp $symlink
+                    if (Test-Path $symlinkPath) {
+                        try {
+                            $item = Get-Item $symlinkPath -Force
+                            if ($item.LinkType -eq "SymbolicLink" -or $item.Attributes -match "ReparsePoint") {
+                                Remove-Item $symlinkPath -Force -Recurse -ErrorAction SilentlyContinue
+                                Write-Info "  ✓ Removed symlink: $symlink"
+                            }
+                        }
+                        catch {
+                            # Try to remove even if not detected as symlink (Bun creates special symlinks)
+                            Remove-Item $symlinkPath -Force -Recurse -ErrorAction SilentlyContinue
+                            Write-Info "  ✓ Removed: $symlink"
+                        }
+                    }
                 }
+
+                # Remove all .bun directories recursively
+                Remove-BunDirectories -NodeModulesPath $standaloneNodeModulesApp
             }
-            catch {
-                # Try to remove even if not detected as symlink (Bun creates special symlinks)
-                Remove-Item $symlinkPath -Force -Recurse -ErrorAction SilentlyContinue
-                Write-Info "  ✓ Removed: $symlink"
+
+            Write-Success "  ✓ Symlink and .bun directory cleanup complete"
+
+            # ----------------------------------------
+            # Step 1b.9: Copy OpenCut standalone build to resources/opencut
+            # ----------------------------------------
+            Write-Info "Copying OpenCut standalone build to resources..."
+
+            $openCutResourcesDir = "$ScriptDir\resources\opencut"
+
+            # Clean existing resources/opencut
+            if (Test-Path $openCutResourcesDir) {
+                Remove-Item -Path $openCutResourcesDir -Recurse -Force -ErrorAction SilentlyContinue
             }
-        }
-    }
+            New-Item -ItemType Directory -Path $openCutResourcesDir -Force | Out-Null
 
-    # Remove all .bun directories recursively
-    Remove-BunDirectories -NodeModulesPath $standaloneNodeModulesApp
-}
+            # Determine source paths (monorepo vs single structure)
+            $openCutNextDir = "$openCutAppDir\.next"
+            $standaloneDir = "$openCutNextDir\standalone"
+            $staticDir = "$openCutNextDir\static"
 
-Write-Success "  ✓ Symlink and .bun directory cleanup complete"
+            # In monorepo, server.js is at standalone/apps/web/server.js
+            $monorepoServerPath = "$standaloneDir\apps\web\server.js"
+            $singleServerPath = "$standaloneDir\server.js"
 
-# ----------------------------------------
-# Step 1b.9: Copy OpenCut standalone build to resources/opencut
-# ----------------------------------------
-Write-Info "Copying OpenCut standalone build to resources..."
+            if (Test-Path $monorepoServerPath) {
+                # Monorepo structure: copy apps/web contents to resources/opencut
+                $sourceAppDir = "$standaloneDir\apps\web"
 
-$openCutResourcesDir = "$ScriptDir\resources\opencut"
+                Write-Info "Copying standalone app (monorepo structure)..."
 
-# Clean existing resources/opencut
-if (Test-Path $openCutResourcesDir) {
-    Remove-Item -Path $openCutResourcesDir -Recurse -Force -ErrorAction SilentlyContinue
-}
-New-Item -ItemType Directory -Path $openCutResourcesDir -Force | Out-Null
+                # Copy app files, but handle node_modules separately to exclude .bun directories
+                Get-ChildItem -Path $sourceAppDir | Where-Object { $_.Name -ne "node_modules" } |
+                Copy-Item -Destination $openCutResourcesDir -Recurse -Force -ErrorAction SilentlyContinue
 
-# Determine source paths (monorepo vs single structure)
-$openCutNextDir = "$openCutAppDir\.next"
-$standaloneDir = "$openCutNextDir\standalone"
-$staticDir = "$openCutNextDir\static"
+                # Copy node_modules from app directory if it exists (with .bun exclusion)
+                $appNodeModules = "$sourceAppDir\node_modules"
+                if (Test-Path $appNodeModules) {
+                    Write-Info "Copying app node_modules..."
+                    $destAppNodeModules = "$openCutResourcesDir\node_modules"
+                    New-Item -ItemType Directory -Path $destAppNodeModules -Force | Out-Null
+                    # Copy node_modules: root first (shared dependencies), then app (app-specific overrides)
+                    # This ensures proper merging without conflicts
+                    $destNodeModules = "$openCutResourcesDir\node_modules"
+                    New-Item -ItemType Directory -Path $destNodeModules -Force | Out-Null
 
-# In monorepo, server.js is at standalone/apps/web/server.js
-$monorepoServerPath = "$standaloneDir\apps\web\server.js"
-$singleServerPath = "$standaloneDir\server.js"
+                    # Copy node_modules from standalone root first (shared dependencies)
+                    # Use robocopy to handle complex nested structures and exclude .bun directories
+                    $standaloneNodeModules = "$standaloneDir\node_modules"
+                    if (Test-Path $standaloneNodeModules) {
+                        Write-Info "Copying standalone root node_modules (shared dependencies)..."
 
-if (Test-Path $monorepoServerPath) {
-    # Monorepo structure: copy apps/web contents to resources/opencut
-    $sourceAppDir = "$standaloneDir\apps\web"
+                        # Use robocopy with exclusions for .bun directories
+                        # /E = copy subdirectories including empty ones
+                        # /XD = exclude directories
+                        # /R:3 = retry 3 times on errors
+                        # /W:1 = wait 1 second between retries
+                        # /NFL /NDL /NP = no file list, no directory list, no progress
+                        $null = robocopy $standaloneNodeModules $destNodeModules /E /XD ".bun" /R:3 /W:1 /NFL /NDL /NP
+                        $robocopyExitCode = $LASTEXITCODE
+                        if ($robocopyExitCode -le 7) {
+                            # Robocopy returns 0-7 for success, 8+ for errors
+                            # 0 = no files copied (source and dest identical)
+                            # 1 = files copied successfully
+                            # 2 = extra files/folders in destination
+                            # 3 = files copied + extra files
+                            Write-Success "  ✓ Root node_modules copied successfully"
+                        }
+                        else {
+                            Show-Warning "  ⚠ Some root node_modules files may not have been copied (robocopy exit code: $robocopyExitCode)"
+                            # Continue anyway as most files should be copied
+                        }
+                    }
 
-    Write-Info "Copying standalone app (monorepo structure)..."
-
-    # Copy app files, but handle node_modules separately to exclude .bun directories
-    Get-ChildItem -Path $sourceAppDir | Where-Object { $_.Name -ne "node_modules" } |
-    Copy-Item -Destination $openCutResourcesDir -Recurse -Force -ErrorAction SilentlyContinue
-
-    # Copy node_modules from app directory if it exists (with .bun exclusion)
-    $appNodeModules = "$sourceAppDir\node_modules"
-    if (Test-Path $appNodeModules) {
-        Write-Info "Copying app node_modules..."
-        $destAppNodeModules = "$openCutResourcesDir\node_modules"
-        New-Item -ItemType Directory -Path $destAppNodeModules -Force | Out-Null
-        # Copy node_modules: root first (shared dependencies), then app (app-specific overrides)
-        # This ensures proper merging without conflicts
-        $destNodeModules = "$openCutResourcesDir\node_modules"
-        New-Item -ItemType Directory -Path $destNodeModules -Force | Out-Null
-
-        # Copy node_modules from standalone root first (shared dependencies)
-        # Use robocopy to handle complex nested structures and exclude .bun directories
-        $standaloneNodeModules = "$standaloneDir\node_modules"
-        if (Test-Path $standaloneNodeModules) {
-            Write-Info "Copying standalone root node_modules (shared dependencies)..."
-
-            # Use robocopy with exclusions for .bun directories
-            # /E = copy subdirectories including empty ones
-            # /XD = exclude directories
-            # /R:3 = retry 3 times on errors
-            # /W:1 = wait 1 second between retries
-            # /NFL /NDL /NP = no file list, no directory list, no progress
-            $null = robocopy $standaloneNodeModules $destNodeModules /E /XD ".bun" /R:3 /W:1 /NFL /NDL /NP
-            $robocopyExitCode = $LASTEXITCODE
-            if ($robocopyExitCode -le 7) {
-                # Robocopy returns 0-7 for success, 8+ for errors
-                # 0 = no files copied (source and dest identical)
-                # 1 = files copied successfully
-                # 2 = extra files/folders in destination
-                # 3 = files copied + extra files
-                Write-Success "  ✓ Root node_modules copied successfully"
+                    # Copy app node_modules (app-specific overrides)
+                    Write-Info "Copying app node_modules (app-specific overrides)..."
+                    # Use robocopy with exclusions for .bun directories
+                    # /E = copy subdirectories including empty ones
+                    # /XD = exclude directories
+                    # /R:3 = retry 3 times on errors
+                    # /W:1 = wait 1 second between retries
+                    # /NFL /NDL /NP = no file list, no directory list, no progress
+                    # Note: This will merge with existing root node_modules, app-specific versions take precedence
+                    $null = robocopy $appNodeModules $destNodeModules /E /XD ".bun" /R:3 /W:1 /NFL /NDL /NP
+                    $robocopyExitCode = $LASTEXITCODE
+                    if ($robocopyExitCode -le 7) {
+                        Write-Success "  ✓ App node_modules merged successfully"
+                    }
+                    else {
+                        Show-Warning "  ⚠ Some app node_modules files may not have been copied (robocopy exit code: $robocopyExitCode)"
+                    }
+                }
+                Write-Success "  ✓ Standalone app copied (monorepo)"
+            }
+            elseif (Test-Path $singleServerPath) {
+                # Single package structure: copy standalone contents directly
+                Write-Info "Copying standalone app (single structure)..."
+                Copy-Item -Path "$standaloneDir\*" -Destination $openCutResourcesDir -Recurse -Force
+                Write-Success "  ✓ Standalone app copied (single)"
             }
             else {
-                Show-Warning "  ⚠ Some root node_modules files may not have been copied (robocopy exit code: $robocopyExitCode)"
-                # Continue anyway as most files should be copied
+                Show-ErrorMessage "OpenCut server.js not found in standalone build!"
+                Show-ErrorMessage "Expected at: $monorepoServerPath or $singleServerPath"
+                $openCutBuildSuccess = $false
+            }
+
+            # Copy static assets (required for Next.js)
+            if ($openCutBuildSuccess -and (Test-Path $staticDir)) {
+                $destStaticDir = "$openCutResourcesDir\.next\static"
+                New-Item -ItemType Directory -Path "$openCutResourcesDir\.next" -Force | Out-Null
+                Write-Info "Copying static assets..."
+                Copy-Item -Path $staticDir -Destination $destStaticDir -Recurse -Force
+                Write-Success "  ✓ Static assets copied"
+            }
+
+            # Copy public assets if exists
+            $publicDir = "$openCutAppDir\public"
+            if ($openCutBuildSuccess -and (Test-Path $publicDir)) {
+                Write-Info "Copying public assets..."
+                Copy-Item -Path $publicDir -Destination "$openCutResourcesDir\public" -Recurse -Force
+                Write-Success "  ✓ Public assets copied"
+            }
+
+            # Verify final structure
+            if ($openCutBuildSuccess) {
+                $finalServerJs = "$openCutResourcesDir\server.js"
+                if (Test-Path $finalServerJs) {
+                    Write-Success "  ✓ OpenCut resources prepared successfully"
+                    Write-Success "    Server: $finalServerJs"
+                }
+                else {
+                    Show-ErrorMessage "Final server.js not found at: $finalServerJs"
+                    $openCutBuildSuccess = $false
+                }
+            }
+
+            if ($openCutBuildSuccess) {
+                Write-Success "OpenCut resources ready for packaging"
+            }
+            else {
+                Show-Warning "========================================"
+                Show-Warning "OpenCut build FAILED or SKIPPED"
+                Show-Warning "The application will build without OpenCut integration."
+                Show-Warning "OpenCut editor features will not be available."
+                Show-Warning "========================================"
             }
         }
-
-        # Copy app node_modules (app-specific overrides)
-        Write-Info "Copying app node_modules (app-specific overrides)..."
-        # Use robocopy with exclusions for .bun directories
-        # /E = copy subdirectories including empty ones
-        # /XD = exclude directories
-        # /R:3 = retry 3 times on errors
-        # /W:1 = wait 1 second between retries
-        # /NFL /NDL /NP = no file list, no directory list, no progress
-        # Note: This will merge with existing root node_modules, app-specific versions take precedence
-        $null = robocopy $appNodeModules $destNodeModules /E /XD ".bun" /R:3 /W:1 /NFL /NDL /NP
-        $robocopyExitCode = $LASTEXITCODE
-        if ($robocopyExitCode -le 7) {
-            Write-Success "  ✓ App node_modules merged successfully"
-        }
-        else {
-            Show-Warning "  ⚠ Some app node_modules files may not have been copied (robocopy exit code: $robocopyExitCode)"
-        }
-    }
-    Write-Success "  ✓ Standalone app copied (monorepo)"
-}
-elseif (Test-Path $singleServerPath) {
-    # Single package structure: copy standalone contents directly
-    Write-Info "Copying standalone app (single structure)..."
-    Copy-Item -Path "$standaloneDir\*" -Destination $openCutResourcesDir -Recurse -Force
-    Write-Success "  ✓ Standalone app copied (single)"
-}
-else {
-    Show-ErrorMessage "OpenCut server.js not found in standalone build!"
-    Show-ErrorMessage "Expected at: $monorepoServerPath or $singleServerPath"
-    $openCutBuildSuccess = $false
-}
-
-# Copy static assets (required for Next.js)
-if ($openCutBuildSuccess -and (Test-Path $staticDir)) {
-    $destStaticDir = "$openCutResourcesDir\.next\static"
-    New-Item -ItemType Directory -Path "$openCutResourcesDir\.next" -Force | Out-Null
-    Write-Info "Copying static assets..."
-    Copy-Item -Path $staticDir -Destination $destStaticDir -Recurse -Force
-    Write-Success "  ✓ Static assets copied"
-}
-
-# Copy public assets if exists
-$publicDir = "$openCutAppDir\public"
-if ($openCutBuildSuccess -and (Test-Path $publicDir)) {
-    Write-Info "Copying public assets..."
-    Copy-Item -Path $publicDir -Destination "$openCutResourcesDir\public" -Recurse -Force
-    Write-Success "  ✓ Public assets copied"
-}
-
-# Verify final structure
-if ($openCutBuildSuccess) {
-    $finalServerJs = "$openCutResourcesDir\server.js"
-    if (Test-Path $finalServerJs) {
-        Write-Success "  ✓ OpenCut resources prepared successfully"
-        Write-Success "    Server: $finalServerJs"
     }
     else {
-        Show-ErrorMessage "Final server.js not found at: $finalServerJs"
-        $openCutBuildSuccess = $false
+        Show-Warning "OpenCut source directory not found at $openCutAppDir. Skipping OpenCut bundle."
+        Set-Location $ScriptDir
     }
-}
-
-if ($openCutBuildSuccess) {
-    Write-Success "OpenCut resources ready for packaging"
-}
-else {
-    Show-Warning "========================================"
-    Show-Warning "OpenCut build FAILED or SKIPPED"
-    Show-Warning "The application will build without OpenCut integration."
-    Show-Warning "OpenCut editor features will not be available."
-    Show-Warning "========================================"
-}
-}
-}
-else {
-    Show-Warning "OpenCut source directory not found at $openCutAppDir. Skipping OpenCut bundle."
-    Set-Location $ScriptDir
-}et-Location $ScriptDir
-}
-}
-else {
-    Show-Warning "Skipping frontend build"
-    Write-Host ""
-}
-}
-else {
-    Show-Warning "Skipping frontend build"
-    Write-Host ""
-}
-}
-else {
-    Show-Warning "Skipping frontend build"
-    Write-Host ""
-}et-Location $ScriptDir
-}
-}
-else {
-    Show-Warning "Skipping frontend build"
-    Write-Host ""
-}
-}
-else {
-    Show-Warning "Skipping frontend build"
-    Write-Host ""
-}
-}
-else {
-    Show-Warning "Skipping frontend build"
-    Write-Host ""
-}
 }
 else {
     Show-Warning "Skipping frontend build"
@@ -1410,6 +1375,4 @@ Write-Host "  npm start"
 Write-Host ""
 
 
-Write-Success "All done! 🎉"Write-Success "All done! 🎉"Write-Success "All done! 🎉"Write-Success "All done! 🎉"
-
-Write-Success "All done! 🎉"Write-Success "All done! 🎉"Write-Success "All done! 🎉"Write-Success "All done! 🎉"
+Write-Success "All done! 🎉"
