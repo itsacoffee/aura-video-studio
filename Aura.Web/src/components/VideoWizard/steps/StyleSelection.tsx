@@ -113,10 +113,41 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
   const loadProviders = useCallback(async () => {
     try {
       const response = await visualsClient.getProviders();
-      setProviders(response.providers);
+      let providers = response.providers;
+
+      // CRITICAL FIX: Always ensure Stock provider is available
+      // Stock represents free stock image sources (Pexels, Pixabay, Unsplash) and should always be shown
+      const hasStock = providers.some((p) => p.name === 'Stock');
+      if (!hasStock) {
+        // Add Stock provider as a always-available fallback option
+        providers = [
+          ...providers,
+          {
+            name: 'Stock',
+            isAvailable: true,
+            requiresApiKey: false,
+            capabilities: {
+              providerName: 'Stock',
+              supportsNegativePrompts: false,
+              supportsBatchGeneration: false,
+              supportsStylePresets: false,
+              supportedAspectRatios: ['16:9', '9:16', '1:1', '4:3'],
+              supportedStyles: ['photorealistic', 'artistic', 'cinematic'],
+              maxWidth: 1920,
+              maxHeight: 1080,
+              isLocal: false,
+              isFree: true,
+              costPerImage: 0,
+              tier: 'Free',
+            },
+          },
+        ];
+      }
+
+      setProviders(providers);
 
       if (!data.imageProvider) {
-        const availableProvider = response.providers.find((p) => p.isAvailable);
+        const availableProvider = providers.find((p) => p.isAvailable);
         if (availableProvider) {
           onChange({
             ...data,
@@ -208,9 +239,13 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
       setAvailableStyles(response.allStyles);
 
       if (!data.imageStyle && response.allStyles.length > 0) {
+        // Prefer 'photorealistic' as default, fall back to first available style
+        const preferredDefault = response.allStyles.includes('photorealistic')
+          ? 'photorealistic'
+          : response.allStyles[0];
         onChange({
           ...data,
-          imageStyle: response.allStyles[0],
+          imageStyle: preferredDefault,
         });
       }
     } catch (error) {
@@ -241,12 +276,12 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
       !data.musicGenre;
     if (needsDefaults) {
       defaultsSetRef.current = true;
-      // Use 'Null' as default voice provider since it's always available (generates silence)
+      // Use 'Windows' as default voice provider since it's commonly available on Windows
       // User can select a better provider in the TTS settings if available
       // Default visualStyle to 'modern', imageStyle to 'photorealistic', musicGenre to 'none'
       onChange({
         ...data,
-        voiceProvider: data.voiceProvider || 'Null',
+        voiceProvider: data.voiceProvider || 'Windows',
         visualStyle: data.visualStyle || 'modern',
         imageStyle: data.imageStyle || 'photorealistic',
         imageProvider: data.imageProvider || 'Placeholder',
