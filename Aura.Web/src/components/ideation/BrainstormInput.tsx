@@ -294,7 +294,9 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
           <MessageBarBody>
             <MessageBarTitle>No Ollama model selected</MessageBarTitle>
             Please select a model from the AI Model dropdown in the toolbar above. If no models are
-            available, run <code>ollama pull llama3.1</code> in terminal to install one.
+            available, run <code>ollama list</code> to see installed models or{' '}
+            <code>ollama pull &lt;model-name&gt;</code> to install one (e.g., llama3.1, mistral,
+            qwen2.5).
           </MessageBarBody>
         </MessageBar>
       )}

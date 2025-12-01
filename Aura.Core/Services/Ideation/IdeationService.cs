@@ -3952,19 +3952,19 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             {
                 _logger.LogError(httpEx, "Failed to connect to Ollama at {BaseUrl}", baseUrl);
                 throw new InvalidOperationException(
-                    "Cannot connect to Ollama. Please ensure Ollama is running: " +
-                    "1. Open a terminal and run 'ollama serve' " +
-                    "2. Verify Ollama is accessible at " + baseUrl + " " +
-                    "3. Or select a model from the AI Model dropdown in the toolbar.", httpEx);
+                    $"Cannot connect to Ollama. Please ensure Ollama is running: " +
+                    $"1. Open a terminal and run 'ollama serve' " +
+                    $"2. Verify Ollama is accessible at {baseUrl} " +
+                    $"3. Or select a model from the AI Model dropdown in the toolbar.", httpEx);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to query Ollama for available models");
                 throw new InvalidOperationException(
-                    "No Ollama model selected. Please either: " +
-                    "1. Select a model from the AI Model dropdown in the toolbar, " +
-                    "2. Configure a default model in Settings > Providers > Ollama, " +
-                    "3. Or ensure Ollama is running with at least one model installed (run 'ollama pull llama3.1'). " +
+                    $"No Ollama model selected. Please either: " +
+                    $"1. Select a model from the AI Model dropdown in the toolbar, " +
+                    $"2. Configure a default model in Settings > Providers > Ollama, " +
+                    $"3. Or ensure Ollama is running with at least one model installed (run 'ollama pull llama3.1'). " +
                     $"Error: {ex.Message}", ex);
             }
         }
