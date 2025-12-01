@@ -52,6 +52,8 @@ import {
   saveWizardStateToStorage,
   validateApiKeyThunk,
 } from '../../state/onboarding';
+import { useGlobalLlmStore } from '../../state/globalLlmStore';
+import { listProviders } from '../../services/api/scriptApi';
 import { pickFolder } from '../../utils/pathUtils';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
 
@@ -424,6 +426,89 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
     const hasOfflineMode = state.selectedTier === 'free' && state.mode === 'free';
     setHasAtLeastOneProvider(validProviders.length > 0 || hasOfflineMode);
   }, [state.apiKeyValidationStatus, state.selectedTier, state.mode]);
+
+  // Sync validated providers to global LLM store
+  // This ensures the first valid API-based provider is set in the global selector
+  useEffect(() => {
+    const syncProviderToGlobalStore = async () => {
+      const validProviders = Object.entries(state.apiKeyValidationStatus)
+        .filter(([_, status]) => status === 'valid')
+        .map(([provider]) => provider);
+
+      if (validProviders.length === 0) {
+        return;
+      }
+
+      // Check if we already have a valid selection
+      const currentSelection = useGlobalLlmStore.getState().selection;
+      if (currentSelection?.provider && currentSelection?.modelId) {
+        // Already have a valid selection, don't override
+        return;
+      }
+
+      // Priority: Use the first valid provider that's not Ollama (API-based providers first)
+      // Then fallback to Ollama if that's the only valid one
+      const apiProviders = validProviders.filter(
+        (p) => !p.toLowerCase().includes('ollama') && !p.toLowerCase().includes('rulebased')
+      );
+      const ollamaProvider = validProviders.find((p) => p.toLowerCase().includes('ollama'));
+
+      const providerToSync = apiProviders[0] || ollamaProvider;
+      if (!providerToSync) {
+        return;
+      }
+
+      try {
+        // Fetch available models for the provider
+        const response = await listProviders();
+        const providerInfo = response.providers.find((p) => {
+          const normalized = p.name.toLowerCase();
+          const targetNormalized = providerToSync.toLowerCase();
+          return normalized === targetNormalized || normalized.includes(targetNormalized);
+        });
+
+        if (providerInfo && providerInfo.availableModels.length > 0) {
+          const selectedModel = providerInfo.defaultModel || providerInfo.availableModels[0];
+          const providerName = providerInfo.name;
+
+          // Save to global LLM store
+          useGlobalLlmStore.getState().setSelection({
+            provider: providerName,
+            modelId: selectedModel,
+          });
+
+          // Save global LLM selection to backend
+          try {
+            const saveResponse = await fetch('/api/settings/llm/selection', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ provider: providerName, modelId: selectedModel }),
+            });
+
+            if (saveResponse.ok) {
+              console.info(
+                '[FirstRunWizard] Provider synced to global store:',
+                providerName,
+                selectedModel
+              );
+            } else {
+              console.warn(
+                '[FirstRunWizard] Failed to save LLM selection to backend, status:',
+                saveResponse.status
+              );
+            }
+          } catch (saveError) {
+            console.warn('[FirstRunWizard] Failed to save LLM selection to backend:', saveError);
+            // Continue - the store is already updated
+          }
+        }
+      } catch (error) {
+        console.warn('[FirstRunWizard] Failed to sync provider to global store:', error);
+      }
+    };
+
+    syncProviderToGlobalStore();
+  }, [state.apiKeyValidationStatus]);
 
   // Resume wizard handlers
   const handleResumeWizard = useCallback(async () => {
@@ -935,7 +1020,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
   };
 
   const handleLocalProviderReady = useCallback(
-    (provider: string) => {
+    async (provider: string) => {
       dispatch({
         type: 'API_KEY_VALID',
         payload: {
@@ -947,6 +1032,67 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           fieldErrors: [],
         },
       });
+
+      // Sync the provider and model selection to the global LLM store
+      if (provider === 'ollama') {
+        try {
+          // Fetch available Ollama models from the providers API
+          const response = await listProviders();
+          const ollamaProvider = response.providers.find((p) => {
+            const normalized = p.name.toLowerCase();
+            return normalized.includes('ollama') && p.isAvailable;
+          });
+
+          if (ollamaProvider && ollamaProvider.availableModels.length > 0) {
+            const selectedModel = ollamaProvider.defaultModel || ollamaProvider.availableModels[0];
+
+            // Save to global LLM store
+            useGlobalLlmStore.getState().setSelection({
+              provider: 'Ollama',
+              modelId: selectedModel,
+            });
+
+            // Also save to backend for persistence
+            try {
+              const ollamaResponse = await fetch('/api/settings/ollama/model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: selectedModel }),
+              });
+
+              // Save global LLM selection to backend
+              const llmResponse = await fetch('/api/settings/llm/selection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider: 'Ollama', modelId: selectedModel }),
+              });
+
+              if (ollamaResponse.ok && llmResponse.ok) {
+                console.info(
+                  '[FirstRunWizard] Ollama model synced to global store:',
+                  selectedModel
+                );
+              } else {
+                console.warn(
+                  '[FirstRunWizard] Failed to save to backend, statuses:',
+                  ollamaResponse.status,
+                  llmResponse.status
+                );
+              }
+            } catch (saveError) {
+              console.warn('[FirstRunWizard] Failed to save Ollama model to backend:', saveError);
+              // Continue - the store is already updated
+            }
+          }
+        } catch (error) {
+          console.warn('[FirstRunWizard] Failed to fetch Ollama models for sync:', error);
+          // Still set the provider even if we couldn't get models
+          useGlobalLlmStore.getState().setSelection({
+            provider: 'Ollama',
+            modelId: '',
+          });
+        }
+      }
 
       showSuccessToast({
         title: 'Provider Ready',
