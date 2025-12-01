@@ -210,8 +210,6 @@ public class SystemResourceMonitor
                         var totalIdle = idle + iowait;
                         var total = user + nice + system + idle + iowait + irq + softirq + steal;
                         
-                        var now = DateTime.UtcNow;
-                        
                         // Calculate CPU usage based on delta since last reading
                         if (_lastCpuUpdate != DateTime.MinValue && _lastCpuTotal > 0)
                         {
@@ -228,7 +226,7 @@ public class SystemResourceMonitor
                         // Store current values for next calculation
                         _lastCpuTotal = total;
                         _lastCpuIdle = totalIdle;
-                        _lastCpuUpdate = now;
+                        _lastCpuUpdate = DateTime.UtcNow;
                         
                         return _lastCpuUsagePercent;
                     }
