@@ -489,12 +489,10 @@ export function GlobalLlmSelector() {
       const ollamaLlmModels: LlmModelInfo[] = ollamaModels.map((m) => ({
         modelId: m.name,
         provider: 'Ollama',
-        maxTokens: 4096, // Default for Ollama models
+        maxTokens: 4096,
         contextWindow: 4096,
         aliases: [],
         isDeprecated: false,
-        // Store size info for display
-        displayName: `${m.name} (${m.sizeGB.toFixed(2)} GB)`,
       }));
 
       // If we have Ollama models, return them
@@ -588,6 +586,18 @@ export function GlobalLlmSelector() {
     }
     return modelId;
   }, []);
+
+  // Get Ollama model display text with size
+  const getOllamaModelDisplayText = useCallback(
+    (modelId: string): string => {
+      const model = ollamaModels.find((m) => m.name === modelId);
+      if (model) {
+        return `${modelId} (${model.sizeGB.toFixed(2)} GB)`;
+      }
+      return modelId;
+    },
+    [ollamaModels]
+  );
 
   // Get provider option text with status
   const getProviderOptionText = useCallback((provider: ProviderInfo): string => {
@@ -692,14 +702,15 @@ export function GlobalLlmSelector() {
             )}
           {/* Model options - show size for Ollama models */}
           {providerModels.map((model) => {
-            // For Ollama, find the original model to get size
+            const displayText =
+              selectedProvider === 'Ollama'
+                ? getOllamaModelDisplayText(model.modelId)
+                : model.modelId + (model.isDeprecated ? ' (Deprecated)' : '');
+
             const ollamaModel =
               selectedProvider === 'Ollama'
                 ? ollamaModels.find((m) => m.name === model.modelId)
                 : null;
-            const displayText = ollamaModel
-              ? `${model.modelId} (${ollamaModel.sizeGB.toFixed(2)} GB)`
-              : model.modelId + (model.isDeprecated ? ' (Deprecated)' : '');
 
             return (
               <Option key={model.modelId} value={model.modelId} text={displayText}>
