@@ -21,7 +21,6 @@
 import { forwardRef } from 'react';
 import { Card, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import type { CardProps } from '@fluentui/react-components';
-import { useDisplayEnvironment } from '../../hooks/useDisplayEnvironment';
 import { useDensity } from '../../contexts/DensityContext';
 
 export interface AdaptiveCardProps extends Omit<CardProps, 'size'> {
@@ -114,8 +113,6 @@ export const AdaptiveCard = forwardRef<HTMLDivElement, AdaptiveCardProps>(
   ) => {
     const styles = useStyles();
     const { density } = useDensity();
-    // Display environment can be used for future viewport-specific adaptations
-    useDisplayEnvironment();
 
     return (
       <Card
