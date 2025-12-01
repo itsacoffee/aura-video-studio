@@ -479,17 +479,24 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
           // Save global LLM selection to backend
           try {
-            await fetch('/api/settings/llm/selection', {
+            const saveResponse = await fetch('/api/settings/llm/selection', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ provider: providerName, modelId: selectedModel }),
             });
 
-            console.info(
-              '[FirstRunWizard] Provider synced to global store:',
-              providerName,
-              selectedModel
-            );
+            if (saveResponse.ok) {
+              console.info(
+                '[FirstRunWizard] Provider synced to global store:',
+                providerName,
+                selectedModel
+              );
+            } else {
+              console.warn(
+                '[FirstRunWizard] Failed to save LLM selection to backend, status:',
+                saveResponse.status
+              );
+            }
           } catch (saveError) {
             console.warn('[FirstRunWizard] Failed to save LLM selection to backend:', saveError);
             // Continue - the store is already updated
@@ -1047,20 +1054,31 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
 
             // Also save to backend for persistence
             try {
-              await fetch('/api/settings/ollama/model', {
+              const ollamaResponse = await fetch('/api/settings/ollama/model', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ model: selectedModel }),
               });
 
               // Save global LLM selection to backend
-              await fetch('/api/settings/llm/selection', {
+              const llmResponse = await fetch('/api/settings/llm/selection', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ provider: 'Ollama', modelId: selectedModel }),
               });
 
-              console.info('[FirstRunWizard] Ollama model synced to global store:', selectedModel);
+              if (ollamaResponse.ok && llmResponse.ok) {
+                console.info(
+                  '[FirstRunWizard] Ollama model synced to global store:',
+                  selectedModel
+                );
+              } else {
+                console.warn(
+                  '[FirstRunWizard] Failed to save to backend, statuses:',
+                  ollamaResponse.status,
+                  llmResponse.status
+                );
+              }
             } catch (saveError) {
               console.warn('[FirstRunWizard] Failed to save Ollama model to backend:', saveError);
               // Continue - the store is already updated

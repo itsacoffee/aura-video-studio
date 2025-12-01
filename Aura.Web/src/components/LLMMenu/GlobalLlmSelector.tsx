@@ -552,7 +552,16 @@ export function GlobalLlmSelector() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ provider: selectedProvider, modelId: firstModel }),
-        }).catch((err) => console.warn('[GlobalLlmSelector] Failed to save selection:', err));
+        })
+          .then((response) => {
+            if (!response.ok) {
+              console.warn(
+                '[GlobalLlmSelector] Failed to save selection, status:',
+                response.status
+              );
+            }
+          })
+          .catch((err) => console.warn('[GlobalLlmSelector] Failed to save selection:', err));
       }
     }
   }, [selectedProvider, selectedModel, availableModels, setSelection]);

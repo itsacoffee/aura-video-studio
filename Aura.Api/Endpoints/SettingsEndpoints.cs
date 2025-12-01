@@ -207,7 +207,7 @@ public static class SettingsEndpoints
             try
             {
                 // Try to get the global LLM selection from settings
-                var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "llm-selection.json");
+                var settingsPath = LlmSelectionPaths.GetLlmSelectionFilePath();
                 if (File.Exists(settingsPath))
                 {
                     var json = File.ReadAllText(settingsPath);
@@ -253,7 +253,7 @@ public static class SettingsEndpoints
                 }
                 
                 // Save to dedicated settings file
-                var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "llm-selection.json");
+                var settingsPath = LlmSelectionPaths.GetLlmSelectionFilePath();
                 Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
                 
                 var json = System.Text.Json.JsonSerializer.Serialize(new GlobalLlmSelectionDto
@@ -301,4 +301,18 @@ public class GlobalLlmSelectionDto
 {
     public string Provider { get; set; } = "";
     public string? ModelId { get; set; }
+}
+
+/// <summary>
+/// Helper class for LLM selection settings paths
+/// </summary>
+internal static class LlmSelectionPaths
+{
+    /// <summary>
+    /// Gets the path to the LLM selection settings file
+    /// </summary>
+    public static string GetLlmSelectionFilePath()
+    {
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "llm-selection.json");
+    }
 }
