@@ -33,7 +33,7 @@ export const DEFAULT_TIMEOUTS: TimeoutConfig = {
   fileUpload: 120000, // 2 minutes
   fileDownload: 180000, // 3 minutes
   quickOperations: 5000, // 5 seconds
-  localization: 30000, // 30 seconds for translation operations
+  localization: 300000, // 5 minutes - accounts for slow local Ollama models (same as script generation)
 };
 
 /**
