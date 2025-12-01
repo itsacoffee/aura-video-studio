@@ -370,21 +370,37 @@ public class VisualsController : ControllerBase
             _loggerFactory.CreateLogger<LocalStableDiffusionProvider>(),
             httpClient));
 
+        // Stock providers (Pexels, Unsplash) - aggregate them under a "Stock" meta-provider
+        var stockProviders = new List<BaseVisualProvider>();
+
         // Pexels - free stock photo provider with smart search
         if (apiKeys.TryGetValue("pexels", out var pexelsKey) && !string.IsNullOrWhiteSpace(pexelsKey))
         {
-            providers.Add(new PexelsVisualProvider(
+            var pexelsProvider = new PexelsVisualProvider(
                 _loggerFactory.CreateLogger<PexelsVisualProvider>(),
                 httpClient,
-                pexelsKey));
+                pexelsKey);
+            stockProviders.Add(pexelsProvider);
+            providers.Add(pexelsProvider);
         }
 
         if (apiKeys.TryGetValue("unsplash", out var unsplashKey) && !string.IsNullOrWhiteSpace(unsplashKey))
         {
-            providers.Add(new UnsplashVisualProvider(
+            var unsplashProvider = new UnsplashVisualProvider(
                 _loggerFactory.CreateLogger<UnsplashVisualProvider>(),
                 httpClient,
-                unsplashKey));
+                unsplashKey);
+            stockProviders.Add(unsplashProvider);
+            providers.Add(unsplashProvider);
+        }
+
+        // Add Stock meta-provider if any stock sources are configured
+        // This allows users to select "Stock" as a single option that uses any available stock provider
+        if (stockProviders.Count > 0)
+        {
+            providers.Add(new StockMetaProvider(
+                _loggerFactory.CreateLogger<StockMetaProvider>(),
+                stockProviders));
         }
 
         return providers;
