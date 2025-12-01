@@ -37,6 +37,21 @@ export const DEFAULT_TIMEOUTS: TimeoutConfig = {
 };
 
 /**
+ * Version for timeout configuration schema.
+ * Increment this when default timeout values change significantly
+ * to ensure users get the new defaults instead of stale cached values.
+ */
+const TIMEOUT_CONFIG_VERSION = 2;
+
+/**
+ * Stored configuration with version for migration support
+ */
+interface StoredTimeoutConfig {
+  version?: number;
+  timeouts: Partial<TimeoutConfig>;
+}
+
+/**
  * Timeout configuration class with localStorage persistence
  */
 class TimeoutConfigManager {
@@ -108,21 +123,46 @@ class TimeoutConfigManager {
    */
   private saveConfig(): void {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.config));
+      const stored: StoredTimeoutConfig = {
+        version: TIMEOUT_CONFIG_VERSION,
+        timeouts: this.config,
+      };
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(stored));
     } catch (error) {
       console.warn('Failed to save timeout configuration:', error);
     }
   }
 
   /**
-   * Load configuration from localStorage or use defaults
+   * Load configuration from localStorage or use defaults.
+   * Includes migration logic to handle stale cached timeout values.
    */
   private loadConfig(): TimeoutConfig {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as Partial<TimeoutConfig>;
-        return { ...DEFAULT_TIMEOUTS, ...parsed };
+        const parsed = JSON.parse(stored) as StoredTimeoutConfig | Partial<TimeoutConfig>;
+
+        // Check if this is the new versioned format
+        if ('version' in parsed && 'timeouts' in parsed) {
+          const storedConfig = parsed as StoredTimeoutConfig;
+          if (storedConfig.version === TIMEOUT_CONFIG_VERSION) {
+            // Same version - merge stored values with defaults
+            return { ...DEFAULT_TIMEOUTS, ...storedConfig.timeouts };
+          }
+          // Different version - clear stale config and use defaults
+          console.info(
+            `Timeout config version changed (${storedConfig.version} -> ${TIMEOUT_CONFIG_VERSION}), using new defaults`
+          );
+          localStorage.removeItem(this.STORAGE_KEY);
+          return { ...DEFAULT_TIMEOUTS };
+        }
+
+        // Legacy format (old cached values without version)
+        // Clear stale config to ensure users get new timeout defaults
+        console.info('Migrating legacy timeout config to new format, using new defaults');
+        localStorage.removeItem(this.STORAGE_KEY);
+        return { ...DEFAULT_TIMEOUTS };
       }
     } catch (error) {
       console.warn('Failed to load timeout configuration, using defaults:', error);

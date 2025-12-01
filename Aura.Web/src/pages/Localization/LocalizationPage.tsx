@@ -274,7 +274,7 @@ export const LocalizationPage: React.FC = () => {
 
     setLoading(true);
     setParsedError(null);
-    setLoadingMessage('Translating...');
+    setLoadingMessage('Translating... (first request may take 1-2 minutes while AI model loads)');
     setLastOperation('translate');
 
     // Create new AbortController for this request
@@ -378,7 +378,9 @@ export const LocalizationPage: React.FC = () => {
 
     setLoading(true);
     setParsedError(null);
-    setLoadingMessage('Analyzing cultural context...');
+    setLoadingMessage(
+      'Analyzing cultural context... (first request may take 1-2 minutes while AI model loads)'
+    );
     setLastOperation('analyze');
 
     // Create new AbortController for this request

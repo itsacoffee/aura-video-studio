@@ -19,14 +19,16 @@ describe('TimeoutConfiguration', () => {
     it('should have sensible default timeout values', () => {
       expect(DEFAULT_TIMEOUTS.default).toBe(30000);
       expect(DEFAULT_TIMEOUTS.health).toBe(5000);
-      expect(DEFAULT_TIMEOUTS.scriptGeneration).toBe(120000);
+      expect(DEFAULT_TIMEOUTS.scriptGeneration).toBe(300000); // 5 minutes for slow Ollama models
       expect(DEFAULT_TIMEOUTS.videoRendering).toBe(600000);
+      expect(DEFAULT_TIMEOUTS.localization).toBe(300000); // 5 minutes - same as scriptGeneration
     });
 
     it('should return default timeout for operation', () => {
       expect(timeoutConfig.getTimeout('default')).toBe(30000);
       expect(timeoutConfig.getTimeout('health')).toBe(5000);
-      expect(timeoutConfig.getTimeout('scriptGeneration')).toBe(120000);
+      expect(timeoutConfig.getTimeout('scriptGeneration')).toBe(300000);
+      expect(timeoutConfig.getTimeout('localization')).toBe(300000);
     });
   });
 
@@ -36,14 +38,15 @@ describe('TimeoutConfiguration', () => {
       expect(timeoutConfig.getTimeout('default')).toBe(60000);
     });
 
-    it('should persist timeout changes to localStorage', () => {
+    it('should persist timeout changes to localStorage with version', () => {
       timeoutConfig.setTimeout('scriptGeneration', 180000);
 
       const stored = localStorage.getItem('aura_timeout_config');
       expect(stored).toBeTruthy();
 
       const parsed = JSON.parse(stored!);
-      expect(parsed.scriptGeneration).toBe(180000);
+      expect(parsed.version).toBe(2); // Current version
+      expect(parsed.timeouts.scriptGeneration).toBe(180000);
     });
 
     it('should reject timeout less than 1 second', () => {
@@ -109,7 +112,7 @@ describe('TimeoutConfiguration', () => {
       expect(timeoutConfig.getTimeout('scriptGeneration')).toBe(DEFAULT_TIMEOUTS.scriptGeneration);
     });
 
-    it('should persist reset to localStorage', () => {
+    it('should persist reset to localStorage with version', () => {
       timeoutConfig.setTimeout('default', 60000);
       timeoutConfig.resetToDefaults();
 
@@ -117,7 +120,8 @@ describe('TimeoutConfiguration', () => {
       expect(stored).toBeTruthy();
 
       const parsed = JSON.parse(stored!);
-      expect(parsed.default).toBe(DEFAULT_TIMEOUTS.default);
+      expect(parsed.version).toBe(2);
+      expect(parsed.timeouts.default).toBe(DEFAULT_TIMEOUTS.default);
     });
   });
 
@@ -133,6 +137,7 @@ describe('TimeoutConfiguration', () => {
       expect(getOperationTimeout('upload')).toBe(DEFAULT_TIMEOUTS.fileUpload);
       expect(getOperationTimeout('download')).toBe(DEFAULT_TIMEOUTS.fileDownload);
       expect(getOperationTimeout('quick')).toBe(DEFAULT_TIMEOUTS.quickOperations);
+      expect(getOperationTimeout('localization')).toBe(DEFAULT_TIMEOUTS.localization);
     });
 
     it('should return default timeout for unknown operation', () => {
@@ -141,7 +146,7 @@ describe('TimeoutConfiguration', () => {
   });
 
   describe('Persistence', () => {
-    it('should save and load configuration from localStorage', () => {
+    it('should save and load configuration from localStorage with version', () => {
       timeoutConfig.setTimeout('default', 50000);
       timeoutConfig.setTimeout('health', 8000);
 
@@ -149,13 +154,16 @@ describe('TimeoutConfiguration', () => {
       expect(stored).toBeTruthy();
 
       const parsed = JSON.parse(stored!);
-      expect(parsed.default).toBe(50000);
-      expect(parsed.health).toBe(8000);
+      expect(parsed.version).toBe(2);
+      expect(parsed.timeouts.default).toBe(50000);
+      expect(parsed.timeouts.health).toBe(8000);
     });
 
     it('should handle corrupted localStorage data', () => {
       localStorage.setItem('aura_timeout_config', 'invalid json');
 
+      // Force reload by resetting
+      timeoutConfig.resetToDefaults();
       const config = timeoutConfig.getConfig();
       expect(config.default).toBe(DEFAULT_TIMEOUTS.default);
     });
@@ -166,6 +174,23 @@ describe('TimeoutConfiguration', () => {
       const config = timeoutConfig.getConfig();
       expect(config.default).toBe(DEFAULT_TIMEOUTS.default);
       expect(config.health).toBe(DEFAULT_TIMEOUTS.health);
+    });
+
+    it('should migrate legacy format (without version) to new defaults', () => {
+      // Simulate legacy format - old cached values without version
+      const legacyConfig = {
+        default: 30000,
+        health: 5000,
+        localization: 30000, // Old stale value that caused the timeout issue
+      };
+      localStorage.setItem('aura_timeout_config', JSON.stringify(legacyConfig));
+
+      // Force reload by resetting
+      timeoutConfig.resetToDefaults();
+
+      // Should use new defaults, not the stale cached values
+      expect(timeoutConfig.getTimeout('localization')).toBe(DEFAULT_TIMEOUTS.localization); // 300000
+      expect(timeoutConfig.getTimeout('default')).toBe(DEFAULT_TIMEOUTS.default);
     });
   });
 
