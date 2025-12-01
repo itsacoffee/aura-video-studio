@@ -1052,6 +1052,28 @@ else {
 else {
     Show-Warning "OpenCut source directory not found at $openCutAppDir. Skipping OpenCut bundle."
     Set-Location $ScriptDir
+}et-Location $ScriptDir
+}
+}
+else {
+    Show-Warning "Skipping frontend build"
+    Write-Host ""
+}
+}
+else {
+    Show-Warning "Skipping frontend build"
+    Write-Host ""
+}
+}
+else {
+    Show-Warning "Skipping frontend build"
+    Write-Host ""
+}et-Location $ScriptDir
+}
+}
+else {
+    Show-Warning "Skipping frontend build"
+    Write-Host ""
 }
 }
 else {
