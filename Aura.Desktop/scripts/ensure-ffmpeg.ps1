@@ -12,7 +12,11 @@ try {
         throw "PowerShell 5.0 or newer is required to download the bundled FFmpeg."
     }
 
-    if ($IsWindows -ne $true) {
+    # Detect if we're running on Windows. In PS 5.x (Windows PowerShell), $IsWindows 
+    # doesn't exist, but we know it's Windows. In PS 6+ (PowerShell Core), $IsWindows 
+    # is defined. We only skip if we're explicitly NOT on Windows (PS Core on Linux/macOS).
+    $runningOnWindows = if ($null -eq $IsWindows) { $true } else { $IsWindows }
+    if (-not $runningOnWindows) {
         Write-Step "Skipping bundled FFmpeg download (Windows-only requirement)."
         exit 0
     }
