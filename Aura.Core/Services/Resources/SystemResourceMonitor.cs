@@ -190,8 +190,8 @@ public class SystemResourceMonitor
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                // Read CPU stats from /proc/stat
-                var statLine = File.ReadAllLines("/proc/stat").FirstOrDefault(l => l.StartsWith("cpu ", StringComparison.Ordinal));
+                // Read only the first few lines from /proc/stat (more efficient than ReadAllLines)
+                var statLine = File.ReadLines("/proc/stat").FirstOrDefault(l => l.StartsWith("cpu ", StringComparison.Ordinal));
                 if (statLine != null)
                 {
                     var parts = statLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
