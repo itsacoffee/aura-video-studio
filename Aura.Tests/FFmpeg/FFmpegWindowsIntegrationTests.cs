@@ -30,7 +30,8 @@ public class FFmpegWindowsIntegrationTests
         _cache = new MemoryCache(new MemoryCacheOptions());
     }
 
-    [Fact(Skip = "Windows-only test, requires manual execution on Windows")]
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public async Task DetectFFmpeg_OnWindows_FindsViaPATHOrRegistry()
     {
         // Skip if not on Windows
@@ -55,6 +56,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void EscapePath_HandlesWindowsPathsWithSpaces()
     {
         // Skip if not on Windows
@@ -75,6 +77,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void EscapePath_HandlesWindowsBackslashes()
     {
         // Skip if not on Windows
@@ -97,6 +100,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void EscapePath_HandlesLongWindowsPaths()
     {
         // Skip if not on Windows
@@ -119,6 +123,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void EscapePath_HandlesSpecialCharacters()
     {
         // Skip if not on Windows
@@ -138,7 +143,8 @@ public class FFmpegWindowsIntegrationTests
         Assert.Contains("Result & Review.mp4", command);
     }
 
-    [Fact(Skip = "Windows-only test, requires FFmpeg installed")]
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public async Task FFmpegProcessSpawn_OnWindows_ExecutesSuccessfully()
     {
         // Skip if not on Windows
@@ -180,7 +186,8 @@ public class FFmpegWindowsIntegrationTests
         Assert.Contains("ffmpeg version", output, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact(Skip = "Windows-only test, requires FFmpeg installed")]
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public async Task FFmpegProcessSpawn_WithWindowsPaths_HandlesQuotedArguments()
     {
         // Skip if not on Windows
@@ -233,7 +240,9 @@ public class FFmpegWindowsIntegrationTests
         }
     }
 
-    [Fact(Skip = "Windows-only test, requires NVIDIA GPU")]
+    [Fact(Skip = "Requires NVIDIA GPU hardware")]
+    [Trait("Category", "WindowsIntegration")]
+    [Trait("Category", "HardwareSpecific")]
     public async Task HardwareAcceleration_OnWindows_DetectsNVENC()
     {
         // Skip if not on Windows
@@ -266,7 +275,9 @@ public class FFmpegWindowsIntegrationTests
         }
     }
 
-    [Fact(Skip = "Windows-only test, requires AMD GPU")]
+    [Fact(Skip = "Requires AMD GPU hardware")]
+    [Trait("Category", "WindowsIntegration")]
+    [Trait("Category", "HardwareSpecific")]
     public async Task HardwareAcceleration_OnWindows_DetectsAMF()
     {
         // Skip if not on Windows
@@ -298,7 +309,9 @@ public class FFmpegWindowsIntegrationTests
         }
     }
 
-    [Fact(Skip = "Windows-only test, requires Intel GPU")]
+    [Fact(Skip = "Requires Intel GPU hardware")]
+    [Trait("Category", "WindowsIntegration")]
+    [Trait("Category", "HardwareSpecific")]
     public async Task HardwareAcceleration_OnWindows_DetectsQuickSync()
     {
         // Skip if not on Windows
@@ -331,6 +344,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void FFmpegResolver_OnWindows_ChecksRegistryPaths()
     {
         // Skip if not on Windows
@@ -350,6 +364,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void CommandBuilder_OnWindows_ProducesValidFFmpegCommand()
     {
         // Skip if not on Windows
@@ -385,6 +400,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public async Task FfmpegLocator_RespectsElectronEnvironmentVariable()
     {
         // Skip if not on Windows
@@ -417,6 +433,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public async Task FfmpegLocator_ChecksMultipleElectronEnvironmentVariables()
     {
         // Skip if not on Windows
@@ -455,7 +472,8 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
-    public void FfmpegLocator_WindowsRegistry_DoesNotThrowException()
+    [Trait("Category", "WindowsIntegration")]
+    public async Task FfmpegLocator_WindowsRegistry_DoesNotThrowException()
     {
         // Skip if not on Windows
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -469,7 +487,7 @@ public class FFmpegWindowsIntegrationTests
         var locator = new FfmpegLocator(logger);
 
         // This should not throw an exception even if registry keys are missing
-        var exception = Record.Exception(async () => 
+        var exception = await Record.ExceptionAsync(async () => 
         {
             var result = await locator.CheckAllCandidatesAsync();
             // We don't care if FFmpeg is found, just that no exception is thrown
@@ -479,6 +497,7 @@ public class FFmpegWindowsIntegrationTests
     }
 
     [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void EscapePath_HandlesUNCPaths()
     {
         // Skip if not on Windows
@@ -498,7 +517,8 @@ public class FFmpegWindowsIntegrationTests
         Assert.Contains("//backup/videos/output.mp4", command);
     }
 
-    [Fact(Skip = "Requires actual FFmpeg installation")]
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public async Task Integration_EndToEnd_FFmpegPathDetectionAndExecution()
     {
         // Skip if not on Windows
