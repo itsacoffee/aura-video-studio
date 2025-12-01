@@ -190,5 +190,6 @@ public enum TaskStatus
     Running,
     Completed,
     Failed,
-    Cancelled
+    Cancelled,
+    TimedOut
 }
