@@ -82,6 +82,9 @@ public class FfmpegVideoComposer : IVideoComposer
         _logger.LogInformation("Starting FFmpeg render (JobId={JobId}, CorrelationId={CorrelationId}) at {Resolution}p",
             jobId, correlationId, spec.Res.Height);
 
+        // Report initial progress immediately to indicate render has started
+        progress.Report(new RenderProgress(0, TimeSpan.Zero, TimeSpan.Zero, "Initializing video render..."));
+
         // Set up FFmpeg log file path
         var ffmpegLogPath = Path.Combine(_logsDirectory, $"{jobId}.log");
         StreamWriter? logWriter = null;
@@ -90,6 +93,7 @@ public class FfmpegVideoComposer : IVideoComposer
         string ffmpegPath;
         try
         {
+            progress.Report(new RenderProgress(1, TimeSpan.Zero, TimeSpan.Zero, "Locating FFmpeg..."));
             ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(_configuredFfmpegPath, ct).ConfigureAwait(false);
             _logger.LogInformation("Resolved FFmpeg path for job {JobId}: {FfmpegPath}", jobId, ffmpegPath);
         }
@@ -100,9 +104,11 @@ public class FfmpegVideoComposer : IVideoComposer
         }
 
         // Validate FFmpeg binary before starting
+        progress.Report(new RenderProgress(2, TimeSpan.Zero, TimeSpan.Zero, "Validating FFmpeg..."));
         await ValidateFfmpegBinaryAsync(ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
 
         // Pre-validate audio files - pass the resolved ffmpeg path
+        progress.Report(new RenderProgress(3, TimeSpan.Zero, TimeSpan.Zero, "Validating audio files..."));
         await PreValidateAudioAsync(timeline, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
 
         // Create output file path using configured output directory
@@ -111,10 +117,14 @@ public class FfmpegVideoComposer : IVideoComposer
             $"AuraVideoStudio_{DateTime.Now:yyyyMMddHHmmss}.{spec.Container}");
 
         // Build the FFmpeg command with hardware acceleration support
+        progress.Report(new RenderProgress(4, TimeSpan.Zero, TimeSpan.Zero, "Building FFmpeg command..."));
         string ffmpegCommand = await BuildFfmpegCommandAsync(timeline, spec, outputFilePath, ffmpegPath, ct).ConfigureAwait(false);
 
         _logger.LogInformation("FFmpeg command (JobId={JobId}): {FFmpegPath} {Command}",
             jobId, ffmpegPath, ffmpegCommand);
+
+        // Report that we're about to start encoding
+        progress.Report(new RenderProgress(5, TimeSpan.Zero, TimeSpan.Zero, "Starting video encoding..."));
 
         // Track progress
         var totalDuration = timeline.Scenes.Count > 0
