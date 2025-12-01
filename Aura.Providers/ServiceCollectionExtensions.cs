@@ -415,59 +415,83 @@ public static class ServiceCollectionExtensions
         // These serve as fallback options when generation fails or for cost optimization
 
         // Unsplash provider (requires API key)
+        // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedUnsplashProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var providerSettings = sp.GetRequiredService<ProviderSettings>();
             var keyStore = sp.GetRequiredService<IKeyStore>();
 
-            var apiKeys = keyStore.GetAllKeys();
-            apiKeys.TryGetValue("unsplash", out var apiKey);
+            // Try ProviderSettings first (where UI saves API keys), then fallback to KeyStore
+            var apiKey = providerSettings.GetUnsplashAccessKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                var apiKeys = keyStore.GetAllKeys();
+                apiKeys.TryGetValue("unsplash", out apiKey);
+            }
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                logger.LogDebug("Unsplash API key not configured, skipping provider registration");
+                logger.LogDebug("Unsplash API key not configured in ProviderSettings or KeyStore, skipping provider registration");
                 return null!;
             }
 
+            logger.LogInformation("Unsplash provider registered with API key from settings");
             return new Images.EnhancedUnsplashProvider(logger, httpClient, apiKey);
         });
 
         // Pexels provider - using consolidated PexelsProvider (requires API key)
+        // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.PexelsProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var providerSettings = sp.GetRequiredService<ProviderSettings>();
             var keyStore = sp.GetRequiredService<IKeyStore>();
 
-            var apiKeys = keyStore.GetAllKeys();
-            apiKeys.TryGetValue("pexels", out var apiKey);
+            // Try ProviderSettings first (where UI saves API keys), then fallback to KeyStore
+            var apiKey = providerSettings.GetPexelsApiKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                var apiKeys = keyStore.GetAllKeys();
+                apiKeys.TryGetValue("pexels", out apiKey);
+            }
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                logger.LogDebug("Pexels API key not configured, skipping provider registration");
+                logger.LogDebug("Pexels API key not configured in ProviderSettings or KeyStore, skipping provider registration");
                 return null!;
             }
 
+            logger.LogInformation("Pexels provider registered with API key from settings");
             return new Images.PexelsProvider(logger, httpClient, apiKey);
         });
 
         // Pixabay provider (requires API key)
+        // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedPixabayProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var providerSettings = sp.GetRequiredService<ProviderSettings>();
             var keyStore = sp.GetRequiredService<IKeyStore>();
 
-            var apiKeys = keyStore.GetAllKeys();
-            apiKeys.TryGetValue("pixabay", out var apiKey);
+            // Try ProviderSettings first (where UI saves API keys), then fallback to KeyStore
+            var apiKey = providerSettings.GetPixabayApiKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                var apiKeys = keyStore.GetAllKeys();
+                apiKeys.TryGetValue("pixabay", out apiKey);
+            }
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                logger.LogDebug("Pixabay API key not configured, skipping provider registration");
+                logger.LogDebug("Pixabay API key not configured in ProviderSettings or KeyStore, skipping provider registration");
                 return null!;
             }
 
+            logger.LogInformation("Pixabay provider registered with API key from settings");
             return new Images.EnhancedPixabayProvider(logger, httpClient, apiKey);
         });
 
@@ -497,6 +521,29 @@ public static class ServiceCollectionExtensions
 
         // Register UnifiedStockProviderService with fallback chain support
         services.AddSingleton<IUnifiedStockProvider, Images.UnifiedStockProviderService>();
+
+        // Register StockToImageProviderAdapter as IImageProvider to bridge stock providers to VisualsStage
+        // This enables stock image providers (Pexels, Unsplash, Pixabay) to be used for visual generation
+        services.AddSingleton<IImageProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Images.StockToImageProviderAdapter>>();
+            var stockProvider = sp.GetService<IStockProvider>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+
+            // Only register if we have a valid stock provider
+            if (stockProvider == null)
+            {
+                logger.LogDebug("No stock provider available, StockToImageProviderAdapter not registered");
+                return null!;
+            }
+
+            var tempDirectory = Path.Combine(settings.GetAuraDataDirectory(), "temp", "stock-images");
+            logger.LogInformation("Registered StockToImageProviderAdapter with {StockProvider}",
+                stockProvider.GetType().Name);
+
+            return new Images.StockToImageProviderAdapter(logger, stockProvider, httpClient, tempDirectory);
+        });
 
         return services;
     }
