@@ -1058,6 +1058,16 @@ else {
     Show-Warning "Skipping frontend build"
     Write-Host ""
 }
+}
+else {
+    Show-Warning "Skipping frontend build"
+    Write-Host ""
+}
+}
+else {
+    Show-Warning "Skipping frontend build"
+    Write-Host ""
+}
 
 # ========================================
 # Step 2: Build Backend
