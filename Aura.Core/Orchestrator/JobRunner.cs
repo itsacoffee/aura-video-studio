@@ -409,7 +409,7 @@ public partial class JobRunner
                 job = UpdateJob(job,
                     stage: stage,
                     percent: percent,
-                    logs: new List<string>(job.Logs) { $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {message}" },
+                    logs: new List<string>(job.Logs) { $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {message}" },
                     progressMessage: progressMsg,
                     eta: eta);
             });
@@ -556,7 +556,7 @@ public partial class JobRunner
                 _progressEstimator.ClearHistory(jobId);
 
                 // Add cancellation message to logs so it's visible in UI
-                var cancelLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Job was cancelled by user - cleanup completed";
+                var cancelLog = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Job was cancelled by user - cleanup completed";
                 var updatedLogs = new List<string>(job.Logs) { cancelLog };
 
                 UpdateJob(job,
@@ -618,14 +618,14 @@ public partial class JobRunner
                 _progressEstimator.ClearHistory(jobId);
 
                 // Add detailed validation errors to logs
-                var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] VALIDATION ERROR: {vex.Message}";
+                var errorLog = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] VALIDATION ERROR: {vex.Message}";
                 var updatedLogs = new List<string>(job.Logs) { errorLog };
 
                 if (vex.Issues.Count != 0)
                 {
                     foreach (var issue in vex.Issues)
                     {
-                        updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]   - {issue}");
+                        updatedLogs.Add($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]   - {issue}");
                     }
                 }
 
@@ -675,20 +675,20 @@ public partial class JobRunner
                 var failureDetails = CreateFailureDetails(job, ex);
 
                 // Add error to logs so it's visible in UI
-                var errorLog = $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR: {GetFriendlyErrorMessage(ex)}";
+                var errorLog = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR: {GetFriendlyErrorMessage(ex)}";
                 var updatedLogs = new List<string>(job.Logs) { errorLog };
 
                 // Add inner exception details if available
                 if (ex.InnerException != null)
                 {
-                    updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] Inner Exception: {ex.InnerException.Message}");
+                    updatedLogs.Add($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Inner Exception: {ex.InnerException.Message}");
                 }
 
                 // Add stack trace for debugging (truncated)
                 var stackLines = ex.StackTrace?.Split('\n').Take(5) ?? Array.Empty<string>();
                 foreach (var line in stackLines)
                 {
-                    updatedLogs.Add($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}]   {line.Trim()}");
+                    updatedLogs.Add($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]   {line.Trim()}");
                 }
 
                 UpdateJob(job,
@@ -734,7 +734,7 @@ public partial class JobRunner
             : generationProgress.Message;
         var logs = new List<string>(job.Logs)
         {
-            $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {logMessage}"
+            $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {logMessage}"
         };
 
         // Update using existing method
@@ -1143,6 +1143,14 @@ public partial class JobRunner
             }
             formattedMessage = message;
         }
+        else if (message.Contains("Render complete", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Rendering complete", StringComparison.OrdinalIgnoreCase))
+        {
+            // FFmpeg render has finished - transition to Complete stage
+            stage = "Complete";
+            percent = 100;
+            formattedMessage = "Video rendering complete";
+        }
         else if (message.Contains("Processing batch", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("Batch completed", StringComparison.OrdinalIgnoreCase))
         {
@@ -1155,8 +1163,23 @@ public partial class JobRunner
             {
                 // Map task progress (0/N to N/N) to overall progress (5-95%)
                 percent = 5 + (int)((double)completed / total * 90);
+                
+                // When all batch tasks are complete, transition to PostProcess stage
+                if (completed == total)
+                {
+                    stage = "PostProcess";
+                    percent = 95;
+                    formattedMessage = "All tasks completed, finalizing";
+                }
+                else
+                {
+                    formattedMessage = message;
+                }
             }
-            formattedMessage = message;
+            else
+            {
+                formattedMessage = message;
+            }
         }
         else if (message.Contains("Orchestration completed", StringComparison.OrdinalIgnoreCase))
         {
