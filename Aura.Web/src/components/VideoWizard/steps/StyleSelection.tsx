@@ -243,15 +243,15 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
       defaultsSetRef.current = true;
       // Use 'Null' as default voice provider since it's always available (generates silence)
       // User can select a better provider in the TTS settings if available
-      // Default visualStyle to 'modern', imageStyle to 'realistic', musicGenre to 'none'
+      // Default visualStyle to 'modern', imageStyle to 'photorealistic', musicGenre to 'none'
       onChange({
         ...data,
         voiceProvider: data.voiceProvider || 'Null',
         visualStyle: data.visualStyle || 'modern',
-        imageStyle: data.imageStyle || 'realistic',
+        imageStyle: data.imageStyle || 'photorealistic',
         imageProvider: data.imageProvider || 'Placeholder',
         musicGenre: data.musicGenre || 'none',
-        musicEnabled: data.musicGenre ? data.musicGenre !== 'none' : false,
+        musicEnabled: false, // Explicitly false since music feature not implemented
       });
     } else {
       defaultsSetRef.current = true;
@@ -299,6 +299,20 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
     },
     [data, onChange]
   );
+
+  // Helper function to get provider subtitle describing what services it covers
+  const getProviderSubtitle = (providerName: string): string => {
+    switch (providerName) {
+      case 'Placeholder':
+        return 'Solid color backgrounds with text overlay';
+      case 'Stock':
+        return 'Pexels • Pixabay • Unsplash';
+      case 'LocalSD':
+        return 'Stable Diffusion WebUI';
+      default:
+        return '';
+    }
+  };
 
   if (loading) {
     return (
@@ -400,6 +414,20 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
                     )}
                   </div>
 
+                  {/* Provider subtitle showing what services it covers */}
+                  {getProviderSubtitle(provider.name) && (
+                    <Text
+                      size={200}
+                      style={{
+                        color: tokens.colorNeutralForeground2,
+                        marginBottom: tokens.spacingVerticalS,
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {getProviderSubtitle(provider.name)}
+                    </Text>
+                  )}
+
                   <div className={styles.providerDetails}>
                     <div
                       style={{
@@ -457,6 +485,17 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
                       </Badge>
                     )}
                   </div>
+                  {/* Provider subtitle showing what services it covers */}
+                  <Text
+                    size={200}
+                    style={{
+                      color: tokens.colorNeutralForeground2,
+                      marginBottom: tokens.spacingVerticalS,
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    Solid color backgrounds with text overlay
+                  </Text>
                   <div className={styles.providerDetails}>
                     <div
                       style={{
@@ -471,7 +510,7 @@ export const StyleSelection: FC<StyleSelectionProps> = ({
                       <Text size={200}>Always Available</Text>
                     </div>
                     <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                      Free • Solid color backgrounds with text - guaranteed fallback
+                      Free - guaranteed fallback
                     </Text>
                   </div>
                 </Card>
