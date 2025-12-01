@@ -153,6 +153,7 @@ export function GlobalLlmSelector() {
   const [isLoadingOllamaModels, setIsLoadingOllamaModels] = useState(false);
   const [savedOllamaModel, setSavedOllamaModel] = useState<string | null>(null);
   const [ollamaUrl, setOllamaUrl] = useState<string>(DEFAULT_OLLAMA_URL);
+  const [ollamaError, setOllamaError] = useState<string | null>(null);
 
   const selectedProvider = selection?.provider || '';
   const selectedModel = selection?.modelId || '';
@@ -211,33 +212,49 @@ export function GlobalLlmSelector() {
 
   // Fetch Ollama models from the local Ollama installation
   const fetchOllamaModels = useCallback(
-    async (url?: string) => {
+    async (url?: string): Promise<{ success: boolean; models: OllamaModel[]; error?: string }> => {
       setIsLoadingOllamaModels(true);
+      setOllamaError(null);
       try {
         const ollamaEndpointUrl = url || ollamaUrl;
         const response = await fetch(
           `/api/engines/ollama/models?url=${encodeURIComponent(ollamaEndpointUrl)}`
         );
+
+        const data = await response.json();
+
         if (response.ok) {
-          const data = await response.json();
           const models: OllamaModel[] = data.models || [];
           setOllamaModels(models);
           console.info('[GlobalLlmSelector] Fetched Ollama models:', models.length);
-          return models;
+
+          if (models.length === 0) {
+            const noModelsError =
+              'No Ollama models installed. Run "ollama pull <model-name>" to download a model.';
+            setOllamaError(noModelsError);
+            return { success: false, models: [], error: noModelsError };
+          }
+
+          return { success: true, models };
         } else {
-          console.warn(
-            '[GlobalLlmSelector] Failed to fetch Ollama models, status:',
-            response.status
-          );
+          // Parse error from response
+          const errorMessage =
+            data.error ||
+            `Ollama not reachable (status ${response.status}). Ensure Ollama is running.`;
+          console.warn('[GlobalLlmSelector] Failed to fetch Ollama models:', errorMessage);
           setOllamaModels([]);
+          setOllamaError(errorMessage);
+          return { success: false, models: [], error: errorMessage };
         }
       } catch (err) {
+        const errorMessage = 'Cannot connect to Ollama. Ensure Ollama is running on your system.';
         console.warn('[GlobalLlmSelector] Error fetching Ollama models:', err);
         setOllamaModels([]);
+        setOllamaError(errorMessage);
+        return { success: false, models: [], error: errorMessage };
       } finally {
         setIsLoadingOllamaModels(false);
       }
-      return [];
     },
     [ollamaUrl]
   );
@@ -451,15 +468,44 @@ export function GlobalLlmSelector() {
     }
   }, [selectedProvider, isInitialized, fetchOllamaModels]);
 
+  // Helper function to get the default Ollama model
+  const getDefaultOllamaModel = useCallback(
+    (models: OllamaModel[]): string => {
+      return savedOllamaModel || (models.length > 0 ? models[0].name : '');
+    },
+    [savedOllamaModel]
+  );
+
+  // Auto-select first Ollama model when models are loaded and no model is selected
+  useEffect(() => {
+    if (selectedProvider === 'Ollama' && ollamaModels.length > 0 && !selectedModel) {
+      const firstModel = getDefaultOllamaModel(ollamaModels);
+      if (firstModel) {
+        setSelection({ provider: 'Ollama', modelId: firstModel });
+        console.info('[GlobalLlmSelector] Auto-selected Ollama model:', firstModel);
+      }
+    }
+  }, [selectedProvider, ollamaModels, selectedModel, getDefaultOllamaModel, setSelection]);
+
   // Refresh models for a specific provider (force re-fetch from API)
   const refreshModels = useCallback(async () => {
     setIsRefreshing(true);
     setError(null);
+    setOllamaError(null);
 
     try {
       // If Ollama is selected, refresh Ollama models specifically
       if (selectedProvider === 'Ollama') {
-        await fetchOllamaModels();
+        const result = await fetchOllamaModels();
+        if (!result.success && result.error) {
+          setError(result.error);
+        } else if (result.models.length > 0) {
+          // Auto-select first model if none is selected
+          if (!selectedModel) {
+            const firstModel = getDefaultOllamaModel(result.models);
+            setSelection({ provider: 'Ollama', modelId: firstModel });
+          }
+        }
       } else {
         // First refresh the catalog from the provider
         await fetch('/api/models/llm/refresh', { method: 'POST' });
@@ -477,7 +523,15 @@ export function GlobalLlmSelector() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchModels, validateAndSyncSelection, selectedProvider, fetchOllamaModels]);
+  }, [
+    fetchModels,
+    validateAndSyncSelection,
+    selectedProvider,
+    fetchOllamaModels,
+    getDefaultOllamaModel,
+    selectedModel,
+    setSelection,
+  ]);
 
   // Get models for the selected provider
   const providerModels = useMemo(() => {
@@ -690,13 +744,13 @@ export function GlobalLlmSelector() {
               Loading Ollama models...
             </Option>
           )}
-          {/* No models message */}
+          {/* No models message - show specific error for Ollama */}
           {providerModels.length === 0 &&
             selectedProvider &&
             !(selectedProvider === 'Ollama' && isLoadingOllamaModels) && (
               <Option key="no-models" value="" disabled text="No models available">
                 {selectedProvider === 'Ollama'
-                  ? 'No models found - click refresh'
+                  ? ollamaError || 'No models found - click refresh'
                   : 'No models available'}
               </Option>
             )}
@@ -786,9 +840,9 @@ export function GlobalLlmSelector() {
         </Tooltip>
       </div>
 
-      {/* Error indicator with retry */}
-      {error && (
-        <Tooltip content={`${error}. Click to retry.`} relationship="description">
+      {/* Error indicator with retry - shows either general error or Ollama-specific error */}
+      {(error || (selectedProvider === 'Ollama' && ollamaError)) && (
+        <Tooltip content={`${error || ollamaError}. Click to retry.`} relationship="description">
           <div
             className={styles.errorIndicator}
             onClick={refreshModels}
