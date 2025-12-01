@@ -63,7 +63,7 @@ const useStyles = makeStyles({
 interface ResourceMetrics {
   cpu: number; // percentage
   memory: number; // percentage
-  gpu: number; // percentage
+  gpu: number | null; // percentage, or null if GPU monitoring unavailable
   diskIO: number; // MB/s
 }
 
@@ -123,7 +123,7 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
   const [metrics, setMetrics] = useState<ResourceMetrics>({
     cpu: 0,
     memory: 0,
-    gpu: 0,
+    gpu: null,
     diskIO: 0,
   });
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -156,7 +156,9 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
         setMetrics({
           cpu: Math.max(0, Math.min(100, systemMetrics.cpu.overallUsagePercent)),
           memory: Math.max(0, Math.min(100, systemMetrics.memory.usagePercent)),
-          gpu: systemMetrics.gpu ? Math.max(0, Math.min(100, systemMetrics.gpu.usagePercent)) : 0,
+          gpu: systemMetrics.gpu
+            ? Math.max(0, Math.min(100, systemMetrics.gpu.usagePercent))
+            : null,
           diskIO: Math.max(0, diskIO),
         });
       } catch (error) {
@@ -235,14 +237,17 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
             <Text size={200}>{metrics.memory.toFixed(0)}%</Text>
           </div>
         </Tooltip>
-        {metrics.gpu > 0 && (
-          <Tooltip content={`GPU: ${metrics.gpu.toFixed(0)}%`} relationship="label">
-            <div className={`${styles.resourceLabel} ${getUsageClass(metrics.gpu)}`}>
-              <HardDrive24Regular />
-              <Text size={200}>{metrics.gpu.toFixed(0)}%</Text>
-            </div>
-          </Tooltip>
-        )}
+        <Tooltip
+          content={metrics.gpu !== null ? `GPU: ${metrics.gpu.toFixed(0)}%` : 'GPU: Not available'}
+          relationship="label"
+        >
+          <div
+            className={`${styles.resourceLabel} ${metrics.gpu !== null && metrics.gpu > 0 ? getUsageClass(metrics.gpu) : ''}`}
+          >
+            <HardDrive24Regular />
+            <Text size={200}>{metrics.gpu !== null ? `${metrics.gpu.toFixed(0)}%` : 'N/A'}</Text>
+          </div>
+        </Tooltip>
       </div>
     );
   }
@@ -288,24 +293,32 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
       </div>
 
       {/* GPU Usage */}
-      {metrics.gpu > 0 && (
-        <div className={styles.resourceItem}>
-          <div className={styles.resourceHeader}>
-            <div className={styles.resourceLabel}>
-              <HardDrive24Regular />
-              <Text>GPU</Text>
-            </div>
-            <div className={styles.resourceValue}>
-              {metrics.gpu >= 75 && <Warning24Filled className={styles.warningIcon} />}
-              <Text className={getUsageClass(metrics.gpu)}>{metrics.gpu.toFixed(1)}%</Text>
-            </div>
+      <div className={styles.resourceItem}>
+        <div className={styles.resourceHeader}>
+          <div className={styles.resourceLabel}>
+            <HardDrive24Regular />
+            <Text>GPU</Text>
           </div>
-          <ProgressBar value={metrics.gpu / 100} color={getUsageColor(metrics.gpu)} />
-          {getSuggestion('gpu', metrics.gpu) && (
-            <Text className={styles.suggestion}>{getSuggestion('gpu', metrics.gpu)}</Text>
-          )}
+          <div className={styles.resourceValue}>
+            {metrics.gpu !== null && metrics.gpu >= 75 && (
+              <Warning24Filled className={styles.warningIcon} />
+            )}
+            <Text className={metrics.gpu !== null ? getUsageClass(metrics.gpu) : ''}>
+              {metrics.gpu !== null ? `${metrics.gpu.toFixed(1)}%` : 'N/A'}
+            </Text>
+          </div>
         </div>
-      )}
+        {metrics.gpu !== null ? (
+          <>
+            <ProgressBar value={metrics.gpu / 100} color={getUsageColor(metrics.gpu)} />
+            {getSuggestion('gpu', metrics.gpu) && (
+              <Text className={styles.suggestion}>{getSuggestion('gpu', metrics.gpu)}</Text>
+            )}
+          </>
+        ) : (
+          <Text className={styles.suggestion}>GPU monitoring is not available on this system</Text>
+        )}
+      </div>
 
       {/* Disk I/O */}
       <div className={styles.resourceItem}>
