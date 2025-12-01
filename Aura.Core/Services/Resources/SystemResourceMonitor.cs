@@ -28,6 +28,12 @@ public class SystemResourceMonitor
     private readonly object _metricsLock = new();
     private SystemResourceMetrics? _lastSystemMetrics;
     private ProcessMetrics? _lastProcessMetrics;
+    
+    // CPU tracking for Linux delta-based calculation
+    private DateTime _lastCpuUpdate = DateTime.MinValue;
+    private long _lastCpuTotal;
+    private long _lastCpuIdle;
+    private double _lastCpuUsagePercent;
 
     public SystemResourceMonitor(ILogger<SystemResourceMonitor> logger)
     {
@@ -184,10 +190,46 @@ public class SystemResourceMonitor
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                var output = ExecuteCommand("top", "-bn1 | grep 'Cpu(s)' | sed 's/.*, *\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1}'");
-                if (double.TryParse(output.Trim(), out var usage))
+                // Read only the first few lines from /proc/stat (more efficient than ReadAllLines)
+                var statLine = File.ReadLines("/proc/stat").FirstOrDefault(l => l.StartsWith("cpu ", StringComparison.Ordinal));
+                if (statLine != null)
                 {
-                    return usage;
+                    var parts = statLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length >= 5)
+                    {
+                        // cpu user nice system idle iowait irq softirq steal guest guest_nice
+                        var user = long.TryParse(parts[1], out var u) ? u : 0;
+                        var nice = long.TryParse(parts[2], out var n) ? n : 0;
+                        var system = long.TryParse(parts[3], out var s) ? s : 0;
+                        var idle = long.TryParse(parts[4], out var i) ? i : 0;
+                        var iowait = parts.Length > 5 && long.TryParse(parts[5], out var w) ? w : 0;
+                        var irq = parts.Length > 6 && long.TryParse(parts[6], out var q) ? q : 0;
+                        var softirq = parts.Length > 7 && long.TryParse(parts[7], out var sq) ? sq : 0;
+                        var steal = parts.Length > 8 && long.TryParse(parts[8], out var st) ? st : 0;
+                        
+                        var totalIdle = idle + iowait;
+                        var total = user + nice + system + idle + iowait + irq + softirq + steal;
+                        
+                        // Calculate CPU usage based on delta since last reading
+                        if (_lastCpuUpdate != DateTime.MinValue && _lastCpuTotal > 0)
+                        {
+                            var deltaTotal = total - _lastCpuTotal;
+                            var deltaIdle = totalIdle - _lastCpuIdle;
+                            
+                            if (deltaTotal > 0)
+                            {
+                                _lastCpuUsagePercent = ((double)(deltaTotal - deltaIdle) / deltaTotal) * 100.0;
+                                _lastCpuUsagePercent = Math.Max(0, Math.Min(100, _lastCpuUsagePercent));
+                            }
+                        }
+                        
+                        // Store current values for next calculation
+                        _lastCpuTotal = total;
+                        _lastCpuIdle = totalIdle;
+                        _lastCpuUpdate = DateTime.UtcNow;
+                        
+                        return _lastCpuUsagePercent;
+                    }
                 }
             }
         }
@@ -196,7 +238,7 @@ public class SystemResourceMonitor
             _logger.LogDebug(ex, "Failed to get CPU usage on non-Windows platform");
         }
 
-        return 0.0;
+        return _lastCpuUsagePercent;
     }
 
     private MemoryMetrics CollectMemoryMetrics()

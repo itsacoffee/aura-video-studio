@@ -363,7 +363,7 @@ public class VideoOrchestrator
 
             // Create task executor that maps generation tasks to providers
             _logger.LogInformation("[Orchestrator] Creating task executor for generation tasks");
-            var executorContext = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo);
+            var executorContext = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo, progress, detailedProgress, correlationId);
             var taskExecutor = executorContext.Executor;
 
             // Map progress events from orchestration to both string and detailed progress
@@ -1372,7 +1372,10 @@ public class VideoOrchestrator
         VoiceSpec voiceSpec,
         RenderSpec renderSpec,
         CancellationToken outerCt,
-        bool isQuickDemo = false)
+        bool isQuickDemo = false,
+        IProgress<string>? progress = null,
+        IProgress<GenerationProgress>? detailedProgress = null,
+        string? correlationId = null)
     {
         var state = new TaskExecutorState();
         // Shared state for task results
@@ -1591,6 +1594,12 @@ public class VideoOrchestrator
                         throw new InvalidOperationException("Script and audio must be generated before composition");
                     }
 
+                    // Report progress BEFORE starting render - this ensures frontend sees the transition
+                    var renderStartMsg = "Starting video composition and rendering...";
+                    _logger.LogInformation("[Stage Transition] {Message}", renderStartMsg);
+                    progress?.Report(renderStartMsg);
+                    detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(0, renderStartMsg, correlationId: correlationId));
+
                     // Explicit logging at stage transition (70% mark) - helps diagnose hangs
                     _logger.LogInformation(
                         "[Stage Transition] Starting video composition at 70%% mark. " +
@@ -1614,7 +1623,14 @@ public class VideoOrchestrator
                     );
                     state.Timeline = timeline;
 
-                    // Track render progress with explicit logging at Information level
+                    // Report timeline creation progress
+                    var timelineCreatedMsg = "Timeline created, preparing FFmpeg render...";
+                    _logger.LogInformation("[Render Prep] {Message}", timelineCreatedMsg);
+                    progress?.Report(timelineCreatedMsg);
+                    detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(10, timelineCreatedMsg, correlationId: correlationId));
+
+                    // Track render progress with explicit logging and report to main progress
+                    var renderStartTime = DateTime.UtcNow;
                     var lastProgressTime = DateTime.UtcNow;
                     var lastProgressPercent = 0f;
                     var renderProgress = new Progress<RenderProgress>(p =>
@@ -1626,6 +1642,16 @@ public class VideoOrchestrator
                         _logger.LogInformation(
                             "[Render Progress] {Percentage:F1}% - Stage: {Stage}, Elapsed: {Elapsed}, Remaining: {Remaining}",
                             p.Percentage, p.CurrentStage, p.Elapsed, p.Remaining);
+
+                        // Report to main progress reporters so frontend sees updates
+                        var renderProgressMsg = $"Rendering: {p.Percentage:F1}% - {p.CurrentStage}";
+                        progress?.Report(renderProgressMsg);
+                        detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(
+                            p.Percentage, 
+                            p.CurrentStage, 
+                            elapsed: now - renderStartTime,
+                            remaining: p.Remaining,
+                            correlationId: correlationId));
 
                         // Detect potential stalls
                         if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
@@ -1642,10 +1668,14 @@ public class VideoOrchestrator
                     });
 
                     _logger.LogInformation("[Render Start] Beginning FFmpeg render operation");
+                    progress?.Report("Executing FFmpeg render...");
 
                     var outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
 
                     _logger.LogInformation("[Render Complete] Video rendered successfully to: {Path}", outputPath);
+                    progress?.Report("Video rendering complete");
+                    detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(100, "Video rendering complete", correlationId: correlationId));
+
                     return outputPath;
 
                 default:

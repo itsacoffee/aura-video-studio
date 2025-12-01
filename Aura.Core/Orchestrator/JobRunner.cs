@@ -1101,7 +1101,8 @@ public partial class JobRunner
             percent = 65;
             formattedMessage = "Generating visual assets";
         }
-        else if (message.Contains("Video composition", StringComparison.OrdinalIgnoreCase) ||
+        else if (message.Contains("Starting video composition", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Video composition", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("Executing: Video composition", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("Building timeline", StringComparison.OrdinalIgnoreCase) ||
                  message.Contains("Stage 4/5", StringComparison.OrdinalIgnoreCase))
@@ -1110,6 +1111,33 @@ public partial class JobRunner
             stage = "Rendering";
             percent = 80;
             formattedMessage = "Preparing video composition";
+        }
+        else if (message.Contains("Timeline created", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("preparing FFmpeg", StringComparison.OrdinalIgnoreCase))
+        {
+            // Timeline has been created, about to start FFmpeg
+            stage = "Rendering";
+            percent = 81;
+            formattedMessage = "Timeline ready, preparing FFmpeg render";
+        }
+        else if (message.Contains("Executing FFmpeg", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Initializing video render", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Starting video encoding", StringComparison.OrdinalIgnoreCase))
+        {
+            // FFmpeg is about to start
+            stage = "Rendering";
+            percent = 82;
+            formattedMessage = "FFmpeg render starting...";
+        }
+        else if (message.Contains("Validating FFmpeg", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Validating audio", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Building FFmpeg command", StringComparison.OrdinalIgnoreCase) ||
+                 message.Contains("Locating FFmpeg", StringComparison.OrdinalIgnoreCase))
+        {
+            // FFmpeg validation/preparation steps
+            stage = "Rendering";
+            percent = 81;
+            formattedMessage = message;
         }
         else if (message.Contains("Completed: Video composition", StringComparison.OrdinalIgnoreCase))
         {
