@@ -201,8 +201,10 @@ public class SystemResourceMonitor
             var elapsedTime = (DateTime.UtcNow - _currentProcess.StartTime).TotalMilliseconds;
             if (elapsedTime > 0 && metrics.LogicalCores > 0)
             {
-                metrics.ProcessUsagePercent = (totalTime / (elapsedTime * metrics.LogicalCores)) * 100.0;
-                metrics.ProcessUsagePercent = Math.Min(100.0, Math.Max(0.0, metrics.ProcessUsagePercent));
+                metrics.ProcessUsagePercent = Math.Clamp(
+                    (totalTime / (elapsedTime * metrics.LogicalCores)) * 100.0, 
+                    0.0, 
+                    100.0);
             }
             
             // Update last known good value
@@ -348,14 +350,29 @@ public class SystemResourceMonitor
 
         try
         {
-            var perCoreUsage = new List<double>();
+            // Prime all counters first
+            foreach (var counter in _perCoreCounters.Values)
+            {
+                try
+                {
+                    counter.NextValue();
+                }
+                catch
+                {
+                    // Ignore priming failures
+                }
+            }
             
+            // Single delay for all counters (instead of per-core delay)
+            await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+            
+            // Read values from all counters
+            var perCoreUsage = new List<double>();
             foreach (var counter in _perCoreCounters.Values)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    await Task.Delay(10, cancellationToken).ConfigureAwait(false);
                     var value = counter.NextValue();
                     perCoreUsage.Add(Math.Max(0, Math.Min(100, value)));
                 }
