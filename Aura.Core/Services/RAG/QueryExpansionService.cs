@@ -152,7 +152,7 @@ Return ONLY a JSON array of strings, no explanation:
 
         // Add individual significant words
         phrases.AddRange(words
-            .Select(w => w.Trim(',', '.', '!', '?'))
+            .Select(w => w.Trim(',', '.', '!', '?', '"', '\''))
             .Where(w => w.Length > 5)
             .Take(3));
 
