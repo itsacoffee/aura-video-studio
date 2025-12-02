@@ -175,25 +175,24 @@ export function GlobalLlmSelector() {
   }, []);
 
   // Fetch the global LLM selection from the backend
+  // Backend selection takes priority over stale localStorage data on initialization
   const fetchGlobalLlmSelection = useCallback(async () => {
     try {
       const response = await fetch('/api/settings/llm/selection');
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.provider) {
-          // Only update if we don't already have a valid selection in the store
-          const currentSelection = useGlobalLlmStore.getState().selection;
-          if (!currentSelection?.provider || !currentSelection?.modelId) {
-            setSelection({
-              provider: data.provider,
-              modelId: data.modelId || '',
-            });
-            console.info(
-              '[GlobalLlmSelector] Loaded global LLM selection from backend:',
-              data.provider,
-              data.modelId
-            );
-          }
+          // Always update store with backend selection - backend is source of truth
+          // This ensures fresh builds reflect the actual configured model, not stale localStorage
+          setSelection({
+            provider: data.provider,
+            modelId: data.modelId || '',
+          });
+          console.info(
+            '[GlobalLlmSelector] Loaded global LLM selection from backend:',
+            data.provider,
+            data.modelId
+          );
           return { provider: data.provider, modelId: data.modelId };
         }
       }
@@ -461,7 +460,7 @@ export function GlobalLlmSelector() {
         // Fetch Ollama URL first
         const url = await fetchOllamaUrl();
 
-        // Fetch global LLM selection from backend (if Zustand store is empty)
+        // Fetch global LLM selection from backend - backend is source of truth
         await fetchGlobalLlmSelection();
 
         // Fetch saved Ollama model setting
@@ -579,10 +578,19 @@ export function GlobalLlmSelector() {
         if (!result.success && result.error) {
           setError(result.error);
         } else if (result.models.length > 0) {
-          // Auto-select first model if none is selected
-          if (!selectedModel) {
+          // Check if currently selected model exists in the refreshed list
+          const modelExists = result.models.some((m) => m.name === selectedModel);
+          if (!selectedModel || !modelExists) {
+            // Auto-select first model if none selected or current model doesn't exist
             const firstModel = getDefaultOllamaModel(result.models);
-            setSelection({ provider: 'Ollama', modelId: firstModel });
+            if (firstModel) {
+              setSelection({ provider: 'Ollama', modelId: firstModel });
+              saveOllamaModel(firstModel);
+              console.info(
+                '[GlobalLlmSelector] Auto-selected Ollama model after refresh:',
+                firstModel
+              );
+            }
           }
         }
       } else {
@@ -610,6 +618,7 @@ export function GlobalLlmSelector() {
     getDefaultOllamaModel,
     selectedModel,
     setSelection,
+    saveOllamaModel,
   ]);
 
   // Get models for the selected provider
