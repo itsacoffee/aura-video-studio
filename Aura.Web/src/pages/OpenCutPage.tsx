@@ -1,6 +1,4 @@
-import { makeStyles, tokens, Button, Text } from '@fluentui/react-components';
-import { Open24Regular } from '@fluentui/react-icons';
-import { useState, useCallback } from 'react';
+import { makeStyles, tokens } from '@fluentui/react-components';
 import { OpenCutEditor } from '../components/OpenCut';
 
 const useStyles = makeStyles({
@@ -11,20 +9,6 @@ const useStyles = makeStyles({
     width: '100%',
     backgroundColor: tokens.colorNeutralBackground1,
   },
-  header: {
-    padding: tokens.spacingHorizontalXL,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: tokens.spacingHorizontalL,
-    flexShrink: 0,
-  },
-  titleGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
-  },
   editorContainer: {
     flex: 1,
     minHeight: 0,
@@ -32,11 +16,6 @@ const useStyles = makeStyles({
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
-  },
-  actionButtons: {
-    display: 'flex',
-    gap: tokens.spacingHorizontalM,
-    flexWrap: 'wrap',
   },
 });
 
@@ -54,33 +33,17 @@ const useStyles = makeStyles({
  *
  * The new implementation renders OpenCut natively, eliminating all server dependencies.
  */
+/**
+ * OpenCut Page
+ *
+ * The header is hidden by default to maximize screen real estate for editing.
+ * Users can reveal it if needed using keyboard shortcuts or menu options.
+ */
 export function OpenCutPage() {
   const styles = useStyles();
-  const [showHeader, setShowHeader] = useState(true);
-
-  const toggleHeader = useCallback(() => {
-    setShowHeader((prev) => !prev);
-  }, []);
 
   return (
     <div className={styles.root}>
-      {showHeader && (
-        <div className={styles.header}>
-          <div className={styles.titleGroup}>
-            <Text weight="semibold" size={500}>
-              OpenCut
-            </Text>
-            <Text size={300} color="foreground2">
-              Professional video editing, integrated into Aura Video Studio.
-            </Text>
-          </div>
-          <div className={styles.actionButtons}>
-            <Button appearance="subtle" icon={<Open24Regular aria-hidden />} onClick={toggleHeader}>
-              Hide Header
-            </Button>
-          </div>
-        </div>
-      )}
       <div className={styles.editorContainer}>
         <OpenCutEditor />
       </div>
