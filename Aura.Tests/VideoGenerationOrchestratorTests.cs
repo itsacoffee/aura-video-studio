@@ -406,4 +406,135 @@ public class VideoGenerationOrchestratorTests
         // Slow visual tasks should be timed out, but orchestration should still succeed
         Assert.True(result.Succeeded, "Orchestration should succeed even with timed-out visual tasks");
     }
+
+    [Fact]
+    public async Task OrchestrateGenerationAsync_WithCustomTimeoutOptions_ShouldUseConfiguredTimeouts()
+    {
+        // Arrange
+        var monitor = new ResourceMonitor(_monitorLogger);
+        var selector = new StrategySelector(_selectorLogger);
+        
+        // Create custom options with short timeouts for testing
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            TaskTimeout = TimeSpan.FromSeconds(30),
+            BatchTimeout = TimeSpan.FromMinutes(1),
+            StuckDetectionThresholdSeconds = 15,
+            EnableTaskRecovery = true,
+            MaxTaskRetries = 1,
+            MaxConcurrency = 2
+        };
+        
+        var orchestrator = new VideoGenerationOrchestrator(_orchestratorLogger, monitor, selector, options);
+
+        var brief = new Brief("Test Video", null, null, "Professional", "English", Aspect.Widescreen16x9);
+        var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");
+        var systemProfile = new SystemProfile
+        {
+            Tier = HardwareTier.B,
+            LogicalCores = 4,
+            PhysicalCores = 2,
+            RamGB = 8,
+            OfflineOnly = false
+        };
+
+        Func<GenerationNode, CancellationToken, Task<object>> mockExecutor = async (node, ct) =>
+        {
+            await Task.Delay(10, ct).ConfigureAwait(false);
+            return $"Result_{node.TaskId}";
+        };
+
+        // Act
+        var result = await orchestrator.OrchestrateGenerationAsync(
+            brief,
+            planSpec,
+            systemProfile,
+            mockExecutor,
+            null,
+            CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Succeeded);
+        Assert.True(result.TotalTasks > 0);
+    }
+
+    [Fact]
+    public void OrchestratorOptions_Validate_ShouldThrowForInvalidTaskTimeout()
+    {
+        // Arrange
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            TaskTimeout = TimeSpan.Zero
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => options.Validate());
+    }
+
+    [Fact]
+    public void OrchestratorOptions_Validate_ShouldThrowForInvalidBatchTimeout()
+    {
+        // Arrange
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            BatchTimeout = TimeSpan.Zero
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => options.Validate());
+    }
+
+    [Fact]
+    public void OrchestratorOptions_Validate_ShouldThrowWhenTaskTimeoutExceedsBatchTimeout()
+    {
+        // Arrange
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            TaskTimeout = TimeSpan.FromMinutes(10),
+            BatchTimeout = TimeSpan.FromMinutes(5)
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => options.Validate());
+    }
+
+    [Fact]
+    public void OrchestratorOptions_Validate_ShouldThrowForInvalidStuckDetectionThreshold()
+    {
+        // Arrange
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            StuckDetectionThresholdSeconds = 0
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => options.Validate());
+    }
+
+    [Fact]
+    public void OrchestratorOptions_CreateQuickDemo_ShouldHaveReducedTimeouts()
+    {
+        // Arrange & Act
+        var options = Aura.Core.Orchestrator.OrchestratorOptions.CreateQuickDemo();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(2), options.TaskTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(5), options.BatchTimeout);
+        Assert.Equal(30, options.StuckDetectionThresholdSeconds);
+        Assert.True(options.EnableTaskRecovery);
+        Assert.Equal(1, options.MaxTaskRetries);
+    }
+
+    [Fact]
+    public void OrchestratorOptions_CreateDebug_ShouldHaveExtendedTimeouts()
+    {
+        // Arrange & Act
+        var options = Aura.Core.Orchestrator.OrchestratorOptions.CreateDebug();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(15), options.TaskTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(45), options.BatchTimeout);
+        Assert.Equal(120, options.StuckDetectionThresholdSeconds);
+    }
 }

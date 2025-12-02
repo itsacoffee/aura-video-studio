@@ -777,12 +777,12 @@ export const FinalExport: FC<FinalExportProps> = ({
             const maxConsecutiveErrors = 5;
 
             // Stuck job detection: track if progress/stage hasn't changed
-            // Reduced thresholds from PR fix for stuck export pipeline
+            // Reduced threshold to 60 seconds for faster stuck detection
             let lastProgress = -1;
             let lastStage = '';
             let stuckStartTime: number | null = null;
-            const STUCK_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes (reduced from 5)
-            const STUCK_CHECK_INTERVAL = 10; // Check every 10 polls (10 seconds, reduced from 30)
+            const STUCK_THRESHOLD_MS = 60 * 1000; // 60 seconds for faster stuck detection
+            const STUCK_CHECK_INTERVAL = 5; // Check every 5 polls (5 seconds) for more responsive detection
 
             while (!jobCompleted && pollAttempts < maxPollAttempts) {
               await new Promise((res) => setTimeout(res, 1000));
@@ -860,7 +860,7 @@ export const FinalExport: FC<FinalExportProps> = ({
 
                         // If truly stuck without output, throw error
                         throw new Error(
-                          `Video generation appears stuck at ${currentStage} stage (${jobProgress}% complete for over 2 minutes). ` +
+                          `Video generation appears stuck at ${currentStage} stage (${jobProgress}% complete for over 60 seconds). ` +
                             'The job may have encountered an issue. Please try again or check the logs.'
                         );
                       }

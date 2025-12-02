@@ -44,6 +44,16 @@ public partial class JobRunner
     private readonly Dictionary<string, Guid> _jobProjectIds = new();
     private readonly Services.ProgressAggregatorService? _progressAggregator;
     private readonly Services.CancellationOrchestrator? _cancellationOrchestrator;
+    
+    // Stuck job detection: tracks last progress update for each job
+    private readonly Dictionary<string, JobProgressTracking> _jobProgressTracking = new();
+    private readonly object _trackingLock = new();
+    
+    /// <summary>
+    /// Default threshold in seconds after which a job is considered stuck if no progress is made.
+    /// Can be configured via OrchestratorOptions.StuckDetectionThresholdSeconds.
+    /// </summary>
+    private const int DefaultStuckThresholdSeconds = 60;
 
     public event EventHandler<JobProgressEventArgs>? JobProgress;
 
@@ -151,6 +161,39 @@ public partial class JobRunner
         }
 
         return _artifactManager.LoadJob(jobId);
+    }
+    
+    /// <summary>
+    /// Checks if a job appears to be stuck (no progress for a specified threshold).
+    /// Can be used by SSE streaming or monitoring to detect and warn about stalled jobs.
+    /// </summary>
+    /// <param name="jobId">The ID of the job to check</param>
+    /// <param name="thresholdSeconds">Number of seconds without progress to consider stuck (default: 60)</param>
+    /// <returns>A tuple of (isStuck, stuckDuration, lastPercent, lastStage)</returns>
+    public (bool IsStuck, TimeSpan StuckDuration, int LastPercent, string? LastStage) CheckJobStuckStatus(
+        string jobId, 
+        int thresholdSeconds = DefaultStuckThresholdSeconds)
+    {
+        var (isStuck, stuckDuration) = CheckIfJobIsStuck(jobId, thresholdSeconds);
+        
+        lock (_trackingLock)
+        {
+            if (_jobProgressTracking.TryGetValue(jobId, out var tracking))
+            {
+                // Emit warning for stuck job (only once until progress resumes)
+                if (isStuck && !tracking.StuckWarningEmitted)
+                {
+                    _logger.LogWarning(
+                        "Job {JobId} appears stuck: no progress for {Duration:F1}s at {Stage} ({Percent}%)",
+                        jobId, stuckDuration.TotalSeconds, tracking.LastStage ?? "Unknown", tracking.LastPercent);
+                    MarkStuckWarningEmitted(jobId);
+                }
+                
+                return (isStuck, stuckDuration, tracking.LastPercent, tracking.LastStage);
+            }
+        }
+        
+        return (false, TimeSpan.Zero, 0, null);
     }
 
     /// <summary>
@@ -395,6 +438,9 @@ public partial class JobRunner
 
                 // Record progress for ETA calculation
                 _progressEstimator.RecordProgress(jobId, percent, DateTime.UtcNow);
+                
+                // Update stuck task detection tracking
+                UpdateProgressTracking(jobId, percent, stage);
 
                 // Update peak memory tracking
                 _memoryMonitor?.UpdatePeakMemory(jobId);
@@ -422,6 +468,9 @@ public partial class JobRunner
 
                 // Update job with detailed progress
                 job = UpdateJobWithProgress(job, generationProgress);
+                
+                // Update stuck task detection tracking
+                UpdateProgressTracking(jobId, (int)Math.Round(generationProgress.OverallPercent), generationProgress.Stage);
 
                 // Raise event for SSE streaming
                 JobProgress?.Invoke(this, new JobProgressEventArgs
@@ -712,6 +761,9 @@ public partial class JobRunner
                 cts.Dispose();
                 _jobCancellationTokens.Remove(jobId);
             }
+            
+            // Clean up progress tracking for stuck detection
+            CleanupProgressTracking(jobId);
         }
     }
 
@@ -1248,4 +1300,87 @@ public partial class JobRunner
 
         return (stage, percent, formattedMessage);
     }
+    
+    /// <summary>
+    /// Updates stuck task detection tracking when progress is made.
+    /// Called by progress handlers to track when tasks make progress.
+    /// </summary>
+    private void UpdateProgressTracking(string jobId, int percent, string stage)
+    {
+        lock (_trackingLock)
+        {
+            if (!_jobProgressTracking.TryGetValue(jobId, out var tracking))
+            {
+                tracking = new JobProgressTracking(percent, stage, DateTime.UtcNow, false);
+                _jobProgressTracking[jobId] = tracking;
+                return;
+            }
+            
+            // Only update if progress or stage has changed
+            if (tracking.LastPercent != percent || tracking.LastStage != stage)
+            {
+                _jobProgressTracking[jobId] = tracking with
+                {
+                    LastPercent = percent,
+                    LastStage = stage,
+                    LastProgressTime = DateTime.UtcNow,
+                    StuckWarningEmitted = false
+                };
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Checks if a job is stuck based on time since last progress.
+    /// Returns true if stuck, along with the duration stuck.
+    /// </summary>
+    private (bool IsStuck, TimeSpan StuckDuration) CheckIfJobIsStuck(string jobId, int thresholdSeconds = DefaultStuckThresholdSeconds)
+    {
+        lock (_trackingLock)
+        {
+            if (!_jobProgressTracking.TryGetValue(jobId, out var tracking))
+            {
+                return (false, TimeSpan.Zero);
+            }
+            
+            var stuckDuration = DateTime.UtcNow - tracking.LastProgressTime;
+            var isStuck = stuckDuration.TotalSeconds >= thresholdSeconds;
+            
+            return (isStuck, stuckDuration);
+        }
+    }
+    
+    /// <summary>
+    /// Marks that a stuck warning has been emitted for a job to avoid duplicate warnings.
+    /// </summary>
+    private void MarkStuckWarningEmitted(string jobId)
+    {
+        lock (_trackingLock)
+        {
+            if (_jobProgressTracking.TryGetValue(jobId, out var tracking))
+            {
+                _jobProgressTracking[jobId] = tracking with { StuckWarningEmitted = true };
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Cleans up progress tracking for a completed job.
+    /// </summary>
+    private void CleanupProgressTracking(string jobId)
+    {
+        lock (_trackingLock)
+        {
+            _jobProgressTracking.Remove(jobId);
+        }
+    }
 }
+
+/// <summary>
+/// Tracks progress for stuck task detection.
+/// </summary>
+internal sealed record JobProgressTracking(
+    int LastPercent,
+    string? LastStage,
+    DateTime LastProgressTime,
+    bool StuckWarningEmitted);

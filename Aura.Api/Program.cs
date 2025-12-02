@@ -1376,9 +1376,55 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.CompositionStage>();
 builder.Services.AddSingleton(sp =>
 {
     var env = sp.GetRequiredService<IWebHostEnvironment>();
-    return env.IsDevelopment()
+    var config = sp.GetRequiredService<IConfiguration>();
+    
+    // Start with environment-appropriate defaults
+    var options = env.IsDevelopment()
         ? Aura.Core.Orchestrator.OrchestratorOptions.CreateDebug()
         : Aura.Core.Orchestrator.OrchestratorOptions.CreateDefault();
+    
+    // Override with configuration values if present
+    var orchestrationSection = config.GetSection("Orchestration");
+    if (orchestrationSection.Exists())
+    {
+        var taskTimeoutMinutes = orchestrationSection.GetValue<double?>("TaskTimeoutMinutes");
+        if (taskTimeoutMinutes.HasValue)
+        {
+            options.TaskTimeout = TimeSpan.FromMinutes(taskTimeoutMinutes.Value);
+        }
+        
+        var batchTimeoutMinutes = orchestrationSection.GetValue<double?>("BatchTimeoutMinutes");
+        if (batchTimeoutMinutes.HasValue)
+        {
+            options.BatchTimeout = TimeSpan.FromMinutes(batchTimeoutMinutes.Value);
+        }
+        
+        var stuckThreshold = orchestrationSection.GetValue<int?>("StuckDetectionThresholdSeconds");
+        if (stuckThreshold.HasValue)
+        {
+            options.StuckDetectionThresholdSeconds = stuckThreshold.Value;
+        }
+        
+        var enableRecovery = orchestrationSection.GetValue<bool?>("EnableTaskRecovery");
+        if (enableRecovery.HasValue)
+        {
+            options.EnableTaskRecovery = enableRecovery.Value;
+        }
+        
+        var maxRetries = orchestrationSection.GetValue<int?>("MaxTaskRetries");
+        if (maxRetries.HasValue)
+        {
+            options.MaxTaskRetries = maxRetries.Value;
+        }
+        
+        var maxConcurrency = orchestrationSection.GetValue<int?>("MaxConcurrency");
+        if (maxConcurrency.HasValue)
+        {
+            options.MaxConcurrency = maxConcurrency.Value;
+        }
+    }
+    
+    return options;
 });
 
 // Register AI pacing and rhythm optimization services
