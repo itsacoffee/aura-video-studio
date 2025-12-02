@@ -25,7 +25,7 @@ public class IdeationService
 {
     private readonly ILogger<IdeationService> _logger;
     private readonly ILlmProvider _llmProvider;
-    private readonly LlmStageAdapter? _stageAdapter;
+    private readonly LlmStageAdapter _stageAdapter;
     private readonly ProjectContextManager _projectManager;
     private readonly ConversationContextManager _conversationManager;
     private readonly TrendingTopicsService _trendingTopicsService;
@@ -43,7 +43,7 @@ public class IdeationService
         ProjectContextManager projectManager,
         ConversationContextManager conversationManager,
         TrendingTopicsService trendingTopicsService,
-        LlmStageAdapter? stageAdapter = null,
+        LlmStageAdapter stageAdapter,
         RagContextBuilder? ragContextBuilder = null,
         WebSearchService? webSearchService = null)
     {
@@ -52,7 +52,7 @@ public class IdeationService
         _projectManager = projectManager;
         _conversationManager = conversationManager;
         _trendingTopicsService = trendingTopicsService;
-        _stageAdapter = stageAdapter;
+        _stageAdapter = stageAdapter ?? throw new ArgumentNullException(nameof(stageAdapter));
         _ragContextBuilder = ragContextBuilder;
         _webSearchService = webSearchService;
     }
@@ -345,37 +345,24 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
                     // Use LlmStageAdapter for unified orchestration (same path as script generation)
                     // This ensures proper provider selection, fallback logic, and timeout configuration
-                    if (_stageAdapter != null)
-                    {
-                        _logger.LogInformation("Using LlmStageAdapter for ideation (unified orchestration path)");
-                        var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
-                            currentSystemPrompt,
-                            currentUserPrompt,
-                            "Free", // Use Free tier for ideation (works with Ollama)
-                            false,  // Allow online providers
-                            ideationParams,
-                            ct).ConfigureAwait(false);
+                    _logger.LogInformation("Using LlmStageAdapter for ideation (unified orchestration path)");
+                    var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                        currentSystemPrompt,
+                        currentUserPrompt,
+                        "Free", // Use Free tier for ideation (works with Ollama)
+                        false,  // Allow online providers
+                        ideationParams,
+                        ct).ConfigureAwait(false);
 
-                        if (!orchestrationResult.IsSuccess)
-                        {
-                            throw new InvalidOperationException(
-                                orchestrationResult.ErrorMessage ?? "LLM orchestration failed for ideation");
-                        }
-
-                        jsonResponse = orchestrationResult.Data;
-                        _logger.LogInformation("Successfully generated ideation response via LlmStageAdapter (Provider: {Provider})",
-                            orchestrationResult.ProviderUsed ?? "Unknown");
-                    }
-                    else
+                    if (!orchestrationResult.IsSuccess)
                     {
-                        // Fallback to direct provider call if stage adapter is not available
-                        _logger.LogWarning("LlmStageAdapter not available, falling back to direct provider call");
-                        jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
-                            currentSystemPrompt,
-                            currentUserPrompt,
-                            ideationParams,
-                            ct).ConfigureAwait(false);
+                        throw new InvalidOperationException(
+                            orchestrationResult.ErrorMessage ?? "LLM orchestration failed for ideation");
                     }
+
+                    jsonResponse = orchestrationResult.Data;
+                    _logger.LogInformation("Successfully generated ideation response via LlmStageAdapter (Provider: {Provider})",
+                        orchestrationResult.ProviderUsed ?? "Unknown");
 
                     var callDuration = DateTime.UtcNow - callStartTime;
 
@@ -3564,33 +3551,24 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
             // Use LlmStageAdapter for unified orchestration (same path as script generation)
             // This ensures proper provider selection, fallback logic, and timeout configuration
-            if (_stageAdapter != null)
-            {
-                _logger.LogDebug("Using LlmStageAdapter for ideation LLM call");
-                var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
-                    string.Empty, // No system prompt for raw completion style
-                    prompt,
-                    "Free", // Use Free tier for ideation (works with Ollama)
-                    false,  // Allow online providers
-                    llmParams,
-                    ct).ConfigureAwait(false);
+            _logger.LogDebug("Using LlmStageAdapter for ideation LLM call");
+            var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                string.Empty, // No system prompt for raw completion style
+                prompt,
+                "Free", // Use Free tier for ideation (works with Ollama)
+                false,  // Allow online providers
+                llmParams,
+                ct).ConfigureAwait(false);
 
-                if (!orchestrationResult.IsSuccess)
-                {
-                    throw new InvalidOperationException(
-                        orchestrationResult.ErrorMessage ?? "LLM orchestration failed for ideation");
-                }
-
-                response = orchestrationResult.Data ?? string.Empty;
-                _logger.LogInformation("Ideation LLM call completed via LlmStageAdapter (Provider: {Provider})",
-                    orchestrationResult.ProviderUsed ?? "Unknown");
-            }
-            else
+            if (!orchestrationResult.IsSuccess)
             {
-                // Fallback to direct provider call if stage adapter is not available
-                _logger.LogWarning("LlmStageAdapter not available, falling back to direct CompleteAsync");
-                response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
+                throw new InvalidOperationException(
+                    orchestrationResult.ErrorMessage ?? "LLM orchestration failed for ideation");
             }
+
+            response = orchestrationResult.Data ?? string.Empty;
+            _logger.LogInformation("Ideation LLM call completed via LlmStageAdapter (Provider: {Provider})",
+                orchestrationResult.ProviderUsed ?? "Unknown");
 
             var duration = DateTime.UtcNow - startTime;
             _logger.LogDebug("LLM call completed in {Duration}ms", duration.TotalMilliseconds);

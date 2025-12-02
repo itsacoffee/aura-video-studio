@@ -907,7 +907,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>
     var llmProvider = sp.GetRequiredService<ILlmProvider>();
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var cache = sp.GetRequiredService<IMemoryCache>();
-    var stageAdapter = sp.GetService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
     var webSearchService = sp.GetService<Aura.Core.Services.Ideation.WebSearchService>();
     return new Aura.Core.Services.Ideation.TrendingTopicsService(logger, llmProvider, httpClientFactory, cache, stageAdapter, webSearchService);
 });
@@ -919,7 +919,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>(sp =>
     var projectManager = sp.GetRequiredService<Aura.Core.Services.Conversation.ProjectContextManager>();
     var conversationManager = sp.GetRequiredService<Aura.Core.Services.Conversation.ConversationContextManager>();
     var trendingTopicsService = sp.GetRequiredService<Aura.Core.Services.Ideation.TrendingTopicsService>();
-    var stageAdapter = sp.GetService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
     var ragContextBuilder = sp.GetService<Aura.Core.Services.RAG.RagContextBuilder>();
     var webSearchService = sp.GetService<Aura.Core.Services.Ideation.WebSearchService>();
     return new Aura.Core.Services.Ideation.IdeationService(logger, llmProvider, projectManager, conversationManager, trendingTopicsService, stageAdapter, ragContextBuilder, webSearchService);
