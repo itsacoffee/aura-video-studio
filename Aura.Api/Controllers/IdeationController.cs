@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models.Ideation;
@@ -13,11 +14,17 @@ namespace Aura.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class IdeationController : ControllerBase
+public partial class IdeationController : ControllerBase
 {
     private readonly ILogger<IdeationController> _logger;
     private readonly IdeationService _ideationService;
     private readonly Aura.Core.Services.RAG.VectorIndex? _vectorIndex;
+
+    /// <summary>
+    /// Regex to extract quoted model names from error messages
+    /// </summary>
+    [GeneratedRegex(@"'([^']+)'", RegexOptions.None)]
+    private static partial Regex ModelNameRegex();
 
     public IdeationController(
         ILogger<IdeationController> logger,
@@ -124,6 +131,7 @@ public class IdeationController : ControllerBase
             // Provide detailed error message to help user diagnose
             var errorMessage = invOpEx.Message;
             var suggestions = new List<string>();
+            string? errorCode = null;
 
             // Add Ollama-specific error handling
             if (errorMessage.Contains("Ollama", StringComparison.OrdinalIgnoreCase) ||
@@ -132,12 +140,14 @@ public class IdeationController : ControllerBase
             {
                 if (errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
                 {
+                    errorCode = "OLLAMA_CONNECTION_ERROR";
                     suggestions.Add("Ensure Ollama is running: Open a terminal and run 'ollama serve'");
                     suggestions.Add("Verify Ollama is installed: Visit https://ollama.com to download");
                     suggestions.Add("Check Ollama base URL in Settings (default: http://localhost:11434)");
                 }
                 else if (errorMessage.Contains("No models are installed", StringComparison.OrdinalIgnoreCase))
                 {
+                    errorCode = "OLLAMA_NO_MODELS";
                     suggestions.Add("Install a model: Run 'ollama pull llama3.1' or 'ollama pull qwen2.5' in terminal");
                     suggestions.Add("List installed models: Run 'ollama list' to verify models are available");
                     suggestions.Add("Popular models: llama3.1, qwen2.5, mistral, gemma2");
@@ -146,18 +156,25 @@ public class IdeationController : ControllerBase
                          (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
                           errorMessage.Contains("not installed", StringComparison.OrdinalIgnoreCase)))
                 {
-                    suggestions.Add("Install the requested model: Run 'ollama pull <model-name>' in terminal");
+                    errorCode = "MODEL_NOT_FOUND";
+                    // Extract model name from error message if possible
+                    var modelMatch = ModelNameRegex().Match(errorMessage);
+                    var modelName = modelMatch.Success ? modelMatch.Groups[1].Value : request?.LlmModel ?? "<model-name>";
+                    
+                    suggestions.Add($"Install the requested model: Run 'ollama pull {modelName}' in terminal");
+                    suggestions.Add("Select a different model from the AI Model dropdown in the toolbar");
                     suggestions.Add("List available models: Run 'ollama list' to see installed models");
-                    suggestions.Add("Check model name in Settings matches an installed model");
                 }
                 else if (errorMessage.Contains("Cannot determine", StringComparison.OrdinalIgnoreCase))
                 {
+                    errorCode = "OLLAMA_NO_MODEL_SELECTED";
+                    suggestions.Add("Select a model from the AI Model dropdown in the toolbar");
                     suggestions.Add("Install a model in Ollama: Run 'ollama pull llama3.1' in terminal");
                     suggestions.Add("Or configure a model in Settings > Providers > Ollama");
-                    suggestions.Add("Or select a model from the AI Model dropdown in the Ideation page");
                 }
                 else
                 {
+                    errorCode = "OLLAMA_ERROR";
                     suggestions.Add("Check Ollama service status: Run 'ollama list' to verify it's working");
                     suggestions.Add("Restart Ollama service if needed");
                     suggestions.Add("Verify GPU drivers are installed for GPU acceleration (optional)");
@@ -209,6 +226,7 @@ public class IdeationController : ControllerBase
 
             return StatusCode(500, new {
                 error = errorMessage,
+                errorCode,
                 correlationId,
                 suggestions = suggestions.ToArray()
             });

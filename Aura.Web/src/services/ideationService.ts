@@ -284,11 +284,40 @@ export const ideationService = {
         // Try to get error details from response
         let errorMessage = 'Failed to brainstorm concepts';
         let suggestions: string[] = [];
+        let errorCode: string | undefined;
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
+          errorCode = errorData.errorCode;
           if (errorData.suggestions && Array.isArray(errorData.suggestions)) {
             suggestions = errorData.suggestions;
+          }
+
+          // Parse model-not-found errors specifically
+          const errorMessageLower = errorMessage.toLowerCase();
+          if (
+            errorMessageLower.includes('model') &&
+            (errorMessageLower.includes('not found') || errorMessageLower.includes('not installed'))
+          ) {
+            // Extract model name from error message if possible (matches 'name' or "name")
+            const modelMatch = errorMessage.match(/['"]([^'"]+)['"]/);
+            const modelName = modelMatch ? modelMatch[1] : request.llmModel || 'the selected model';
+
+            // Create a more user-friendly error message
+            errorMessage = `The model '${modelName}' is not installed. Please run \`ollama pull ${modelName}\` to install it, or select a different model from the toolbar.`;
+
+            // Add Ollama-specific suggestions if not already present
+            const hasOllamaPullSuggestion = suggestions.some((s) =>
+              s.toLowerCase().includes('ollama pull')
+            );
+            if (!hasOllamaPullSuggestion) {
+              suggestions = [
+                `Install the model: Run \`ollama pull ${modelName}\` in your terminal`,
+                'Select a different model from the AI Model dropdown in the toolbar',
+                'List installed models: Run `ollama list` in your terminal',
+                ...suggestions,
+              ];
+            }
           }
         } catch {
           // If response isn't JSON, use status text
@@ -298,15 +327,18 @@ export const ideationService = {
           status: response.status,
           statusText: response.statusText,
           errorMessage,
+          errorCode,
           suggestions,
         });
 
-        // Create error with suggestions attached
+        // Create error with suggestions and error code attached
         const error = new Error(errorMessage) as Error & {
-          response?: { data?: { suggestions?: string[] } };
+          response?: { data?: { suggestions?: string[]; errorCode?: string } };
+          errorCode?: string;
         };
-        if (suggestions.length > 0) {
-          error.response = { data: { suggestions } };
+        error.errorCode = errorCode;
+        if (suggestions.length > 0 || errorCode) {
+          error.response = { data: { suggestions, errorCode } };
         }
         throw error;
       }
