@@ -67,6 +67,7 @@ let ipcHandlers = {
   startupLogs: null,
   contextMenu: null,
   file: null,
+  graphics: null,
 };
 
 let isQuitting = false;

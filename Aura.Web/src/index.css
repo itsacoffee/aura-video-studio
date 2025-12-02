@@ -5,6 +5,7 @@
 @import url('./styles/elevation.css');
 @import url('./styles/adaptive-properties.css');
 @import url('./styles/graphics-variables.css');
+@import url('./styles/mica-support.css');
 
 @tailwind base;
 @tailwind components;
