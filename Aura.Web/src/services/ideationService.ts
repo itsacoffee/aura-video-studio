@@ -294,20 +294,23 @@ export const ideationService = {
           }
 
           // Parse model-not-found errors specifically
+          const errorMessageLower = errorMessage.toLowerCase();
           if (
-            errorMessage.toLowerCase().includes('model') &&
-            (errorMessage.toLowerCase().includes('not found') ||
-              errorMessage.toLowerCase().includes('not installed'))
+            errorMessageLower.includes('model') &&
+            (errorMessageLower.includes('not found') || errorMessageLower.includes('not installed'))
           ) {
-            // Extract model name from error message if possible
-            const modelMatch = errorMessage.match(/['"']([^'"]+)['"']/);
+            // Extract model name from error message if possible (matches 'name' or "name")
+            const modelMatch = errorMessage.match(/['"]([^'"]+)['"]/);
             const modelName = modelMatch ? modelMatch[1] : request.llmModel || 'the selected model';
 
             // Create a more user-friendly error message
             errorMessage = `The model '${modelName}' is not installed. Please run \`ollama pull ${modelName}\` to install it, or select a different model from the toolbar.`;
 
             // Add Ollama-specific suggestions if not already present
-            if (!suggestions.some((s) => s.toLowerCase().includes('ollama pull'))) {
+            const hasOllamaPullSuggestion = suggestions.some((s) =>
+              s.toLowerCase().includes('ollama pull')
+            );
+            if (!hasOllamaPullSuggestion) {
               suggestions = [
                 `Install the model: Run \`ollama pull ${modelName}\` in your terminal`,
                 'Select a different model from the AI Model dropdown in the toolbar',

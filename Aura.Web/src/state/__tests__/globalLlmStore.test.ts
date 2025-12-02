@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGlobalLlmStore } from '../globalLlmStore';
+import type { ModelValidationStatus } from '../globalLlmStore';
 
 // Mock localStorage
 const localStorageMock = (() => {
@@ -31,6 +32,14 @@ const localStorageMock = (() => {
 
 Object.defineProperty(global, 'localStorage', { value: localStorageMock });
 
+// Default validation status
+const DEFAULT_MODEL_VALIDATION: ModelValidationStatus = {
+  isValidated: false,
+  isValid: true,
+  errorMessage: undefined,
+  lastValidatedAt: undefined,
+};
+
 describe('useGlobalLlmStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -38,6 +47,7 @@ describe('useGlobalLlmStore', () => {
     // Reset store to initial state
     useGlobalLlmStore.setState({
       selection: null,
+      modelValidation: DEFAULT_MODEL_VALIDATION,
     });
   });
 
@@ -45,6 +55,13 @@ describe('useGlobalLlmStore', () => {
     it('should initialize with null selection', () => {
       const state = useGlobalLlmStore.getState();
       expect(state.selection).toBeNull();
+    });
+
+    it('should initialize with default model validation', () => {
+      const state = useGlobalLlmStore.getState();
+      expect(state.modelValidation).toEqual(DEFAULT_MODEL_VALIDATION);
+      expect(state.modelValidation.isValidated).toBe(false);
+      expect(state.modelValidation.isValid).toBe(true);
     });
   });
 
@@ -62,6 +79,33 @@ describe('useGlobalLlmStore', () => {
         provider: 'Ollama',
         modelId: 'deepseek-r1:1.5b',
       });
+    });
+
+    it('should reset model validation when selection changes', () => {
+      const { setSelection, setModelValidation } = useGlobalLlmStore.getState();
+
+      // Set initial selection and mark as validated
+      setSelection({
+        provider: 'Ollama',
+        modelId: 'qwen3:4b',
+      });
+      setModelValidation({
+        isValidated: true,
+        isValid: false,
+        errorMessage: 'Model not found',
+        lastValidatedAt: Date.now(),
+      });
+
+      // Change selection - validation should reset
+      setSelection({
+        provider: 'Ollama',
+        modelId: 'deepseek-r1:1.5b',
+      });
+
+      const state = useGlobalLlmStore.getState();
+      expect(state.modelValidation.isValidated).toBe(false);
+      expect(state.modelValidation.isValid).toBe(true);
+      expect(state.modelValidation.errorMessage).toBeUndefined();
     });
 
     it('should overwrite existing selection', () => {
@@ -132,6 +176,82 @@ describe('useGlobalLlmStore', () => {
 
       const state = useGlobalLlmStore.getState();
       expect(state.selection).toBeNull();
+    });
+
+    it('should reset model validation when clearing', () => {
+      const { setSelection, setModelValidation, clearSelection } = useGlobalLlmStore.getState();
+
+      setSelection({
+        provider: 'Ollama',
+        modelId: 'qwen3:4b',
+      });
+      setModelValidation({
+        isValidated: true,
+        isValid: false,
+        errorMessage: 'Model not found',
+        lastValidatedAt: Date.now(),
+      });
+
+      clearSelection();
+
+      const state = useGlobalLlmStore.getState();
+      expect(state.modelValidation).toEqual(DEFAULT_MODEL_VALIDATION);
+    });
+  });
+
+  describe('setModelValidation', () => {
+    it('should update model validation status', () => {
+      const { setModelValidation } = useGlobalLlmStore.getState();
+      const now = Date.now();
+
+      setModelValidation({
+        isValidated: true,
+        isValid: false,
+        errorMessage: "Model 'qwen3:4b' is not installed",
+        lastValidatedAt: now,
+      });
+
+      const state = useGlobalLlmStore.getState();
+      expect(state.modelValidation.isValidated).toBe(true);
+      expect(state.modelValidation.isValid).toBe(false);
+      expect(state.modelValidation.errorMessage).toBe("Model 'qwen3:4b' is not installed");
+      expect(state.modelValidation.lastValidatedAt).toBe(now);
+    });
+
+    it('should mark model as valid when it exists', () => {
+      const { setModelValidation } = useGlobalLlmStore.getState();
+
+      setModelValidation({
+        isValidated: true,
+        isValid: true,
+        errorMessage: undefined,
+        lastValidatedAt: Date.now(),
+      });
+
+      const state = useGlobalLlmStore.getState();
+      expect(state.modelValidation.isValidated).toBe(true);
+      expect(state.modelValidation.isValid).toBe(true);
+      expect(state.modelValidation.errorMessage).toBeUndefined();
+    });
+  });
+
+  describe('resetModelValidation', () => {
+    it('should reset validation to default state', () => {
+      const { setModelValidation, resetModelValidation } = useGlobalLlmStore.getState();
+
+      // Set validation state
+      setModelValidation({
+        isValidated: true,
+        isValid: false,
+        errorMessage: 'Model not found',
+        lastValidatedAt: Date.now(),
+      });
+
+      // Reset
+      resetModelValidation();
+
+      const state = useGlobalLlmStore.getState();
+      expect(state.modelValidation).toEqual(DEFAULT_MODEL_VALIDATION);
     });
   });
 

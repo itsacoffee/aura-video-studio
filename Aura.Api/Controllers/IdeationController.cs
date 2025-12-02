@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models.Ideation;
@@ -13,11 +14,17 @@ namespace Aura.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class IdeationController : ControllerBase
+public partial class IdeationController : ControllerBase
 {
     private readonly ILogger<IdeationController> _logger;
     private readonly IdeationService _ideationService;
     private readonly Aura.Core.Services.RAG.VectorIndex? _vectorIndex;
+
+    /// <summary>
+    /// Regex to extract quoted model names from error messages
+    /// </summary>
+    [GeneratedRegex(@"'([^']+)'", RegexOptions.None)]
+    private static partial Regex ModelNameRegex();
 
     public IdeationController(
         ILogger<IdeationController> logger,
@@ -151,7 +158,7 @@ public class IdeationController : ControllerBase
                 {
                     errorCode = "MODEL_NOT_FOUND";
                     // Extract model name from error message if possible
-                    var modelMatch = System.Text.RegularExpressions.Regex.Match(errorMessage, @"'([^']+)'");
+                    var modelMatch = ModelNameRegex().Match(errorMessage);
                     var modelName = modelMatch.Success ? modelMatch.Groups[1].Value : request?.LlmModel ?? "<model-name>";
                     
                     suggestions.Add($"Install the requested model: Run 'ollama pull {modelName}' in terminal");

@@ -27,6 +27,7 @@ import {
   BrainCircuit20Regular,
   ArrowSync20Regular,
   ErrorCircle20Regular,
+  Warning20Regular,
 } from '@fluentui/react-icons';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useGlobalLlmStore } from '../../state/globalLlmStore';
@@ -1003,8 +1004,8 @@ export function GlobalLlmSelector() {
               }
               relationship="label"
             >
-              <Badge appearance="filled" color="danger" size="medium">
-                ⚠️ Model not found
+              <Badge appearance="filled" color="danger" size="medium" icon={<Warning20Regular />}>
+                Model not found
               </Badge>
             </Tooltip>
           )}
