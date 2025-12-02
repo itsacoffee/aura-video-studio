@@ -181,10 +181,10 @@ export const useOpenCutMediaStore = create<OpenCutMediaStore>((set, get) => ({
     const { mediaFiles, selectedMediaId } = get();
     const mediaFile = mediaFiles.find((m) => m.id === id);
 
-    if (mediaFile?.url) {
+    if (mediaFile?.url?.startsWith('blob:')) {
       URL.revokeObjectURL(mediaFile.url);
     }
-    if (mediaFile?.thumbnailUrl) {
+    if (mediaFile?.thumbnailUrl?.startsWith('blob:')) {
       URL.revokeObjectURL(mediaFile.thumbnailUrl);
     }
 
@@ -201,8 +201,8 @@ export const useOpenCutMediaStore = create<OpenCutMediaStore>((set, get) => ({
   clearAllMedia: () => {
     const { mediaFiles } = get();
     mediaFiles.forEach((file) => {
-      if (file.url) URL.revokeObjectURL(file.url);
-      if (file.thumbnailUrl) URL.revokeObjectURL(file.thumbnailUrl);
+      if (file.url?.startsWith('blob:')) URL.revokeObjectURL(file.url);
+      if (file.thumbnailUrl?.startsWith('blob:')) URL.revokeObjectURL(file.thumbnailUrl);
     });
     set({ mediaFiles: [], selectedMediaId: null });
   },

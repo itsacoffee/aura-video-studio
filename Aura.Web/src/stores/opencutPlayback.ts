@@ -160,7 +160,7 @@ export const useOpenCutPlaybackStore = create<OpenCutPlaybackStore>((set, get) =
 
   unmute: () => {
     const { previousVolume } = get();
-    set({ muted: false, volume: previousVolume ?? 1 });
+    set({ muted: false, volume: previousVolume || 1 });
   },
 
   toggleMute: () => {

@@ -416,7 +416,10 @@ export function OpenCutEditor() {
               <Button
                 appearance="subtle"
                 icon={<Previous24Regular />}
-                onClick={() => playbackStore.skipBackward(1 / 30)}
+                onClick={() => {
+                  const fps = projectStore.activeProject?.fps || 30;
+                  playbackStore.skipBackward(1 / fps);
+                }}
               />
             </Tooltip>
 
@@ -432,7 +435,10 @@ export function OpenCutEditor() {
               <Button
                 appearance="subtle"
                 icon={<Next24Regular />}
-                onClick={() => playbackStore.skipForward(1 / 30)}
+                onClick={() => {
+                  const fps = projectStore.activeProject?.fps || 30;
+                  playbackStore.skipForward(1 / fps);
+                }}
               />
             </Tooltip>
 
@@ -543,7 +549,7 @@ export function OpenCutEditor() {
             <div
               className={styles.playhead}
               style={{
-                left: `${100 + (playbackStore.currentTime / playbackStore.duration) * 80}%`,
+                left: `${100 + (playbackStore.duration > 0 ? (playbackStore.currentTime / playbackStore.duration) * 80 : 0)}%`,
               }}
             >
               <div className={styles.playheadHandle} />
