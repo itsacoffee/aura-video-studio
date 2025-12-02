@@ -84,6 +84,98 @@ export interface ProjectMetadata {
 }
 
 /**
+ * UI/Workspace state that should persist with the project
+ */
+export interface WorkspaceState {
+  /** Current active page/route (e.g., '/editor', '/create', '/projects') */
+  activePage: string;
+
+  /** Sub-page or tab within the active page */
+  activeTab?: string;
+
+  /** Timeline viewport state */
+  timeline: {
+    /** Horizontal zoom level (pixels per second) */
+    zoomLevel: number;
+    /** Scroll position */
+    scrollPosition: { x: number; y: number };
+    /** Track heights (if customizable) */
+    trackHeights?: Record<string, number>;
+  };
+
+  /** Currently selected element IDs */
+  selection: {
+    clipIds: string[];
+    trackIds: string[];
+    mediaIds: string[];
+  };
+
+  /** Panel/layout configuration */
+  panels: {
+    /** Which panels are open */
+    openPanels: string[];
+    /** Panel sizes/positions if using resizable layout */
+    panelSizes?: Record<string, { width?: number; height?: number }>;
+    /** Collapsed state of panels */
+    collapsedPanels: string[];
+  };
+
+  /** Preview/player state */
+  preview: {
+    /** Current playhead position in seconds */
+    playheadPosition: number;
+    /** Whether preview was playing when saved */
+    wasPlaying: boolean;
+    /** Preview quality setting */
+    quality: 'draft' | 'half' | 'full';
+  };
+
+  /** Media library state */
+  mediaLibrary: {
+    /** Current view mode */
+    viewMode: 'grid' | 'list';
+    /** Sort order */
+    sortBy: string;
+    sortDirection: 'asc' | 'desc';
+    /** Current folder path */
+    currentFolder?: string;
+    /** Search/filter state */
+    searchQuery?: string;
+    activeFilters?: string[];
+  };
+}
+
+/**
+ * Default workspace state for new projects
+ */
+export const DEFAULT_WORKSPACE_STATE: WorkspaceState = {
+  activePage: '/',
+  timeline: {
+    zoomLevel: 100,
+    scrollPosition: { x: 0, y: 0 },
+  },
+  selection: {
+    clipIds: [],
+    trackIds: [],
+    mediaIds: [],
+  },
+  panels: {
+    openPanels: ['media-library', 'properties', 'timeline'],
+    collapsedPanels: [],
+  },
+  preview: {
+    playheadPosition: 0,
+    wasPlaying: false,
+    quality: 'half',
+  },
+  mediaLibrary: {
+    viewMode: 'grid',
+    sortBy: 'name',
+    sortDirection: 'asc',
+  },
+};
+
+/**
  * Complete project file format
  */
 export interface ProjectFile {
@@ -94,6 +186,8 @@ export interface ProjectFile {
   clips: ProjectClip[];
   mediaLibrary: ProjectMediaItem[];
   playerPosition?: number;
+  /** Complete workspace state for session restoration */
+  workspace?: WorkspaceState;
 }
 
 /**
