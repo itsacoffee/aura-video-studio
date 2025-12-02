@@ -1822,6 +1822,42 @@ public record BudgetOptimizationResponse(
     string QualityImpact,
     bool WithinBudget);
 
+/// <summary>
+/// Request to estimate cost for video generation
+/// </summary>
+public record GenerationCostEstimateRequestDto(
+    int EstimatedScriptLength,
+    int SceneCount,
+    string LlmProvider,
+    string LlmModel,
+    string TtsProvider,
+    string? ImageProvider);
+
+/// <summary>
+/// Individual cost breakdown item
+/// </summary>
+public record CostBreakdownItemDto(
+    string Name,
+    string Provider,
+    decimal Cost,
+    bool IsFree,
+    int Units,
+    string UnitType);
+
+/// <summary>
+/// Complete cost estimate for video generation
+/// </summary>
+public record GenerationCostEstimateDto(
+    decimal LlmCost,
+    decimal TtsCost,
+    decimal ImageCost,
+    decimal TotalCost,
+    string Currency,
+    List<CostBreakdownItemDto> Breakdown,
+    bool IsFreeGeneration,
+    string Confidence,
+    BudgetCheckDto? BudgetCheck);
+
 // ===== ML Training and Annotation DTOs =====
 
 /// <summary>

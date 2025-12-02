@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Aura.Core.Models.CostTracking;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Configuration;
@@ -140,6 +141,230 @@ public class LlmPricingConfiguration
             .SelectMany(p => p.Models.Keys)
             .OrderBy(m => m)
             .ToList();
+    }
+
+    /// <summary>
+    /// Estimate the total cost for a video generation based on providers and content
+    /// </summary>
+    /// <param name="estimatedScriptLength">Script length in characters</param>
+    /// <param name="sceneCount">Number of scenes to generate</param>
+    /// <param name="llmProvider">LLM provider name (e.g., "OpenAI", "Ollama")</param>
+    /// <param name="llmModel">LLM model name (e.g., "gpt-4o-mini")</param>
+    /// <param name="ttsProvider">TTS provider name (e.g., "ElevenLabs", "Piper")</param>
+    /// <param name="imageProvider">Image provider name (optional)</param>
+    /// <returns>Complete cost estimate with breakdown</returns>
+    public GenerationCostEstimate EstimateGenerationCost(
+        int estimatedScriptLength,
+        int sceneCount,
+        string llmProvider,
+        string llmModel,
+        string ttsProvider,
+        string? imageProvider)
+    {
+        var breakdown = new List<CostBreakdownItem>();
+        var confidence = CostEstimateConfidence.High;
+
+        // Estimate tokens from script length (rough estimate: 4 chars per token)
+        var estimatedInputTokens = Math.Max(100, estimatedScriptLength / 4);
+        var estimatedOutputTokens = estimatedInputTokens * 2; // Output typically larger for script generation
+
+        // Calculate LLM cost
+        var llmCost = CalculateLlmCost(llmProvider, llmModel, estimatedInputTokens, estimatedOutputTokens, breakdown, ref confidence);
+
+        // Calculate TTS cost (characters to be spoken)
+        var ttsCost = CalculateTtsCost(ttsProvider, estimatedScriptLength, breakdown, ref confidence);
+
+        // Calculate image cost
+        var imageCost = CalculateImageCost(imageProvider, sceneCount, breakdown, ref confidence);
+
+        var totalCost = llmCost + ttsCost + imageCost;
+        var isFreeGeneration = totalCost == 0;
+
+        return new GenerationCostEstimate
+        {
+            LlmCost = llmCost,
+            TtsCost = ttsCost,
+            ImageCost = imageCost,
+            TotalCost = totalCost,
+            Currency = "USD",
+            Breakdown = breakdown,
+            IsFreeGeneration = isFreeGeneration,
+            Confidence = confidence
+        };
+    }
+
+    private decimal CalculateLlmCost(
+        string provider,
+        string model,
+        int inputTokens,
+        int outputTokens,
+        List<CostBreakdownItem> breakdown,
+        ref CostEstimateConfidence confidence)
+    {
+        var normalizedProvider = provider.ToLowerInvariant().Trim();
+
+        // Check for free/local providers
+        if (IsFreeProvider(normalizedProvider))
+        {
+            breakdown.Add(new CostBreakdownItem
+            {
+                Name = "Script Generation",
+                Provider = provider,
+                Cost = 0,
+                IsFree = true,
+                Units = inputTokens + outputTokens,
+                UnitType = "tokens"
+            });
+            return 0;
+        }
+
+        // Get model pricing
+        var modelPricing = GetModelPricing(model);
+        if (modelPricing == null)
+        {
+            // Use fallback pricing
+            modelPricing = FallbackModel;
+            confidence = CostEstimateConfidence.Medium;
+        }
+
+        // Prices in llm-pricing.json are per 1M tokens
+        var inputCost = (inputTokens / 1_000_000m) * modelPricing.InputPrice;
+        var outputCost = (outputTokens / 1_000_000m) * modelPricing.OutputPrice;
+        var totalLlmCost = inputCost + outputCost;
+
+        breakdown.Add(new CostBreakdownItem
+        {
+            Name = "Script Generation",
+            Provider = $"{provider} ({model})",
+            Cost = totalLlmCost,
+            IsFree = false,
+            Units = inputTokens + outputTokens,
+            UnitType = "tokens"
+        });
+
+        return totalLlmCost;
+    }
+
+    private static decimal CalculateTtsCost(
+        string provider,
+        int characterCount,
+        List<CostBreakdownItem> breakdown,
+        ref CostEstimateConfidence confidence)
+    {
+        var normalizedProvider = provider.ToLowerInvariant().Trim();
+
+        // TTS pricing (per 1K characters)
+        var ttsPricing = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["elevenlabs"] = 0.30m,
+            ["playht"] = 0.20m,
+            ["azure"] = 0.016m,
+            ["google"] = 0.016m,
+            ["aws"] = 0.004m,
+            ["amazon"] = 0.004m,
+            // Free providers
+            ["windows"] = 0,
+            ["sapi"] = 0,
+            ["piper"] = 0,
+            ["mimic3"] = 0,
+            ["null"] = 0
+        };
+
+        if (!ttsPricing.TryGetValue(normalizedProvider, out var costPer1KChars))
+        {
+            // Unknown provider - assume it's free (local) but lower confidence
+            costPer1KChars = 0;
+            confidence = CostEstimateConfidence.Medium;
+        }
+
+        var isFree = costPer1KChars == 0;
+        var cost = isFree ? 0 : (characterCount / 1000m) * costPer1KChars;
+
+        breakdown.Add(new CostBreakdownItem
+        {
+            Name = "Text-to-Speech",
+            Provider = provider,
+            Cost = cost,
+            IsFree = isFree,
+            Units = characterCount,
+            UnitType = "characters"
+        });
+
+        return cost;
+    }
+
+    private static decimal CalculateImageCost(
+        string? provider,
+        int imageCount,
+        List<CostBreakdownItem> breakdown,
+        ref CostEstimateConfidence confidence)
+    {
+        if (string.IsNullOrEmpty(provider))
+        {
+            return 0;
+        }
+
+        var normalizedProvider = provider.ToLowerInvariant().Trim();
+
+        // Image pricing (per image)
+        var imagePricing = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["dalle"] = 0.02m,
+            ["dall-e"] = 0.02m,
+            ["dall-e-3"] = 0.04m,
+            ["dalle-3"] = 0.04m,
+            ["midjourney"] = 0.04m,
+            ["stability"] = 0.01m,
+            ["stabilityai"] = 0.01m,
+            ["replicate"] = 0.01m,
+            // Free providers
+            ["stablediffusion"] = 0,
+            ["stable-diffusion"] = 0,
+            ["comfyui"] = 0,
+            ["stock"] = 0,
+            ["pexels"] = 0,
+            ["pixabay"] = 0,
+            ["unsplash"] = 0,
+            ["placeholder"] = 0
+        };
+
+        if (!imagePricing.TryGetValue(normalizedProvider, out var costPerImage))
+        {
+            // Unknown provider - assume it's free (local)
+            costPerImage = 0;
+            confidence = CostEstimateConfidence.Medium;
+        }
+
+        var isFree = costPerImage == 0;
+        var cost = isFree ? 0 : imageCount * costPerImage;
+
+        if (imageCount > 0)
+        {
+            breakdown.Add(new CostBreakdownItem
+            {
+                Name = "Image Generation",
+                Provider = provider,
+                Cost = cost,
+                IsFree = isFree,
+                Units = imageCount,
+                UnitType = "images"
+            });
+        }
+
+        return cost;
+    }
+
+    private static bool IsFreeProvider(string provider)
+    {
+        var freeProviders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "ollama",
+            "local",
+            "rulebased",
+            "rule-based"
+        };
+
+        return freeProviders.Contains(provider);
     }
 
     /// <summary>
