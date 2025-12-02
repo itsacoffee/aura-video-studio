@@ -708,7 +708,7 @@ public class JobsController : ControllerBase
                             stage = job.Stage,
                             percent = job.Percent,
                             errors = new[] { stallError },
-                            errorMessage = $"Job stalled at {job.Stage} stage with no progress for over {stallFailureThresholdSeconds / 60} minutes",
+                            errorMessage = $"Job stalled at {job.Stage} stage with no progress for over {stallFailureThresholdSeconds / 60.0:F0} minutes",
                             stallDurationSeconds = (int)timeSinceLastProgress,
                             correlationId
                         }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);

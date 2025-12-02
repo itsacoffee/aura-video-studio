@@ -1803,12 +1803,20 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
     /// Determines stage from batch progress message.
     /// Only transitions to PostProcess when ALL batch tasks are complete.
     /// </summary>
+    /// <param name="stageMessage">The original stage message (currently unused, reserved for future parsing)</param>
+    /// <param name="currentItem">Number of completed tasks</param>
+    /// <param name="totalItems">Total number of tasks</param>
+    /// <param name="progressPercent">Overall progress percentage</param>
+    /// <returns>The appropriate stage name</returns>
     private static string DetermineStageFromBatchProgress(
         string stageMessage,
         int currentItem,
         int totalItems,
         double progressPercent)
     {
+        // stageMessage is kept for potential future use (e.g., extracting task type from message)
+        _ = stageMessage;
+        
         // If we have valid task counts and all tasks are complete, allow PostProcess
         if (totalItems > 0 && currentItem >= totalItems)
         {

@@ -1206,6 +1206,8 @@ public partial class JobRunner
                     if (stage == "PostProcess")
                     {
                         // Determine appropriate stage based on progress
+                        // Note: This mapping mirrors VideoOrchestrator.DetermineStageFromProgress
+                        // to maintain consistency. If changing thresholds, update both locations.
                         stage = percent switch
                         {
                             < 20 => "Script",
