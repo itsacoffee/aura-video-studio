@@ -56,7 +56,7 @@ public class TrendingTopicsService
     {
         _logger = logger;
         _llmProvider = llmProvider;
-        _stageAdapter = stageAdapter ?? throw new ArgumentNullException(nameof(stageAdapter));
+        _stageAdapter = stageAdapter;
         _httpClientFactory = httpClientFactory;
         _cache = cache;
         _webSearchService = webSearchService;

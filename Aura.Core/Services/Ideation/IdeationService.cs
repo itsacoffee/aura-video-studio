@@ -52,7 +52,7 @@ public class IdeationService
         _projectManager = projectManager;
         _conversationManager = conversationManager;
         _trendingTopicsService = trendingTopicsService;
-        _stageAdapter = stageAdapter ?? throw new ArgumentNullException(nameof(stageAdapter));
+        _stageAdapter = stageAdapter;
         _ragContextBuilder = ragContextBuilder;
         _webSearchService = webSearchService;
     }

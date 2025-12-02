@@ -52,7 +52,7 @@ public class LocalizationController : ControllerBase
     {
         _logger = logger;
         _llmProvider = llmProvider;
-        _stageAdapter = stageAdapter ?? throw new ArgumentNullException(nameof(stageAdapter));
+        _stageAdapter = stageAdapter;
         _loggerFactory = loggerFactory;
         
         // Load timeout configuration with defaults

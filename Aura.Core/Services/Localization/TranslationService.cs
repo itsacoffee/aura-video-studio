@@ -38,7 +38,7 @@ public class TranslationService
     {
         _logger = logger;
         _llmProvider = llmProvider;
-        _stageAdapter = stageAdapter ?? throw new ArgumentNullException(nameof(stageAdapter));
+        _stageAdapter = stageAdapter;
         _culturalEngine = new CulturalLocalizationEngine(logger, llmProvider);
         _qualityValidator = new TranslationQualityValidator(logger, llmProvider);
         _timingAdjuster = new TimingAdjuster(logger);
