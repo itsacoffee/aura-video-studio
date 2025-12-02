@@ -1070,7 +1070,6 @@ NEXT_TELEMETRY_DISABLED=1
         Show-Warning "OpenCut source directory not found at $openCutAppDir. Skipping OpenCut bundle."
         Set-Location $ScriptDir
     }
-    } # End of SKIP_OPENCUT_SERVER_BUILD block
 }
 else {
     Show-Warning "Skipping frontend build"
