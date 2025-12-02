@@ -12,7 +12,12 @@ import {
   MessageBarBody,
   MessageBarTitle,
 } from '@fluentui/react-components';
-import { SparkleRegular, SendRegular, WarningRegular } from '@fluentui/react-icons';
+import {
+  SparkleRegular,
+  SendRegular,
+  WarningRegular,
+  ErrorCircleRegular,
+} from '@fluentui/react-icons';
 import React, { useState, useMemo } from 'react';
 import { useGlobalLlmStore } from '../../state/globalLlmStore';
 
@@ -141,7 +146,7 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
   onIdeaCountChange,
 }) => {
   const styles = useStyles();
-  const { selection: globalLlmSelection } = useGlobalLlmStore();
+  const { selection: globalLlmSelection, modelValidation } = useGlobalLlmStore();
   const [topic, setTopic] = useState('');
   const [audience, setAudience] = useState('');
   const [tone, setTone] = useState('');
@@ -160,6 +165,26 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
   const noProviderSelected = useMemo(() => {
     return !globalLlmSelection?.provider || globalLlmSelection.provider.trim() === '';
   }, [globalLlmSelection]);
+
+  // Check if the selected model is invalid (validated but not found)
+  const isModelInvalid = useMemo(() => {
+    // Only consider invalid if validation has been performed
+    if (!modelValidation.isValidated) return false;
+    return !modelValidation.isValid;
+  }, [modelValidation]);
+
+  // Determine if generation should be disabled
+  const isGenerationDisabled = useMemo(() => {
+    return loading || !topic.trim() || isOllamaWithoutModel || isModelInvalid;
+  }, [loading, topic, isOllamaWithoutModel, isModelInvalid]);
+
+  // Get tooltip for disabled button
+  const disabledTooltip = useMemo(() => {
+    if (!topic.trim()) return 'Enter a topic to generate concepts';
+    if (isOllamaWithoutModel) return 'Please select an Ollama model from the toolbar';
+    if (isModelInvalid) return modelValidation.errorMessage || 'Selected model is not available';
+    return '';
+  }, [topic, isOllamaWithoutModel, isModelInvalid, modelValidation.errorMessage]);
 
   const handleBrainstorm = () => {
     if (!topic.trim()) {
@@ -301,6 +326,16 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
         </MessageBar>
       )}
 
+      {/* Error when selected model is not available */}
+      {isModelInvalid && modelValidation.errorMessage && (
+        <MessageBar intent="error" className={styles.warningBar} icon={<ErrorCircleRegular />}>
+          <MessageBarBody>
+            <MessageBarTitle>Model not available</MessageBarTitle>
+            {modelValidation.errorMessage}
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
       {/* Info when no provider is selected - will use auto-detection */}
       {noProviderSelected && !loading && (
         <MessageBar intent="info" className={styles.warningBar}>
@@ -317,8 +352,9 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
           appearance="primary"
           icon={<SendRegular />}
           onClick={handleBrainstorm}
-          disabled={loading || !topic.trim()}
+          disabled={isGenerationDisabled}
           size="large"
+          title={disabledTooltip}
         >
           Generate Concepts
         </Button>

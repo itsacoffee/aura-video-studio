@@ -30,6 +30,7 @@ import {
 } from '@fluentui/react-icons';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useGlobalLlmStore } from '../../state/globalLlmStore';
+import type { ModelValidationStatus } from '../../state/globalLlmStore';
 import type { LlmModelInfo } from '../ModelSelection/LlmModelSelector';
 import type { OllamaModel } from '../../types/api-v1';
 
@@ -139,7 +140,7 @@ const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434';
 
 export function GlobalLlmSelector() {
   const styles = useStyles();
-  const { selection, setSelection } = useGlobalLlmStore();
+  const { selection, setSelection, setModelValidation } = useGlobalLlmStore();
   const [availableModels, setAvailableModels] = useState<Record<string, LlmModelInfo[]>>({});
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -699,6 +700,84 @@ export function GlobalLlmSelector() {
     ollamaError,
   ]);
 
+  // Update model validation status in the global store
+  // This allows other components (like BrainstormInput) to check if the model is valid
+  useEffect(() => {
+    // Skip validation updates during initial loading
+    if (!isInitialized || (selectedProvider === 'Ollama' && isLoadingOllamaModels)) {
+      return;
+    }
+
+    // Build validation status
+    const validationStatus: ModelValidationStatus = {
+      isValidated: true,
+      isValid: selectedModelExists,
+      lastValidatedAt: Date.now(),
+      errorMessage: undefined,
+    };
+
+    // Add error message for Ollama when model is not found
+    if (!selectedModelExists && selectedProvider === 'Ollama' && selectedModel) {
+      validationStatus.errorMessage = `Model '${selectedModel}' is not installed in Ollama. Please run \`ollama pull ${selectedModel}\` to install it, or select a different model.`;
+    } else if (!selectedModelExists && selectedModel) {
+      validationStatus.errorMessage = `Model '${selectedModel}' is not available. Please select a different model.`;
+    }
+
+    setModelValidation(validationStatus);
+  }, [
+    selectedModelExists,
+    selectedModel,
+    selectedProvider,
+    isInitialized,
+    isLoadingOllamaModels,
+    setModelValidation,
+  ]);
+
+  // Auto-select first available model when current model is not found (auto-recovery)
+  useEffect(() => {
+    // Skip during initial loading or if model is valid
+    if (
+      !isInitialized ||
+      selectedModelExists ||
+      isLoading ||
+      isRefreshing ||
+      (selectedProvider === 'Ollama' && isLoadingOllamaModels)
+    ) {
+      return;
+    }
+
+    // Skip if no provider or no model selected
+    if (!selectedProvider || !selectedModel) {
+      return;
+    }
+
+    // Check if we have alternative models to select
+    const models = providerModels;
+    if (models.length > 0) {
+      const firstModel = models[0].modelId;
+      console.info(
+        `[GlobalLlmSelector] Auto-selecting first available model: ${firstModel} (was: ${selectedModel})`
+      );
+      setSelection({ provider: selectedProvider, modelId: firstModel });
+
+      // For Ollama, also save the model selection to backend
+      if (selectedProvider === 'Ollama') {
+        saveOllamaModel(firstModel);
+      }
+    }
+  }, [
+    isInitialized,
+    selectedModelExists,
+    selectedModel,
+    selectedProvider,
+    providerModels,
+    isLoading,
+    isRefreshing,
+    isLoadingOllamaModels,
+    setSelection,
+    saveOllamaModel,
+  ]);
+
   // Handle provider change
   const handleProviderChange = useCallback(
     (providerId: string) => {
@@ -917,11 +996,15 @@ export function GlobalLlmSelector() {
           isInitialized &&
           !(selectedProvider === 'Ollama' && isLoadingOllamaModels) && (
             <Tooltip
-              content={`Model "${selectedModel}" not found. Click refresh to update available models.`}
+              content={
+                selectedProvider === 'Ollama'
+                  ? `Model "${selectedModel}" is not installed. Run "ollama pull ${selectedModel}" to install it, or click refresh.`
+                  : `Model "${selectedModel}" not found. Click refresh to update available models.`
+              }
               relationship="label"
             >
-              <Badge appearance="filled" color="warning" size="small">
-                Model not found
+              <Badge appearance="filled" color="danger" size="medium">
+                ⚠️ Model not found
               </Badge>
             </Tooltip>
           )}
