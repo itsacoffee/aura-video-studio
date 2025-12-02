@@ -1381,6 +1381,6 @@ public partial class JobRunner
 /// </summary>
 internal sealed record JobProgressTracking(
     int LastPercent,
-    string LastStage,
+    string? LastStage,
     DateTime LastProgressTime,
     bool StuckWarningEmitted);
