@@ -228,10 +228,6 @@ export function GraphicsSettingsPage() {
   const updateSetting = <K extends keyof GraphicsSettings>(key: K, value: GraphicsSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setHasChanges(true);
-    // Auto-switch to custom profile when individual settings change
-    if (settings.profile !== 'custom' && key === 'effects') {
-      setSettings((prev) => ({ ...prev, profile: 'custom' }));
-    }
   };
 
   const updateEffect = (key: keyof typeof settings.effects, value: boolean) => {
@@ -247,6 +243,14 @@ export function GraphicsSettingsPage() {
     setSettings((prev) => ({
       ...prev,
       scaling: { ...prev.scaling, [key]: value },
+    }));
+    setHasChanges(true);
+  };
+
+  const updateAccessibility = (key: keyof typeof settings.accessibility, value: boolean) => {
+    setSettings((prev) => ({
+      ...prev,
+      accessibility: { ...prev.accessibility, [key]: value },
     }));
     setHasChanges(true);
   };
@@ -499,12 +503,7 @@ export function GraphicsSettingsPage() {
             </div>
             <Switch
               checked={settings.accessibility.reducedMotion}
-              onChange={(_, data) =>
-                setSettings((prev) => ({
-                  ...prev,
-                  accessibility: { ...prev.accessibility, reducedMotion: data.checked },
-                }))
-              }
+              onChange={(_, data) => updateAccessibility('reducedMotion', data.checked)}
             />
           </div>
 
@@ -517,12 +516,7 @@ export function GraphicsSettingsPage() {
             </div>
             <Switch
               checked={settings.accessibility.highContrast}
-              onChange={(_, data) =>
-                setSettings((prev) => ({
-                  ...prev,
-                  accessibility: { ...prev.accessibility, highContrast: data.checked },
-                }))
-              }
+              onChange={(_, data) => updateAccessibility('highContrast', data.checked)}
             />
           </div>
 
@@ -535,12 +529,7 @@ export function GraphicsSettingsPage() {
             </div>
             <Switch
               checked={settings.accessibility.focusIndicators}
-              onChange={(_, data) =>
-                setSettings((prev) => ({
-                  ...prev,
-                  accessibility: { ...prev.accessibility, focusIndicators: data.checked },
-                }))
-              }
+              onChange={(_, data) => updateAccessibility('focusIndicators', data.checked)}
             />
           </div>
         </Card>
