@@ -13,11 +13,13 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
 import { ConceptCard } from '../../components/ideation/ConceptCard';
+import { FallbackModeNotification } from '../../components/common/FallbackModeNotification';
 import { SkeletonCard, ErrorState } from '../../components/Loading';
 import {
   ideationService,
   type ConceptIdea,
   type BrainstormRequest,
+  type BrainstormMetadata,
 } from '../../services/ideationService';
 
 const useStyles = makeStyles({
@@ -206,6 +208,9 @@ export const IdeationDashboard: React.FC = () => {
   const [refreshHotkey, setRefreshHotkey] = useState<HotkeyConfig>(DEFAULT_HOTKEY);
   const [isCapturingHotkey, setIsCapturingHotkey] = useState(false);
 
+  // Fallback mode tracking
+  const [fallbackMetadata, setFallbackMetadata] = useState<BrainstormMetadata | null>(null);
+
   // Elapsed time tracking for loading state
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -269,6 +274,7 @@ export const IdeationDashboard: React.FC = () => {
     async (topic: string, options: BrainstormOptions) => {
       setLoading(true);
       setError(null);
+      setFallbackMetadata(null);
       setOriginalTopic(topic);
 
       const normalizedOptions: BrainstormOptions = {
@@ -293,6 +299,11 @@ export const IdeationDashboard: React.FC = () => {
         const response = await ideationService.brainstorm(request);
         setConcepts(response.concepts);
         setError(null);
+
+        // Track if fallback mode was used
+        if (response.metadata) {
+          setFallbackMetadata(response.metadata);
+        }
       } catch (err) {
         console.error('Brainstorm error:', err);
 
@@ -466,6 +477,13 @@ export const IdeationDashboard: React.FC = () => {
           loading={loading}
           ideaCount={ideaCount}
           onIdeaCountChange={(value) => setIdeaCount(clampIdeaCount(value))}
+        />
+
+        {/* Show fallback mode notification when using offline fallback */}
+        <FallbackModeNotification
+          isVisible={fallbackMetadata?.isOfflineFallback ?? false}
+          providerUsed={fallbackMetadata?.providerUsed}
+          fallbackReason={fallbackMetadata?.fallbackReason}
         />
 
         {error && (
