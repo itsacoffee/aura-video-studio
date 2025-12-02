@@ -57,8 +57,9 @@ describe('FallbackModeNotification', () => {
   });
 
   it('should display fallback reason', () => {
-    renderComponent({ fallbackReason: 'Ollama not available' });
-    expect(screen.getByText(/Ollama not available/)).toBeInTheDocument();
+    const fallbackReason = 'Primary AI provider not available';
+    renderComponent({ fallbackReason });
+    expect(screen.getByText(new RegExp(fallbackReason))).toBeInTheDocument();
   });
 
   it('should navigate to settings when Configure Ollama button is clicked', () => {

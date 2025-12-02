@@ -608,17 +608,20 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 concepts.Count, request.Topic);
 
             // Determine if RuleBased provider was used (offline fallback)
+            // The RuleBased provider is the offline fallback that generates basic template content
+            const string RuleBasedProviderName = "RuleBased";
             var isOfflineFallback = providerUsed != null && 
-                providerUsed.Contains("RuleBased", StringComparison.OrdinalIgnoreCase);
+                providerUsed.Contains(RuleBasedProviderName, StringComparison.OrdinalIgnoreCase);
             
             string? fallbackReason = null;
             if (isOfflineFallback)
             {
-                fallbackReason = "Ollama not available";
+                // Provide a more informative fallback reason based on common scenarios
+                fallbackReason = "Primary AI provider not available. Ensure Ollama is running or configure an alternative AI provider.";
                 _logger.LogWarning(
-                    "OFFLINE FALLBACK USED: Ideation used RuleBased provider for topic: {Topic}. " +
+                    "OFFLINE FALLBACK USED: Ideation used {Provider} provider for topic: {Topic}. " +
                     "For better results, ensure Ollama is running: 'ollama serve'",
-                    request.Topic);
+                    RuleBasedProviderName, request.Topic);
             }
 
             var metadata = new BrainstormMetadata(
