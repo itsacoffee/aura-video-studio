@@ -22,6 +22,7 @@ import { SplashScreen } from './components/SplashScreen/SplashScreen';
 import { env } from './config/env';
 import { ROUTE_METADATA_ENHANCED } from './config/routesWithGuards';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
+import { ProjectProvider } from './contexts/ProjectContext';
 import { useGlobalUndoShortcuts } from './hooks/useGlobalUndoShortcuts';
 import { useWindowsNativeUI } from './hooks/useWindowsNativeUI';
 import { FirstRunWizard } from './pages/Onboarding/FirstRunWizard';
@@ -865,27 +866,29 @@ function App() {
           <FluentProvider theme={currentTheme}>
             <AccessibilityProvider>
               <ActivityProvider>
-                <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                  <ErrorBoundary>
-                    <MemoryRouter initialEntries={[initialRoute]}>
-                      <ErrorBoundary>
-                        <AppRouterContent
-                          showShortcuts={showShortcuts}
-                          showShortcutsPanel={showShortcutsPanel}
-                          showShortcutsCheatSheet={showShortcutsCheatSheet}
-                          showCommandPalette={showCommandPalette}
-                          setShowShortcuts={setShowShortcuts}
-                          setShowShortcutsPanel={setShowShortcutsPanel}
-                          setShowShortcutsCheatSheet={setShowShortcutsCheatSheet}
-                          setShowCommandPalette={setShowCommandPalette}
-                          toasterId={toasterId}
-                          showDiagnostics={_showDiagnostics}
-                          setShowDiagnostics={_setShowDiagnostics}
-                        />
-                      </ErrorBoundary>
-                    </MemoryRouter>
-                  </ErrorBoundary>
-                </div>
+                <ProjectProvider>
+                  <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+                    <ErrorBoundary>
+                      <MemoryRouter initialEntries={[initialRoute]}>
+                        <ErrorBoundary>
+                          <AppRouterContent
+                            showShortcuts={showShortcuts}
+                            showShortcutsPanel={showShortcutsPanel}
+                            showShortcutsCheatSheet={showShortcutsCheatSheet}
+                            showCommandPalette={showCommandPalette}
+                            setShowShortcuts={setShowShortcuts}
+                            setShowShortcutsPanel={setShowShortcutsPanel}
+                            setShowShortcutsCheatSheet={setShowShortcutsCheatSheet}
+                            setShowCommandPalette={setShowCommandPalette}
+                            toasterId={toasterId}
+                            showDiagnostics={_showDiagnostics}
+                            setShowDiagnostics={_setShowDiagnostics}
+                          />
+                        </ErrorBoundary>
+                      </MemoryRouter>
+                    </ErrorBoundary>
+                  </div>
+                </ProjectProvider>
               </ActivityProvider>
             </AccessibilityProvider>
           </FluentProvider>
