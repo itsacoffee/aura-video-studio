@@ -251,10 +251,18 @@ public record BrandKit(
 /// <summary>
 /// RAG (Retrieval-Augmented Generation) configuration for script grounding
 /// </summary>
+/// <param name="Enabled">Whether RAG is enabled</param>
+/// <param name="TopK">Number of top results to retrieve</param>
+/// <param name="MinimumScore">Minimum relevance score threshold</param>
+/// <param name="MaxContextTokens">Maximum tokens for context</param>
+/// <param name="IncludeCitations">Whether to include citations in output</param>
+/// <param name="TightenClaims">Whether to apply claim tightening validation</param>
+/// <param name="EnableLlmQueryExpansion">Whether to use LLM for intelligent query expansion</param>
 public record RagConfiguration(
     bool Enabled,
     int TopK = 5,
     float MinimumScore = 0.6f,
     int MaxContextTokens = 2000,
     bool IncludeCitations = true,
-    bool TightenClaims = false);
+    bool TightenClaims = false,
+    bool EnableLlmQueryExpansion = true);
