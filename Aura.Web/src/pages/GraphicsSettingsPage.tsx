@@ -191,6 +191,7 @@ export function GraphicsSettingsPage() {
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Failed to load graphics settings', errorObj);
+      setErrorMessage('Failed to load graphics settings. Using default values.');
     } finally {
       setLoading(false);
     }
@@ -198,10 +199,15 @@ export function GraphicsSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setErrorMessage(null);
     try {
       await graphicsSettingsService.saveSettings(settings);
       setOriginalSettings(settings);
       setHasChanges(false);
+    } catch (error: unknown) {
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      console.error('Failed to save graphics settings', errorObj);
+      setErrorMessage('Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
     }
