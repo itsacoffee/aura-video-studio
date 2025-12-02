@@ -139,6 +139,16 @@ public class ApiAuthenticationMiddleware
             return false;
         }
 
+        // Validate minimum key length for HMAC-SHA256 (256 bits = 32 bytes)
+        const int MinKeyLengthBytes = 32;
+        if (_options.JwtSecretKey.Length < MinKeyLengthBytes)
+        {
+            _logger.LogWarning(
+                "JWT signing key is too short ({KeyLength} chars). Minimum required is {MinLength} characters for secure HMAC-SHA256 signatures",
+                _options.JwtSecretKey.Length, MinKeyLengthBytes);
+            return false;
+        }
+
         try
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -178,14 +188,16 @@ public class ApiAuthenticationMiddleware
             _logger.LogWarning("JWT token has invalid signature");
             return false;
         }
-        catch (SecurityTokenException ex)
+        catch (SecurityTokenException)
         {
-            _logger.LogWarning(ex, "JWT token validation failed");
+            // Log without exception details to avoid exposing sensitive token information
+            _logger.LogWarning("JWT token validation failed: invalid token");
             return false;
         }
-        catch (Exception ex)
+        catch (ArgumentException)
         {
-            _logger.LogError(ex, "Unexpected error during JWT validation");
+            // Token parsing/format errors
+            _logger.LogWarning("JWT token validation failed: malformed token");
             return false;
         }
     }

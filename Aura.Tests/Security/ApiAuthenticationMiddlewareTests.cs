@@ -16,7 +16,9 @@ namespace Aura.Tests.Security;
 
 public class ApiAuthenticationMiddlewareTests
 {
-    private const string TestSigningKey = "test-signing-key-minimum-32-characters-long";
+    // Test-only signing key - NOT for production use
+    // This key is intentionally marked as test-only and should never be used in production
+    private const string TestSigningKey = "UNIT-TEST-ONLY-jwt-signing-key-32chars";
     private const string TestIssuer = "TestIssuer";
     private const string TestAudience = "TestAudience";
 
@@ -280,6 +282,23 @@ public class ApiAuthenticationMiddlewareTests
         await middleware.InvokeAsync(context);
 
         // Assert
+        Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ShortSigningKey_Returns401()
+    {
+        // Arrange - key less than 32 characters
+        var options = CreateOptions(signingKey: "short-key-only-25-chars!");
+        var middleware = CreateMiddleware(options);
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/test";
+        context.Request.Headers.Authorization = $"Bearer {GenerateValidToken()}";
+
+        // Act
+        await middleware.InvokeAsync(context);
+
+        // Assert - Should reject because key is too short for secure HMAC-SHA256
         Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
     }
 
