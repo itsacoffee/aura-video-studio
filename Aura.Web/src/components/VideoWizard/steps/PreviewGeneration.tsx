@@ -1576,12 +1576,24 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     );
 
     // Get current LLM provider info from script metadata if available
-    const scriptMetadata = (scriptData as unknown as Record<string, unknown>)?.metadata as
-      | {
-          providerName?: string;
-          modelName?: string;
-        }
-      | undefined;
+    // Use type guard to safely access extended metadata property
+    const getScriptMetadata = (): { providerName?: string; modelName?: string } | undefined => {
+      if (
+        scriptData &&
+        typeof scriptData === 'object' &&
+        'metadata' in scriptData &&
+        scriptData.metadata &&
+        typeof scriptData.metadata === 'object'
+      ) {
+        const meta = scriptData.metadata as Record<string, unknown>;
+        return {
+          providerName: typeof meta.providerName === 'string' ? meta.providerName : undefined,
+          modelName: typeof meta.modelName === 'string' ? meta.modelName : undefined,
+        };
+      }
+      return undefined;
+    };
+    const scriptMetadata = getScriptMetadata();
     const llmProvider = scriptMetadata?.providerName || 'Ollama';
     const llmModel = scriptMetadata?.modelName || 'default';
 

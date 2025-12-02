@@ -3,6 +3,7 @@ using Aura.Core.Configuration;
 using Aura.Core.Models.CostTracking;
 using Aura.Core.Services.CostTracking;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Serilog;
 
 namespace Aura.Api.Controllers;
@@ -15,16 +16,19 @@ public class CostTrackingController : ControllerBase
     private readonly TokenTrackingService? _tokenTrackingService;
     private readonly RunCostReportService? _reportService;
     private readonly LlmPricingConfiguration _pricingConfig;
+    private readonly ILogger<CostTrackingController> _logger;
 
     public CostTrackingController(
+        ILogger<CostTrackingController> logger,
         EnhancedCostTrackingService? costTrackingService = null,
         TokenTrackingService? tokenTrackingService = null,
         RunCostReportService? reportService = null)
     {
+        _logger = logger;
         _costTrackingService = costTrackingService;
         _tokenTrackingService = tokenTrackingService;
         _reportService = reportService;
-        _pricingConfig = LlmPricingConfiguration.LoadDefault();
+        _pricingConfig = LlmPricingConfiguration.LoadDefault(_logger);
     }
 
     /// <summary>
