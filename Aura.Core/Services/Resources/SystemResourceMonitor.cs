@@ -29,11 +29,15 @@ public class SystemResourceMonitor
     private SystemResourceMetrics? _lastSystemMetrics;
     private ProcessMetrics? _lastProcessMetrics;
     
-    // CPU tracking for Linux delta-based calculation
+    // CPU tracking for delta-based calculation (used for WMI fallback and Linux)
     private DateTime _lastCpuUpdate = DateTime.MinValue;
     private long _lastCpuTotal;
     private long _lastCpuIdle;
     private double _lastCpuUsagePercent;
+    
+    // Track if performance counters initialized successfully
+    private bool _cpuCounterInitialized;
+    private bool _cpuCounterPrimed;
 
     public SystemResourceMonitor(ILogger<SystemResourceMonitor> logger)
     {
@@ -45,12 +49,17 @@ public class SystemResourceMonitor
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total", true);
+                // Prime the counter - first call always returns 0
+                _cpuCounter.NextValue();
+                _cpuCounterInitialized = true;
+                _logger.LogDebug("CPU performance counter initialized successfully");
                 InitializePerCoreCounters();
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to initialize performance counters. Some metrics may be unavailable.");
+            _cpuCounterInitialized = false;
+            _logger.LogWarning(ex, "Failed to initialize performance counters. Will use WMI fallback for CPU metrics.");
         }
     }
 
@@ -151,37 +160,222 @@ public class SystemResourceMonitor
 
         try
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && _cpuCounter != null)
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                _cpuCounter.NextValue();
-                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-                metrics.OverallUsagePercent = _cpuCounter.NextValue();
-
-                var perCoreUsage = new List<double>();
-                foreach (var counter in _perCoreCounters.Values)
+                // Try performance counter first (most accurate)
+                var cpuUsage = await TryGetCpuFromPerformanceCounterAsync(cancellationToken).ConfigureAwait(false);
+                
+                if (cpuUsage.HasValue)
                 {
-                    counter.NextValue();
-                    await Task.Delay(10, cancellationToken).ConfigureAwait(false);
-                    perCoreUsage.Add(counter.NextValue());
+                    metrics.OverallUsagePercent = cpuUsage.Value;
+                    _logger.LogTrace("CPU usage from performance counter: {Usage}%", cpuUsage.Value);
                 }
-                metrics.PerCoreUsagePercent = perCoreUsage.ToArray();
+                else
+                {
+                    // Fallback to WMI for Windows 11 compatibility
+                    cpuUsage = await TryGetCpuFromWmiAsync(cancellationToken).ConfigureAwait(false);
+                    if (cpuUsage.HasValue)
+                    {
+                        metrics.OverallUsagePercent = cpuUsage.Value;
+                        _logger.LogTrace("CPU usage from WMI: {Usage}%", cpuUsage.Value);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("All CPU collection methods failed, using last known value");
+                        metrics.OverallUsagePercent = _lastCpuUsagePercent;
+                    }
+                }
+
+                // Collect per-core usage (best effort)
+                var perCoreUsage = await CollectPerCoreUsageAsync(cancellationToken).ConfigureAwait(false);
+                metrics.PerCoreUsagePercent = perCoreUsage;
             }
             else
             {
                 metrics.OverallUsagePercent = GetCpuUsageNonWindows();
             }
 
+            // Process CPU usage calculation
             _currentProcess.Refresh();
             var totalTime = _currentProcess.TotalProcessorTime.TotalMilliseconds;
             var elapsedTime = (DateTime.UtcNow - _currentProcess.StartTime).TotalMilliseconds;
-            metrics.ProcessUsagePercent = (totalTime / (elapsedTime * metrics.LogicalCores)) * 100.0;
+            if (elapsedTime > 0 && metrics.LogicalCores > 0)
+            {
+                metrics.ProcessUsagePercent = (totalTime / (elapsedTime * metrics.LogicalCores)) * 100.0;
+                metrics.ProcessUsagePercent = Math.Min(100.0, Math.Max(0.0, metrics.ProcessUsagePercent));
+            }
+            
+            // Update last known good value
+            if (metrics.OverallUsagePercent > 0)
+            {
+                _lastCpuUsagePercent = metrics.OverallUsagePercent;
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to collect CPU metrics");
+            _logger.LogWarning(ex, "Failed to collect CPU metrics, using fallback values");
         }
 
         return metrics;
+    }
+
+    /// <summary>
+    /// Attempts to get CPU usage from Windows Performance Counters.
+    /// This is the preferred method but may fail on some Windows 11 systems.
+    /// </summary>
+    private async Task<double?> TryGetCpuFromPerformanceCounterAsync(CancellationToken cancellationToken)
+    {
+        if (!_cpuCounterInitialized || _cpuCounter == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            // If this is the first read after priming, we need a delay
+            if (!_cpuCounterPrimed)
+            {
+                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                _cpuCounterPrimed = true;
+            }
+            
+            var value = _cpuCounter.NextValue();
+            
+            // Validate the value is reasonable
+            if (value >= 0 && value <= 100)
+            {
+                return value;
+            }
+            
+            _logger.LogDebug("Performance counter returned invalid CPU value: {Value}", value);
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogDebug(ex, "Performance counter not available, will use WMI fallback");
+            _cpuCounterInitialized = false;
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read CPU from performance counter");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to get CPU usage via WMI (Windows Management Instrumentation).
+    /// This is a fallback method that works on Windows 11 when Performance Counters fail.
+    /// Uses Win32_PerfFormattedData_PerfOS_Processor for reliable CPU metrics.
+    /// </summary>
+    private async Task<double?> TryGetCpuFromWmiAsync(CancellationToken cancellationToken)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                
+                // Try Win32_PerfFormattedData_PerfOS_Processor first (more accurate)
+                using var searcher = new ManagementObjectSearcher(
+                    "SELECT PercentProcessorTime FROM Win32_PerfFormattedData_PerfOS_Processor WHERE Name='_Total'");
+                
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var percentProcessorTime = obj["PercentProcessorTime"];
+                    if (percentProcessorTime != null)
+                    {
+                        var value = Convert.ToDouble(percentProcessorTime);
+                        if (value >= 0 && value <= 100)
+                        {
+                            return (double?)value;
+                        }
+                    }
+                }
+
+                // Fallback to Win32_Processor.LoadPercentage
+                using var processorSearcher = new ManagementObjectSearcher(
+                    "SELECT LoadPercentage FROM Win32_Processor");
+                
+                double totalLoad = 0;
+                int processorCount = 0;
+                
+                foreach (ManagementObject obj in processorSearcher.Get())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var loadPercentage = obj["LoadPercentage"];
+                    if (loadPercentage != null)
+                    {
+                        totalLoad += Convert.ToDouble(loadPercentage);
+                        processorCount++;
+                    }
+                }
+
+                if (processorCount > 0)
+                {
+                    return (double?)(totalLoad / processorCount);
+                }
+
+                return null;
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "WMI CPU query failed");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Collects per-core CPU usage (best effort, returns empty array on failure).
+    /// </summary>
+    private async Task<double[]> CollectPerCoreUsageAsync(CancellationToken cancellationToken)
+    {
+        if (_perCoreCounters.Count == 0)
+        {
+            return Array.Empty<double>();
+        }
+
+        try
+        {
+            var perCoreUsage = new List<double>();
+            
+            foreach (var counter in _perCoreCounters.Values)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    await Task.Delay(10, cancellationToken).ConfigureAwait(false);
+                    var value = counter.NextValue();
+                    perCoreUsage.Add(Math.Max(0, Math.Min(100, value)));
+                }
+                catch
+                {
+                    // Skip failed cores
+                }
+            }
+            
+            return perCoreUsage.ToArray();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to collect per-core CPU usage");
+            return Array.Empty<double>();
+        }
     }
 
     private double GetCpuUsageNonWindows()
@@ -249,13 +443,38 @@ public class SystemResourceMonitor
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                // Try GlobalMemoryStatusEx first (P/Invoke)
                 var memStatus = new MEMORYSTATUSEX();
                 if (GlobalMemoryStatusEx(memStatus))
                 {
                     metrics.TotalBytes = (long)memStatus.ullTotalPhys;
                     metrics.AvailableBytes = (long)memStatus.ullAvailPhys;
                     metrics.UsedBytes = metrics.TotalBytes - metrics.AvailableBytes;
-                    metrics.UsagePercent = ((double)metrics.UsedBytes / metrics.TotalBytes) * 100.0;
+                    if (metrics.TotalBytes > 0)
+                    {
+                        metrics.UsagePercent = ((double)metrics.UsedBytes / metrics.TotalBytes) * 100.0;
+                    }
+                    _logger.LogTrace("Memory metrics from GlobalMemoryStatusEx: Total={Total}, Used={Used}, Usage={Usage}%", 
+                        metrics.TotalBytes, metrics.UsedBytes, metrics.UsagePercent);
+                }
+                else
+                {
+                    _logger.LogDebug("GlobalMemoryStatusEx returned false, trying WMI fallback");
+                    // Fallback to WMI for Windows 11 compatibility
+                    var wmiMemory = TryGetMemoryFromWmi();
+                    if (wmiMemory.HasValue)
+                    {
+                        metrics.TotalBytes = wmiMemory.Value.total;
+                        metrics.AvailableBytes = wmiMemory.Value.available;
+                        metrics.UsedBytes = wmiMemory.Value.used;
+                        metrics.UsagePercent = wmiMemory.Value.usagePercent;
+                        _logger.LogTrace("Memory metrics from WMI: Total={Total}, Used={Used}, Usage={Usage}%", 
+                            metrics.TotalBytes, metrics.UsedBytes, metrics.UsagePercent);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("All memory collection methods failed");
+                    }
                 }
             }
             else
@@ -264,9 +483,13 @@ public class SystemResourceMonitor
                 metrics.TotalBytes = memInfo.total;
                 metrics.AvailableBytes = memInfo.available;
                 metrics.UsedBytes = memInfo.used;
-                metrics.UsagePercent = ((double)metrics.UsedBytes / metrics.TotalBytes) * 100.0;
+                if (metrics.TotalBytes > 0)
+                {
+                    metrics.UsagePercent = ((double)metrics.UsedBytes / metrics.TotalBytes) * 100.0;
+                }
             }
 
+            // Process memory metrics (always available)
             _currentProcess.Refresh();
             metrics.ProcessUsageBytes = _currentProcess.WorkingSet64;
             metrics.ProcessPrivateBytes = _currentProcess.PrivateMemorySize64;
@@ -275,9 +498,60 @@ public class SystemResourceMonitor
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to collect memory metrics");
+            
+            // Last resort fallback: use GC info for process memory
+            try
+            {
+                var gcMemoryInfo = GC.GetGCMemoryInfo();
+                metrics.ProcessUsageBytes = GC.GetTotalMemory(false);
+                metrics.ProcessWorkingSetBytes = gcMemoryInfo.TotalCommittedBytes;
+            }
+            catch
+            {
+                // Silently ignore - we've already logged the primary failure
+            }
         }
 
         return metrics;
+    }
+
+    /// <summary>
+    /// Attempts to get memory information via WMI as a fallback.
+    /// </summary>
+    private (long total, long available, long used, double usagePercent)? TryGetMemoryFromWmi()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT TotalVisibleMemorySize, FreePhysicalMemory FROM Win32_OperatingSystem");
+            
+            foreach (ManagementObject obj in searcher.Get())
+            {
+                var totalKb = obj["TotalVisibleMemorySize"];
+                var freeKb = obj["FreePhysicalMemory"];
+                
+                if (totalKb != null && freeKb != null)
+                {
+                    var total = Convert.ToInt64(totalKb) * 1024; // KB to bytes
+                    var available = Convert.ToInt64(freeKb) * 1024; // KB to bytes
+                    var used = total - available;
+                    var usagePercent = total > 0 ? ((double)used / total) * 100.0 : 0.0;
+                    
+                    return (total, available, used, usagePercent);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "WMI memory query failed");
+        }
+
+        return null;
     }
 
     private (long total, long available, long used) GetMemoryInfoNonWindows()
@@ -329,51 +603,94 @@ public class SystemResourceMonitor
 
         try
         {
-            using var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_VideoController");
-            foreach (ManagementObject obj in searcher.Get())
+            // Try to get GPU info from WMI first
+            string gpuName = "Unknown GPU";
+            string gpuVendor = "Unknown";
+            long adapterRam = 0;
+            bool foundGpu = false;
+
+            try
             {
-                var name = obj["Name"]?.ToString() ?? "Unknown";
-                var adapterRam = obj["AdapterRAM"] != null ? Convert.ToInt64(obj["AdapterRAM"]) : 0;
-
-                var metrics = new GpuMetrics
+                using var searcher = new ManagementObjectSearcher("SELECT Name, AdapterRAM FROM Win32_VideoController");
+                foreach (ManagementObject obj in searcher.Get())
                 {
-                    Name = name,
-                    Vendor = DetermineVendor(name),
-                    TotalMemoryBytes = adapterRam
-                };
-
-                // Try Windows GPU Engine performance counters first (works for all GPU vendors)
-                var perfCounterUsage = await TryGetGpuUsageFromPerformanceCountersAsync(cancellationToken).ConfigureAwait(false);
-                if (perfCounterUsage.HasValue)
-                {
-                    metrics.UsagePercent = perfCounterUsage.Value;
-                    _logger.LogTrace("GPU usage from performance counters: {Usage}%", perfCounterUsage.Value);
-                }
-                else
-                {
-                    // Fall back to nvidia-smi for NVIDIA GPUs
-                    var nvidiaSmiMetrics = await TryGetNvidiaSmiMetricsAsync(cancellationToken).ConfigureAwait(false);
-                    if (nvidiaSmiMetrics != null)
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var name = obj["Name"]?.ToString();
+                    if (!string.IsNullOrEmpty(name))
                     {
-                        metrics.UsagePercent = nvidiaSmiMetrics.Value.usage;
-                        metrics.UsedMemoryBytes = nvidiaSmiMetrics.Value.usedMemory;
-                        metrics.AvailableMemoryBytes = metrics.TotalMemoryBytes - metrics.UsedMemoryBytes;
-                        metrics.MemoryUsagePercent = metrics.TotalMemoryBytes > 0
-                            ? ((double)metrics.UsedMemoryBytes / metrics.TotalMemoryBytes) * 100.0
-                            : 0.0;
-                        metrics.TemperatureCelsius = nvidiaSmiMetrics.Value.temperature;
+                        gpuName = name;
+                        gpuVendor = DetermineVendor(name);
+                        adapterRam = obj["AdapterRAM"] != null ? Convert.ToInt64(obj["AdapterRAM"]) : 0;
+                        foundGpu = true;
+                        _logger.LogTrace("Found GPU via WMI: {Name}, Vendor: {Vendor}, RAM: {Ram}", gpuName, gpuVendor, adapterRam);
+                        break; // Use first GPU found
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "WMI GPU query failed, continuing with performance counters");
+            }
 
+            var metrics = new GpuMetrics
+            {
+                Name = gpuName,
+                Vendor = gpuVendor,
+                TotalMemoryBytes = adapterRam
+            };
+
+            // Try Windows GPU Engine performance counters first (works for all GPU vendors)
+            var perfCounterUsage = await TryGetGpuUsageFromPerformanceCountersAsync(cancellationToken).ConfigureAwait(false);
+            if (perfCounterUsage.HasValue)
+            {
+                metrics.UsagePercent = perfCounterUsage.Value;
+                _logger.LogTrace("GPU usage from performance counters: {Usage}%", perfCounterUsage.Value);
                 return metrics;
             }
+
+            // Fall back to nvidia-smi for NVIDIA GPUs
+            var nvidiaSmiMetrics = await TryGetNvidiaSmiMetricsAsync(cancellationToken).ConfigureAwait(false);
+            if (nvidiaSmiMetrics != null)
+            {
+                metrics.UsagePercent = nvidiaSmiMetrics.Value.usage;
+                metrics.UsedMemoryBytes = nvidiaSmiMetrics.Value.usedMemory;
+                metrics.TotalMemoryBytes = nvidiaSmiMetrics.Value.totalMemory > 0 
+                    ? nvidiaSmiMetrics.Value.totalMemory 
+                    : adapterRam;
+                metrics.AvailableMemoryBytes = metrics.TotalMemoryBytes - metrics.UsedMemoryBytes;
+                metrics.MemoryUsagePercent = metrics.TotalMemoryBytes > 0
+                    ? ((double)metrics.UsedMemoryBytes / metrics.TotalMemoryBytes) * 100.0
+                    : 0.0;
+                metrics.TemperatureCelsius = nvidiaSmiMetrics.Value.temperature;
+                if (string.IsNullOrEmpty(metrics.Name) || metrics.Name == "Unknown GPU")
+                {
+                    metrics.Name = "NVIDIA GPU";
+                    metrics.Vendor = "NVIDIA";
+                }
+                _logger.LogTrace("GPU usage from nvidia-smi: {Usage}%", nvidiaSmiMetrics.Value.usage);
+                return metrics;
+            }
+
+            // If we found a GPU via WMI but couldn't get usage, still return the metrics
+            // with 0% usage (better than returning null)
+            if (foundGpu)
+            {
+                _logger.LogDebug("GPU found but usage metrics unavailable - returning GPU info with 0% usage");
+                return metrics;
+            }
+
+            _logger.LogDebug("No GPU detected on this system");
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Failed to collect GPU metrics");
+            return null;
         }
-
-        return null;
     }
 
     /// <summary>
