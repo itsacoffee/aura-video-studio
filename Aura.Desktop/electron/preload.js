@@ -158,6 +158,17 @@ const VALID_CHANNELS = {
     "opencut:health",
     "opencut:getDiagnostics",
   ],
+
+  // Graphics channels
+  GRAPHICS: [
+    "graphics:getMaterial",
+    "graphics:setMaterial",
+    "graphics:isMicaSupported",
+    "graphics:getAccentColor",
+    "graphics:getDpiInfo",
+    "graphics:getAllDisplays",
+    "graphics:applySettings",
+  ],
 };
 
 // Event channels that renderer can listen to (includes menu events from menu-event-types.js)
@@ -170,6 +181,8 @@ const VALID_EVENT_CHANNELS = [
   "protocol:navigate",
   "app:safeMode",
   "display-info", // Display info updates for adaptive layout
+  "system-theme-changed", // System theme change for Mica
+  "system-accent-color", // System accent color for Mica
   ...MENU_EVENT_CHANNELS,
 ];
 
@@ -622,6 +635,19 @@ function createAuraBridge() {
       safeOn("backend:providerUpdate", callback),
   };
 
+  const graphicsApi = {
+    getMaterial: () => safeInvoke("graphics:getMaterial"),
+    setMaterial: (effect) => safeInvoke("graphics:setMaterial", effect),
+    isMicaSupported: () => safeInvoke("graphics:isMicaSupported"),
+    getAccentColor: () => safeInvoke("graphics:getAccentColor"),
+    getDpiInfo: () => safeInvoke("graphics:getDpiInfo"),
+    getAllDisplays: () => safeInvoke("graphics:getAllDisplays"),
+    applySettings: (settings) => safeInvoke("graphics:applySettings", settings),
+    // Event listeners
+    onThemeChange: (callback) => safeOn("system-theme-changed", callback),
+    onAccentColorChange: (callback) => safeOn("system-accent-color", callback),
+  };
+
   const systemApi = {
     getEnvironmentInfo: async () => {
       const diagnostics = runtimeBootstrap ?? (await refreshDiagnostics());
@@ -688,6 +714,7 @@ function createAuraBridge() {
     menu: createValidatedMenuAPI(ipcRenderer),
     startupLogs: startupLogsApi,
     opencut: opencutApi,
+    graphics: graphicsApi,
     safeMode: {
       onStatus: (callback) => safeOn("app:safeMode", callback),
     },

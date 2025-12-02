@@ -361,6 +361,34 @@ export interface AuraAPI {
       error?: string;
     }>;
   };
+  graphics?: {
+    getMaterial(): Promise<{ current: 'mica' | 'acrylic' | 'tabbed' | 'none'; supported: boolean }>;
+    setMaterial(effect: 'mica' | 'acrylic' | 'tabbed' | 'none'): Promise<boolean>;
+    isMicaSupported(): Promise<boolean>;
+    getAccentColor(): Promise<string | null>;
+    getDpiInfo(): Promise<{
+      scaleFactor: number;
+      size: { width: number; height: number };
+      workArea: { x: number; y: number; width: number; height: number };
+      bounds: { x: number; y: number; width: number; height: number };
+    }>;
+    getAllDisplays(): Promise<
+      Array<{
+        id: number;
+        scaleFactor: number;
+        size: { width: number; height: number };
+        workArea: { x: number; y: number; width: number; height: number };
+        bounds: { x: number; y: number; width: number; height: number };
+        isPrimary?: boolean;
+      }>
+    >;
+    applySettings(settings: {
+      transparency: boolean;
+      blurEffects: boolean;
+    }): Promise<{ success: boolean; error?: string }>;
+    onThemeChange(callback: (data: { isDark: boolean }) => void): () => void;
+    onAccentColorChange(callback: (data: { color: string }) => void): () => void;
+  };
   safeMode?: {
     onStatus(callback: (status: SafeModeStatus) => void): () => void;
   };

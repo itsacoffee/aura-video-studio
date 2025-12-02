@@ -1,0 +1,134 @@
+/**
+ * Windows 11 Mica Support Styles
+ * Provides transparent backgrounds for Mica effect and fallbacks
+ */
+
+:root {
+  /* Mica-compatible colors */
+  --mica-surface-light: rgb(255 255 255 / 70%);
+  --mica-surface-dark: rgb(32 32 32 / 70%);
+  --mica-surface-elevated-light: rgb(255 255 255 / 85%);
+  --mica-surface-elevated-dark: rgb(44 44 44 / 85%);
+}
+
+/* When running in Electron with Mica enabled */
+.mica-enabled {
+  --app-background: transparent;
+  --surface-background: var(--mica-surface-light);
+  --surface-elevated: var(--mica-surface-elevated-light);
+}
+
+.mica-enabled.dark {
+  --surface-background: var(--mica-surface-dark);
+  --surface-elevated: var(--mica-surface-elevated-dark);
+}
+
+/* Fallback when Mica not supported */
+.mica-fallback {
+  --app-background: var(--color-background);
+  --surface-background: var(--color-surface);
+  --surface-elevated: var(--color-surface);
+}
+
+/* App container for Mica transparency */
+.app-container {
+  background-color: var(--app-background, var(--color-background));
+  min-height: 100vh;
+}
+
+.app-container.mica-enabled {
+  background-color: transparent;
+}
+
+/* Panels that show through Mica */
+.panel-mica {
+  background-color: var(--surface-background);
+  backdrop-filter: blur(var(--blur-md, 8px));
+}
+
+/* Elevated panels (dialogs, dropdowns) */
+.panel-elevated-mica {
+  background-color: var(--surface-elevated);
+  backdrop-filter: blur(var(--blur-lg, 16px));
+  box-shadow: var(--shadow-lg);
+}
+
+/* Sidebar with Mica support */
+.sidebar-mica {
+  background-color: rgb(var(--color-surface-rgb, 255 255 255) / 50%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-right: 1px solid rgb(255 255 255 / 10%);
+}
+
+.dark .sidebar-mica {
+  background-color: rgb(0 0 0 / 30%);
+  border-right: 1px solid rgb(255 255 255 / 5%);
+}
+
+/* Title bar area (custom title bar) */
+.titlebar-mica {
+  background-color: transparent;
+  -webkit-app-region: drag;
+}
+
+.titlebar-mica button {
+  -webkit-app-region: no-drag;
+}
+
+/* Cards over Mica background */
+.card-mica {
+  background-color: rgb(255 255 255 / 60%);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgb(255 255 255 / 20%);
+}
+
+.dark .card-mica {
+  background-color: rgb(255 255 255 / 5%);
+  border: 1px solid rgb(255 255 255 / 8%);
+}
+
+/* Input fields over Mica */
+.input-mica {
+  background-color: rgb(255 255 255 / 70%);
+  border: 1px solid rgb(0 0 0 / 10%);
+}
+
+.dark .input-mica {
+  background-color: rgb(0 0 0 / 30%);
+  border: 1px solid rgb(255 255 255 / 10%);
+}
+
+/* System accent color integration */
+.accent-border {
+  border-color: var(--system-accent-color, var(--color-primary));
+}
+
+.accent-bg {
+  background-color: var(--system-accent-color, var(--color-primary));
+}
+
+.accent-text {
+  color: var(--system-accent-color, var(--color-primary));
+}
+
+/* Hover states with Mica */
+.mica-hover {
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.mica-hover:hover {
+  background-color: rgb(255 255 255 / 10%);
+}
+
+.dark .mica-hover:hover {
+  background-color: rgb(255 255 255 / 5%);
+}
+
+/* Active/pressed states */
+.mica-active:active {
+  background-color: rgb(0 0 0 / 5%);
+}
+
+.dark .mica-active:active {
+  background-color: rgb(255 255 255 / 3%);
+}

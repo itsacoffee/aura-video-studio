@@ -388,6 +388,7 @@ function initializeIpcHandlers(
     diagnostics: null,
     contextMenu: null,
     file: null,
+    graphics: null,
     opencut: null,
   };
 
@@ -536,6 +537,19 @@ function initializeIpcHandlers(
       failedHandlers.push({ name: "file", error: error.message });
       if (logger)
         logger.warn("IPC", "File handler failed to initialize", {
+          error: error.message,
+        });
+    }
+
+    // Graphics handler (for Windows 11 Mica/Acrylic effects)
+    try {
+      const { GraphicsHandler } = require("./ipc-handlers/graphics-handler");
+      handlers.graphics = new GraphicsHandler(windowManager, logger);
+      succeededHandlers.push("graphics");
+    } catch (error) {
+      failedHandlers.push({ name: "graphics", error: error.message });
+      if (logger)
+        logger.warn("IPC", "Graphics handler failed to initialize", {
           error: error.message,
         });
     }

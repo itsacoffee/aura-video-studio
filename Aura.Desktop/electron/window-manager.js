@@ -8,6 +8,7 @@ const path = require("path");
 const fs = require("fs");
 const Store = require("electron-store");
 const { getFallbackIcon } = require("./icon-fallbacks");
+const { MicaManager } = require("./mica-manager");
 
 class WindowManager {
   constructor(app, isDev) {
@@ -16,6 +17,9 @@ class WindowManager {
     this.mainWindow = null;
     this.splashWindow = null;
     this.allowedWebOrigins = new Set();
+
+    // Initialize Mica manager for Windows 11 effects
+    this.micaManager = new MicaManager(console);
 
     // Window state persistence
     this.windowStateStore = new Store({
@@ -270,6 +274,10 @@ class WindowManager {
     };
 
     // Create window with saved or optimal size
+    // Configure background for Mica support on Windows 11
+    const backgroundColor = this.micaManager.isSupported ? "#00000000" : "#0F0F0F";
+    const transparent = this.micaManager.isSupported;
+
     this.mainWindow = new BrowserWindow({
       width: windowWidth,
       height: windowHeight,
@@ -278,7 +286,8 @@ class WindowManager {
       x: x,
       y: y,
       show: false, // Don't show until ready-to-show event
-      backgroundColor: "#0F0F0F",
+      backgroundColor: backgroundColor,
+      transparent: transparent,
       icon: this._getAppIcon(),
       webPreferences: {
         preload: preloadPath,
@@ -297,6 +306,30 @@ class WindowManager {
       autoHideMenuBar: false,
     });
     this.allowedWebOrigins = new Set();
+
+    // Apply Mica effect for Windows 11
+    if (this.micaManager.isSupported) {
+      this.micaManager.applyEffect(this.mainWindow, "mica");
+
+      // Listen for theme changes
+      this.micaManager.onThemeChange((isDark) => {
+        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+          this.mainWindow.webContents.send("system-theme-changed", { isDark });
+        }
+      });
+
+      // Send accent color to renderer
+      const accentColor = this.micaManager.getAccentColor();
+      if (accentColor) {
+        this.mainWindow.webContents.once("did-finish-load", () => {
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send("system-accent-color", {
+              color: `#${accentColor}`,
+            });
+          }
+        });
+      }
+    }
 
     // Restore maximized state
     if (savedState.isMaximized) {
@@ -1374,6 +1407,34 @@ class WindowManager {
     }
 
     return logs.join("\n");
+  }
+
+  /**
+   * Update window material effect
+   * @param {string} effect - 'mica' | 'acrylic' | 'tabbed' | 'none'
+   * @returns {boolean} - Whether the effect was applied successfully
+   */
+  setWindowMaterial(effect) {
+    if (this.mainWindow && this.micaManager) {
+      return this.micaManager.applyEffect(this.mainWindow, effect);
+    }
+    return false;
+  }
+
+  /**
+   * Get current window material
+   * @returns {string} - Current material effect
+   */
+  getWindowMaterial() {
+    return this.micaManager?.getCurrentEffect() || "none";
+  }
+
+  /**
+   * Check if Mica is supported
+   * @returns {boolean} - Whether Mica is supported on this system
+   */
+  isMicaSupported() {
+    return this.micaManager?.isSupported || false;
   }
 }
 
