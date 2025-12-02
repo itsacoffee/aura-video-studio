@@ -1,6 +1,10 @@
 /**
  * Electron API Type Definitions for Graphics/Mica Support
  * Extends window object with Electron IPC methods for Windows 11 Mica effects
+ *
+ * Note: This file provides type definitions for the Graphics API exposed through
+ * the window.aura object (via preload.js). The types are used by the useWindowsMica
+ * hook and other graphics-related functionality.
  */
 
 export type WindowMaterial = 'mica' | 'acrylic' | 'tabbed' | 'none';
@@ -31,14 +35,6 @@ export interface GraphicsAPI {
   ) => Promise<{ success: boolean; error?: string }>;
   onThemeChange: (callback: (data: { isDark: boolean }) => void) => () => void;
   onAccentColorChange: (callback: (data: { color: string }) => void) => () => void;
-}
-
-declare global {
-  interface Window {
-    electronAPI?: {
-      graphics?: GraphicsAPI;
-    };
-  }
 }
 
 export {};

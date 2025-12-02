@@ -64,11 +64,17 @@ export function useWindowsMica(): UseWindowsMicaReturn {
 
         if (!mounted) return;
 
+        // Format accent color with # prefix if not already present
+        const formatAccentColor = (color: string | null): string | null => {
+          if (!color) return null;
+          return color.startsWith('#') ? color : `#${color}`;
+        };
+
         setState((prev) => ({
           ...prev,
           isSupported: materialInfo.supported,
           currentMaterial: materialInfo.current,
-          accentColor: accentColor ? `#${accentColor}` : null,
+          accentColor: formatAccentColor(accentColor),
           scaleFactor: dpiInfo.scaleFactor,
           displays,
         }));
@@ -84,7 +90,8 @@ export function useWindowsMica(): UseWindowsMicaReturn {
         // Subscribe to accent color changes
         const unsubAccent = api.onAccentColorChange((data) => {
           if (mounted) {
-            setState((prev) => ({ ...prev, accentColor: data.color }));
+            // The color from accent color change events may already have #
+            setState((prev) => ({ ...prev, accentColor: formatAccentColor(data.color) }));
           }
         });
         cleanupFunctions.push(unsubAccent);

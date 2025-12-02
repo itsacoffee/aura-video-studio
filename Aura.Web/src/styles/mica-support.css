@@ -1,14 +1,19 @@
 /**
  * Windows 11 Mica Support Styles
  * Provides transparent backgrounds for Mica effect and fallbacks
+ *
+ * Accessibility note: These transparency levels (80%, 90%) are chosen to maintain
+ * sufficient contrast for WCAG AA compliance when used with appropriate text colors.
+ * The higher opacity values ensure text remains readable while still allowing
+ * the Mica effect to show through.
  */
 
 :root {
-  /* Mica-compatible colors */
-  --mica-surface-light: rgb(255 255 255 / 70%);
-  --mica-surface-dark: rgb(32 32 32 / 70%);
-  --mica-surface-elevated-light: rgb(255 255 255 / 85%);
-  --mica-surface-elevated-dark: rgb(44 44 44 / 85%);
+  /* Mica-compatible colors with accessibility-conscious opacity */
+  --mica-surface-light: rgb(255 255 255 / 80%);
+  --mica-surface-dark: rgb(32 32 32 / 80%);
+  --mica-surface-elevated-light: rgb(255 255 255 / 90%);
+  --mica-surface-elevated-dark: rgb(44 44 44 / 90%);
 }
 
 /* When running in Electron with Mica enabled */

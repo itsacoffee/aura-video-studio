@@ -3,7 +3,7 @@
  * Enables Windows 11 Mica/Acrylic effects on the main window
  */
 
-const { nativeTheme } = require('electron');
+const { nativeTheme, systemPreferences } = require('electron');
 const os = require('os');
 
 class MicaManager {
@@ -11,6 +11,7 @@ class MicaManager {
     this.logger = logger;
     this.isSupported = this._checkSupport();
     this.currentEffect = 'none';
+    this._themeChangeListeners = [];
   }
 
   /**
@@ -101,11 +102,34 @@ class MicaManager {
 
   /**
    * Listen for theme changes
+   * @param {function} callback - Function to call when theme changes
+   * @returns {function} Cleanup function to remove the listener
    */
   onThemeChange(callback) {
-    nativeTheme.on('updated', () => {
+    const listener = () => {
       callback(this.isDarkMode());
+    };
+    nativeTheme.on('updated', listener);
+    this._themeChangeListeners.push(listener);
+
+    // Return cleanup function
+    return () => {
+      nativeTheme.removeListener('updated', listener);
+      const index = this._themeChangeListeners.indexOf(listener);
+      if (index > -1) {
+        this._themeChangeListeners.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Remove all theme change listeners (for cleanup)
+   */
+  removeAllListeners() {
+    this._themeChangeListeners.forEach((listener) => {
+      nativeTheme.removeListener('updated', listener);
     });
+    this._themeChangeListeners = [];
   }
 
   /**
@@ -114,8 +138,6 @@ class MicaManager {
   getAccentColor() {
     if (process.platform === 'win32') {
       try {
-        // systemPreferences is available globally
-        const { systemPreferences } = require('electron');
         return systemPreferences.getAccentColor();
       } catch {
         return null;
