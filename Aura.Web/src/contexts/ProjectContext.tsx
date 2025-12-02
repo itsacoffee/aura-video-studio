@@ -23,9 +23,10 @@ import {
   loadFromLocalStorage,
   clearLocalStorage,
 } from '../services/projectService';
-import { ProjectFile, AutosaveStatus, createEmptyProject } from '../types/project';
+import { ProjectFile, AutosaveStatus, createEmptyProject, WorkspaceState } from '../types/project';
 import SaveProjectAsDialog from '../components/Dialogs/SaveProjectAsDialog';
 import { ConfirmationDialog } from '../components/Dialogs/ConfirmationDialog';
+import { WORKSPACE_STATE_CHANGED_EVENT, WORKSPACE_RESTORE_EVENT } from '../hooks/useWorkspaceState';
 
 /**
  * Project context state interface
@@ -52,6 +53,12 @@ export interface ProjectContextState {
   setProjectData: (data: ProjectFile) => void;
   markDirty: () => void;
   clearProject: () => void;
+
+  // Workspace state integration
+  /** Get current workspace state for saving */
+  getWorkspaceState: () => WorkspaceState | undefined;
+  /** Set workspace state after loading */
+  setWorkspaceState: (state: WorkspaceState) => void;
 }
 
 const defaultContextState: ProjectContextState = {
@@ -71,6 +78,8 @@ const defaultContextState: ProjectContextState = {
   setProjectData: () => {},
   markDirty: () => {},
   clearProject: () => {},
+  getWorkspaceState: () => undefined,
+  setWorkspaceState: () => {},
 };
 
 export const ProjectContext = createContext<ProjectContextState>(defaultContextState);
@@ -126,6 +135,9 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
   // Save As dialog promise resolver
   const saveAsResolverRef = useRef<((result: string | null) => void) | null>(null);
 
+  // Workspace state ref for integration with WorkspaceContext
+  const currentWorkspaceRef = useRef<WorkspaceState | undefined>(undefined);
+
   /**
    * Helper function to show toast notifications
    */
@@ -146,6 +158,25 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
   );
 
   /**
+   * Get current workspace state
+   */
+  const getWorkspaceState = useCallback((): WorkspaceState | undefined => {
+    return currentWorkspaceRef.current;
+  }, []);
+
+  /**
+   * Set workspace state (triggers restoration event)
+   */
+  const setWorkspaceState = useCallback((state: WorkspaceState) => {
+    currentWorkspaceRef.current = state;
+    window.dispatchEvent(
+      new CustomEvent(WORKSPACE_RESTORE_EVENT, {
+        detail: state,
+      })
+    );
+  }, []);
+
+  /**
    * Save the current project
    */
   const saveCurrentProject = useCallback(
@@ -159,7 +190,7 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
       setAutosaveStatus('saving');
 
       try {
-        // Update project metadata
+        // Update project metadata and include workspace state
         const updatedProject: ProjectFile = {
           ...projectData,
           metadata: {
@@ -167,6 +198,8 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
             name: projectNameToUse,
             lastModifiedAt: new Date().toISOString(),
           },
+          // Include current workspace state for session restoration
+          workspace: currentWorkspaceRef.current,
         };
 
         // Save to backend
@@ -252,6 +285,8 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
             // Preserve original createdAt if exists, otherwise use current time for truly new projects
             createdAt: projectToSave.metadata.createdAt || new Date().toISOString(),
           },
+          // Include current workspace state for session restoration
+          workspace: currentWorkspaceRef.current,
         };
 
         // Save as new project (no ID means create new)
@@ -313,7 +348,18 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
       setIsDirty(false);
       setLastSaved(new Date(data.lastModifiedAt));
 
-      loggingService.info('Project loaded', { projectId: id });
+      // Restore workspace state if available
+      if (loadedProject.workspace) {
+        currentWorkspaceRef.current = loadedProject.workspace;
+        window.dispatchEvent(
+          new CustomEvent(WORKSPACE_RESTORE_EVENT, {
+            detail: loadedProject.workspace,
+          })
+        );
+        loggingService.info('Project loaded with workspace state', { projectId: id });
+      } else {
+        loggingService.info('Project loaded (no workspace state)', { projectId: id });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       loggingService.error('Failed to load project', new Error(errorMessage), 'ProjectContext');
@@ -391,6 +437,22 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
       cleanupToast();
     };
   }, [saveCurrentProject, openSaveAsDialog, projectData, projectName, showToast]);
+
+  // Listen for workspace state changes from WorkspaceContext
+  useEffect(() => {
+    const handleWorkspaceChange = (event: Event) => {
+      const customEvent = event as CustomEvent<WorkspaceState>;
+      if (customEvent.detail) {
+        currentWorkspaceRef.current = customEvent.detail;
+        setIsDirty(true);
+      }
+    };
+
+    window.addEventListener(WORKSPACE_STATE_CHANGED_EVENT, handleWorkspaceChange);
+    return () => {
+      window.removeEventListener(WORKSPACE_STATE_CHANGED_EVENT, handleWorkspaceChange);
+    };
+  }, []);
 
   // Autosave functionality
   useEffect(() => {
@@ -493,6 +555,8 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
     setProjectData,
     markDirty,
     clearProject,
+    getWorkspaceState,
+    setWorkspaceState,
   };
 
   return (
