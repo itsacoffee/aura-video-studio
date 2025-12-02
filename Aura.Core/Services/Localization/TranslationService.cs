@@ -25,7 +25,7 @@ public class TranslationService
 {
     private readonly ILogger<TranslationService> _logger;
     private readonly ILlmProvider _llmProvider;
-    private readonly LlmStageAdapter? _stageAdapter;
+    private readonly LlmStageAdapter _stageAdapter;
     private readonly CulturalLocalizationEngine _culturalEngine;
     private readonly TranslationQualityValidator _qualityValidator;
     private readonly TimingAdjuster _timingAdjuster;
@@ -34,7 +34,7 @@ public class TranslationService
     public TranslationService(
         ILogger<TranslationService> logger,
         ILlmProvider llmProvider,
-        LlmStageAdapter? stageAdapter = null)
+        LlmStageAdapter stageAdapter)
     {
         _logger = logger;
         _llmProvider = llmProvider;
@@ -461,37 +461,24 @@ public class TranslationService
             {
                 // Use LlmStageAdapter for unified orchestration (same path as script generation)
                 // This ensures proper provider selection, fallback logic, and timeout configuration
-                if (_stageAdapter != null)
-                {
-                    _logger.LogInformation("Using LlmStageAdapter for translation (unified orchestration path)");
-                    var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
-                        systemPrompt,
-                        userPrompt,
-                        "Free", // Use Free tier for translation (works with Ollama)
-                        false,  // Allow online providers
-                        llmParameters,
-                        cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("Using LlmStageAdapter for translation (unified orchestration path)");
+                var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                    systemPrompt,
+                    userPrompt,
+                    "Free", // Use Free tier for translation (works with Ollama)
+                    false,  // Allow online providers
+                    llmParameters,
+                    cancellationToken).ConfigureAwait(false);
 
-                    if (!orchestrationResult.IsSuccess)
-                    {
-                        throw new InvalidOperationException(
-                            orchestrationResult.ErrorMessage ?? "LLM orchestration failed for translation");
-                    }
-
-                    response = orchestrationResult.Data;
-                    _logger.LogInformation("Successfully generated translation via LlmStageAdapter (Provider: {Provider})",
-                        orchestrationResult.ProviderUsed ?? "Unknown");
-                }
-                else
+                if (!orchestrationResult.IsSuccess)
                 {
-                    // Fallback to direct provider call if stage adapter is not available
-                    _logger.LogWarning("LlmStageAdapter not available, falling back to direct GenerateChatCompletionAsync");
-                    response = await _llmProvider.GenerateChatCompletionAsync(
-                        systemPrompt,
-                        userPrompt,
-                        llmParameters,
-                        cancellationToken).ConfigureAwait(false);
+                    throw new InvalidOperationException(
+                        orchestrationResult.ErrorMessage ?? "LLM orchestration failed for translation");
                 }
+
+                response = orchestrationResult.Data;
+                _logger.LogInformation("Successfully generated translation via LlmStageAdapter (Provider: {Provider})",
+                    orchestrationResult.ProviderUsed ?? "Unknown");
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

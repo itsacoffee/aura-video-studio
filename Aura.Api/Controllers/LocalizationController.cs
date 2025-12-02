@@ -35,6 +35,7 @@ public class LocalizationController : ControllerBase
 {
     private readonly ILogger<LocalizationController> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter _stageAdapter;
     private readonly GlossaryManager _glossaryManager;
     private readonly ILoggerFactory _loggerFactory;
     private readonly List<ISSMLMapper> _ssmlMappers;
@@ -47,10 +48,11 @@ public class LocalizationController : ControllerBase
         ILlmProvider llmProvider,
         ILoggerFactory loggerFactory,
         IConfiguration configuration,
-        LlmStageAdapter? stageAdapter = null)
+        LlmStageAdapter stageAdapter)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
         _loggerFactory = loggerFactory;
         
         // Load timeout configuration with defaults
@@ -569,7 +571,8 @@ public class LocalizationController : ControllerBase
         {
             var translationService = new TranslationService(
                 _loggerFactory.CreateLogger<TranslationService>(), 
-                _llmProvider);
+                _llmProvider,
+                _stageAdapter);
 
             var batchRequest = MapToBatchTranslationRequest(request);
             var result = await translationService.BatchTranslateAsync(batchRequest, null, cancellationToken).ConfigureAwait(false);
@@ -1282,7 +1285,8 @@ public class LocalizationController : ControllerBase
         {
             var translationService = new TranslationService(
                 _loggerFactory.CreateLogger<TranslationService>(),
-                _llmProvider);
+                _llmProvider,
+                _stageAdapter);
 
             var ssmlPlannerService = new SSMLPlannerService(
                 _loggerFactory.CreateLogger<SSMLPlannerService>(),
@@ -1403,7 +1407,8 @@ public class LocalizationController : ControllerBase
 
             var translationService = new TranslationService(
                 _loggerFactory.CreateLogger<TranslationService>(),
-                _llmProvider);
+                _llmProvider,
+                _stageAdapter);
 
             var ssmlPlannerService = new SSMLPlannerService(
                 _loggerFactory.CreateLogger<SSMLPlannerService>(),

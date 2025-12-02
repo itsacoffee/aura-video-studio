@@ -1,7 +1,9 @@
 using Aura.Api.Services;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Collections.Generic;
 using Xunit;
 
 namespace Aura.Tests.Localization;
@@ -15,6 +17,7 @@ public class LocalizationServiceTests
     private readonly Mock<ILogger<LocalizationService>> _loggerMock;
     private readonly Mock<ILlmProvider> _llmProviderMock;
     private readonly Mock<ILoggerFactory> _loggerFactoryMock;
+    private readonly Mock<LlmStageAdapter> _stageAdapterMock;
     private readonly LocalizationService _service;
 
     public LocalizationServiceTests()
@@ -27,11 +30,21 @@ public class LocalizationServiceTests
         _loggerFactoryMock
             .Setup(x => x.CreateLogger(It.IsAny<string>()))
             .Returns(new Mock<ILogger>().Object);
+
+        // Create mock stage adapter
+        var mockAdapterLogger = new Mock<ILogger<LlmStageAdapter>>();
+        var mockProviderMixer = new Mock<Aura.Core.Orchestrator.ProviderMixer>();
+        _stageAdapterMock = new Mock<LlmStageAdapter>(
+            mockAdapterLogger.Object,
+            new Dictionary<string, ILlmProvider> { { "RuleBased", _llmProviderMock.Object } },
+            mockProviderMixer.Object,
+            null);
         
         _service = new LocalizationService(
             _loggerMock.Object,
             _llmProviderMock.Object,
-            _loggerFactoryMock.Object);
+            _loggerFactoryMock.Object,
+            _stageAdapterMock.Object);
     }
 
     #region ValidateLanguageCode Tests

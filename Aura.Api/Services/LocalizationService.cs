@@ -30,7 +30,7 @@ public class LocalizationService : ILocalizationService
         ILogger<LocalizationService> logger,
         ILlmProvider llmProvider,
         ILoggerFactory loggerFactory,
-        LlmStageAdapter? stageAdapter = null)
+        LlmStageAdapter stageAdapter)
     {
         _logger = logger;
         _llmProvider = llmProvider;
