@@ -25,6 +25,7 @@ import {
 } from '../services/projectService';
 import { ProjectFile, AutosaveStatus, createEmptyProject } from '../types/project';
 import SaveProjectAsDialog from '../components/Dialogs/SaveProjectAsDialog';
+import { ConfirmationDialog } from '../components/Dialogs/ConfirmationDialog';
 
 /**
  * Project context state interface
@@ -114,6 +115,10 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>('idle');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isSaveAsDialogOpen, setIsSaveAsDialogOpen] = useState(false);
+
+  // Recovery dialog state
+  const [isRecoveryDialogOpen, setIsRecoveryDialogOpen] = useState(false);
+  const [pendingRecoveryData, setPendingRecoveryData] = useState<ProjectFile | null>(null);
 
   // Refs for autosave
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -237,14 +242,15 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
       setAutosaveStatus('saving');
 
       try {
-        // Update project metadata with new name
+        // Update project metadata with new name - preserve original creation date for Save As
         const updatedProject: ProjectFile = {
           ...projectToSave,
           metadata: {
             ...projectToSave.metadata,
             name,
             lastModifiedAt: new Date().toISOString(),
-            createdAt: new Date().toISOString(), // New project, new creation date
+            // Preserve original createdAt if exists, otherwise use current time for truly new projects
+            createdAt: projectToSave.metadata.createdAt || new Date().toISOString(),
           },
         };
 
@@ -422,22 +428,37 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
     if (!projectId && !projectName) {
       const autosaved = loadFromLocalStorage();
       if (autosaved) {
-        // Prompt user to recover
-        const shouldRecover = window.confirm(
-          'An autosaved project was found. Would you like to recover it?'
-        );
-        if (shouldRecover) {
-          setProjectDataState(autosaved);
-          setProjectName(autosaved.metadata.name);
-          setIsDirty(true);
-          loggingService.info('Recovered autosaved project');
-        } else {
-          clearLocalStorage();
-        }
+        // Store the autosaved data and show recovery dialog
+        setPendingRecoveryData(autosaved);
+        setIsRecoveryDialogOpen(true);
       }
     }
     // Run only once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Handle recovery dialog confirm
+   */
+  const handleRecoveryConfirm = useCallback(() => {
+    if (pendingRecoveryData) {
+      setProjectDataState(pendingRecoveryData);
+      setProjectName(pendingRecoveryData.metadata.name);
+      setIsDirty(true);
+      loggingService.info('Recovered autosaved project');
+    }
+    setPendingRecoveryData(null);
+    setIsRecoveryDialogOpen(false);
+  }, [pendingRecoveryData]);
+
+  /**
+   * Handle recovery dialog cancel
+   */
+  const handleRecoveryCancel = useCallback(() => {
+    clearLocalStorage();
+    setPendingRecoveryData(null);
+    setIsRecoveryDialogOpen(false);
+    loggingService.info('User declined autosave recovery, cleared localStorage');
   }, []);
 
   /**
@@ -483,6 +504,17 @@ export const ProjectProvider: FC<ProjectProviderProps> = ({
         onSave={handleSaveAsDialogComplete}
         currentName={projectName || undefined}
         currentDescription={projectData?.metadata?.description}
+      />
+      <ConfirmationDialog
+        open={isRecoveryDialogOpen}
+        onOpenChange={setIsRecoveryDialogOpen}
+        title="Recover Autosaved Project"
+        message={`An autosaved project "${pendingRecoveryData?.metadata?.name || 'Untitled'}" was found. Would you like to recover it?`}
+        confirmLabel="Recover"
+        cancelLabel="Discard"
+        variant="info"
+        onConfirm={handleRecoveryConfirm}
+        onCancel={handleRecoveryCancel}
       />
     </ProjectContext.Provider>
   );

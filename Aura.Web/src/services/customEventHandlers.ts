@@ -13,6 +13,17 @@ import { executeSaveProject, executeSaveProjectAs, showToast } from './projectEv
 const registeredHandlers: Map<string, EventListener> = new Map();
 
 /**
+ * LocalStorage keys that should be preserved when clearing cache.
+ * These contain user preferences and essential app state.
+ */
+const PRESERVE_LOCALSTORAGE_KEYS = [
+  'darkMode',
+  'themeName',
+  'hasCompletedFirstRun',
+  'hasSeenOnboarding',
+] as const;
+
+/**
  * Handler for app:saveProject event
  * Delegates to the project event bus to save the current project
  */
@@ -66,12 +77,14 @@ async function handleClearCache(): Promise<void> {
 
   try {
     // Clear relevant localStorage items (preserve user preferences)
-    const keysToKeep = ['darkMode', 'themeName', 'hasCompletedFirstRun', 'hasSeenOnboarding'];
     const keysToRemove: string[] = [];
 
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && !keysToKeep.includes(key)) {
+      if (
+        key &&
+        !PRESERVE_LOCALSTORAGE_KEYS.includes(key as (typeof PRESERVE_LOCALSTORAGE_KEYS)[number])
+      ) {
         keysToRemove.push(key);
       }
     }

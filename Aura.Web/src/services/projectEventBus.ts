@@ -179,7 +179,8 @@ export function showToast(
     state.showToastHandler(message, intent);
   } else {
     // Fallback to console if no toast handler is registered
-    const logLevel = intent === 'error' ? 'error' : intent === 'warning' ? 'warn' : 'info';
+    const logLevelMap = { error: 'error', warning: 'warn', success: 'info', info: 'info' } as const;
+    const logLevel = logLevelMap[intent];
     console[logLevel](`[Project Event Bus] ${message}`);
   }
 }
