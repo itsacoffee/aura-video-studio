@@ -127,17 +127,6 @@
         "filter": [
           "**/*"
         ]
-      },
-      {
-        "from": "resources/opencut",
-        "to": "opencut",
-        "filter": [
-          "**/*",
-          "!**/node_modules/**/@ffmpeg/core/**",
-          "!**/node_modules/**/@ffmpeg/ffmpeg/**",
-          "!**/node_modules/**/bun-types/**",
-          "!**/node_modules/**/.bun/**"
-        ]
       }
     ],
     "mac": null,

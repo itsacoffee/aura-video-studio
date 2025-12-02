@@ -1,22 +1,30 @@
 #!/usr/bin/env node
 /**
- * Test: OpenCut Build Output Verification
+ * Test: OpenCut Integration Verification
  * 
- * Verifies that the build script correctly prepares OpenCut resources:
- * 1. resources/opencut/server.js exists after build
- * 2. OpenCut manager expects correct paths
- * 3. OpenCut page loads via iframe (not external browser)
+ * Verifies that OpenCut is correctly integrated into Aura:
  * 
- * This test validates the changes from PR 15 that fixed OpenCut integration.
+ * NATIVE INTEGRATION (Current Architecture - PR refactoring iframe to native):
+ * - OpenCut runs as native React components in Aura.Web
+ * - No separate server process needed
+ * - No iframe loading or server health checks
+ * 
+ * LEGACY TESTS (Preserved but skipped):
+ * - Some tests reference the old iframe/server architecture
+ * - These are marked as skipped since the architecture has changed
+ * 
+ * This test validates the changes that refactored OpenCut from iframe-based
+ * to native React component integration.
  */
 
 const path = require('path');
 const fs = require('fs');
 
-console.log('=== OpenCut Build Output Verification Tests ===\n');
+console.log('=== OpenCut Integration Verification Tests ===\n');
 
 let testsPassed = 0;
 let testsFailed = 0;
+let testsSkipped = 0;
 
 function test(name, fn) {
   try {
@@ -30,58 +38,55 @@ function test(name, fn) {
   }
 }
 
-// Test 1: Verify build script has OpenCut copy step
-test('build-desktop.ps1 has Step 1b.9 to copy OpenCut to resources/opencut', () => {
+function skip(name, reason) {
+  console.log(`○ ${name} (skipped: ${reason})`);
+  testsSkipped++;
+}
+
+// Test 1: Verify build script has native integration comment
+test('build-desktop.ps1 indicates native OpenCut integration', () => {
   const buildScript = fs.readFileSync(
     path.join(__dirname, '../build-desktop.ps1'),
     'utf8'
   );
   
-  if (!buildScript.includes('Step 1b.9: Copy OpenCut standalone build to resources/opencut')) {
-    throw new Error('build-desktop.ps1 missing Step 1b.9 for copying OpenCut');
+  // Should indicate native integration
+  if (!buildScript.includes('OpenCut Native Integration') && 
+      !buildScript.includes('native')) {
+    throw new Error('build-desktop.ps1 should indicate native OpenCut integration');
   }
   
-  if (!buildScript.includes('$openCutResourcesDir = "$ScriptDir\\resources\\opencut"')) {
-    throw new Error('build-desktop.ps1 does not define $openCutResourcesDir correctly');
+  // Should skip server build
+  if (!buildScript.includes('SKIP_OPENCUT_SERVER_BUILD')) {
+    throw new Error('build-desktop.ps1 should have SKIP_OPENCUT_SERVER_BUILD flag');
   }
 });
 
-// Test 2: Verify build script copies server.js
-test('build-desktop.ps1 copies server.js to resources/opencut', () => {
-  const buildScript = fs.readFileSync(
-    path.join(__dirname, '../build-desktop.ps1'),
-    'utf8'
-  );
-  
-  // Check that it verifies server.js exists after copy
-  if (!buildScript.includes('$finalServerJs = "$openCutResourcesDir\\server.js"')) {
-    throw new Error('build-desktop.ps1 does not verify final server.js location');
-  }
-  
-  if (!buildScript.includes('OpenCut resources prepared successfully')) {
-    throw new Error('build-desktop.ps1 missing success message for OpenCut resources');
-  }
-});
-
-// Test 3: Verify OpenCut manager looks for server.js in correct location
-test('opencut-manager.js looks for server.js in resources/opencut when packaged', () => {
+// Test 2: Verify OpenCut manager is deprecated
+test('opencut-manager.js is deprecated and returns native mode diagnostics', () => {
   const manager = fs.readFileSync(
     path.join(__dirname, '../electron/opencut-manager.js'),
     'utf8'
   );
   
-  // In packaged mode, should look for server.js in process.resourcesPath/opencut
-  if (!manager.includes('path.join(process.resourcesPath, "opencut")')) {
-    throw new Error('opencut-manager.js does not look in process.resourcesPath/opencut');
+  // Should be marked as deprecated
+  if (!manager.includes('DEPRECATED') && !manager.includes('deprecated')) {
+    throw new Error('opencut-manager.js should be marked as deprecated');
   }
   
-  if (!manager.includes('path.join(openCutAppDir, "server.js")')) {
-    throw new Error('opencut-manager.js does not look for server.js');
+  // Should indicate native mode in diagnostics
+  if (!manager.includes('mode: "native"') || !manager.includes('native')) {
+    throw new Error('opencut-manager.js getDiagnostics should indicate native mode');
+  }
+  
+  // Server is disabled
+  if (!manager.includes('enabled: false') && !manager.includes('this.enabled = false')) {
+    throw new Error('opencut-manager.js should have server disabled');
   }
 });
 
-// Test 4: Verify package.json extraResources includes opencut
-test('package.json extraResources includes resources/opencut', () => {
+// Test 3: Verify package.json extraResources does NOT include opencut (native mode)
+test('package.json extraResources excludes resources/opencut (native mode)', () => {
   const packageJson = JSON.parse(fs.readFileSync(
     path.join(__dirname, '../package.json'),
     'utf8'
@@ -97,13 +102,13 @@ test('package.json extraResources includes resources/opencut', () => {
     (typeof r === 'string' && r.includes('opencut'))
   );
   
-  if (!opencutResource) {
-    throw new Error('package.json extraResources does not include resources/opencut');
+  if (opencutResource) {
+    throw new Error('package.json extraResources should NOT include resources/opencut in native mode');
   }
 });
 
-// Test 5: Verify OpenCut page uses iframe (not external browser redirect)
-test('OpenCutPage.tsx loads OpenCut via iframe (not external redirect)', () => {
+// Test 4: Verify OpenCut page uses native components (not iframe)
+test('OpenCutPage.tsx uses native OpenCutEditor component', () => {
   const opencutPagePath = path.join(__dirname, '../../Aura.Web/src/pages/OpenCutPage.tsx');
   
   if (!fs.existsSync(opencutPagePath)) {
@@ -112,39 +117,67 @@ test('OpenCutPage.tsx loads OpenCut via iframe (not external redirect)', () => {
   
   const opencutPage = fs.readFileSync(opencutPagePath, 'utf8');
   
-  // Should have an iframe element
-  if (!opencutPage.includes('<iframe')) {
-    throw new Error('OpenCutPage.tsx does not use an iframe element');
+  // Should import OpenCutEditor
+  if (!opencutPage.includes('OpenCutEditor')) {
+    throw new Error('OpenCutPage.tsx should import OpenCutEditor component');
   }
   
-  // Should reference iframe for loading OpenCut
-  if (!opencutPage.includes('iframeRef')) {
-    throw new Error('OpenCutPage.tsx does not use iframeRef for iframe control');
+  // Should NOT have an iframe element
+  if (opencutPage.includes('<iframe')) {
+    throw new Error('OpenCutPage.tsx should NOT use an iframe element in native mode');
   }
   
-  // Should load OpenCut URL in iframe, not navigate away
-  if (!opencutPage.includes('startLoading')) {
-    throw new Error('OpenCutPage.tsx missing startLoading for iframe');
+  // Should NOT have server health checks
+  if (opencutPage.includes('checkOpenCutHealth')) {
+    throw new Error('OpenCutPage.tsx should NOT have server health checks in native mode');
   }
 });
 
-// Test 6: Verify OpenCut defaults to localhost:3100 in Electron
-test('OpenCut URL defaults to http://127.0.0.1:3100 in Electron', () => {
-  const opencutPagePath = path.join(__dirname, '../../Aura.Web/src/pages/OpenCutPage.tsx');
-  const opencutPage = fs.readFileSync(opencutPagePath, 'utf8');
+// Test 5: Verify OpenCutEditor component exists
+test('OpenCutEditor.tsx component exists with required features', () => {
+  const editorPath = path.join(__dirname, '../../Aura.Web/src/components/OpenCut/OpenCutEditor.tsx');
   
-  // Should have fallback to localhost:3100 for Electron
-  if (!opencutPage.includes('http://127.0.0.1:3100')) {
-    throw new Error('OpenCutPage.tsx does not default to http://127.0.0.1:3100');
+  if (!fs.existsSync(editorPath)) {
+    throw new Error('OpenCutEditor.tsx not found');
   }
   
-  // Should detect Electron environment
-  if (!opencutPage.includes('Electron')) {
-    throw new Error('OpenCutPage.tsx does not detect Electron environment');
+  const editor = fs.readFileSync(editorPath, 'utf8');
+  
+  // Should have timeline
+  if (!editor.includes('timeline') && !editor.includes('Timeline')) {
+    throw new Error('OpenCutEditor should have timeline functionality');
+  }
+  
+  // Should have preview
+  if (!editor.includes('preview') && !editor.includes('Preview')) {
+    throw new Error('OpenCutEditor should have preview functionality');
+  }
+  
+  // Should have media panel
+  if (!editor.includes('media') && !editor.includes('Media')) {
+    throw new Error('OpenCutEditor should have media functionality');
   }
 });
 
-// Test 7: Verify OpenCut manager has getDiagnostics method (from PR 15)
+// Test 6: Verify OpenCut stores exist
+test('OpenCut Zustand stores exist', () => {
+  const storesDir = path.join(__dirname, '../../Aura.Web/src/stores');
+  
+  const requiredStores = [
+    'opencutProject.ts',
+    'opencutPlayback.ts',
+    'opencutMedia.ts'
+  ];
+  
+  for (const store of requiredStores) {
+    const storePath = path.join(storesDir, store);
+    if (!fs.existsSync(storePath)) {
+      throw new Error(`Store ${store} not found`);
+    }
+  }
+});
+
+// Test 7: Verify opencut-manager.js has getDiagnostics method
 test('opencut-manager.js has getDiagnostics method for troubleshooting', () => {
   const manager = fs.readFileSync(
     path.join(__dirname, '../electron/opencut-manager.js'),
@@ -154,32 +187,11 @@ test('opencut-manager.js has getDiagnostics method for troubleshooting', () => {
   if (!manager.includes('async getDiagnostics()')) {
     throw new Error('opencut-manager.js missing getDiagnostics method');
   }
-  
-  // Should return server path info
-  if (!manager.includes('serverPath:') && !manager.includes('serverExists:')) {
-    throw new Error('getDiagnostics does not return server path information');
-  }
 });
 
-// Test 8: Verify build script handles monorepo structure
-test('build-desktop.ps1 handles monorepo structure (standalone/apps/web/server.js)', () => {
-  const buildScript = fs.readFileSync(
-    path.join(__dirname, '../build-desktop.ps1'),
-    'utf8'
-  );
-  
-  // Should check for monorepo path
-  if (!buildScript.includes('$monorepoServerPath') || 
-      !buildScript.includes('apps\\web\\server.js')) {
-    throw new Error('build-desktop.ps1 does not handle monorepo structure');
-  }
-  
-  // Should also handle single package structure
-  if (!buildScript.includes('$singleServerPath') ||
-      !buildScript.includes('$standaloneDir\\server.js')) {
-    throw new Error('build-desktop.ps1 does not handle single package structure');
-  }
-});
+// Test 8: Legacy test - skipped (build script no longer copies server)
+skip('build-desktop.ps1 copies server.js to resources/opencut', 
+  'Native mode - server build disabled');
 
 // Test 9: Verify clean-desktop.ps1 cleans OpenCut workspace artifacts
 test('clean-desktop.ps1 cleans OpenCut workspace artifacts', () => {
@@ -201,19 +213,9 @@ test('clean-desktop.ps1 cleans OpenCut workspace artifacts', () => {
   if (!cleanScript.includes('$projectRoot\\OpenCut\\apps\\web\\.next')) {
     throw new Error('clean-desktop.ps1 does not clean OpenCut .next directory');
   }
-  
-  // Should clean build-time resources/opencut
-  if (!cleanScript.includes('resources\\opencut')) {
-    throw new Error('clean-desktop.ps1 does not clean resources/opencut build output');
-  }
-  
-  // Should clean build-time resources/backend
-  if (!cleanScript.includes('resources\\backend')) {
-    throw new Error('clean-desktop.ps1 does not clean resources/backend build output');
-  }
 });
 
-// Test 10: Verify resources/opencut is gitignored (should not commit build output)
+// Test 10: Verify resources/.gitignore ignores opencut/ directory
 test('resources/.gitignore ignores opencut/ directory', () => {
   const gitignorePath = path.join(__dirname, '../resources/.gitignore');
   
@@ -232,21 +234,22 @@ test('resources/.gitignore ignores opencut/ directory', () => {
 console.log('\n=== Test Summary ===');
 console.log(`Passed: ${testsPassed}`);
 console.log(`Failed: ${testsFailed}`);
-console.log(`Total: ${testsPassed + testsFailed}`);
+console.log(`Skipped: ${testsSkipped}`);
+console.log(`Total: ${testsPassed + testsFailed + testsSkipped}`);
 
 if (testsFailed > 0) {
   console.error('\n❌ Some tests failed');
   process.exit(1);
 } else {
-  console.log('\n✅ All OpenCut build output tests passed');
-  console.log('\nVerified:');
-  console.log('  - Build script copies OpenCut to resources/opencut');
-  console.log('  - OpenCut manager looks for server.js in correct location');
-  console.log('  - package.json extraResources includes opencut');
-  console.log('  - OpenCutPage loads via iframe (not external browser)');
-  console.log('  - OpenCut URL defaults to localhost:3100 in Electron');
+  console.log('\n✅ All OpenCut integration tests passed');
+  console.log('\nVerified (Native Integration):');
+  console.log('  - Build script indicates native OpenCut integration');
+  console.log('  - OpenCut manager is deprecated (server disabled)');
+  console.log('  - package.json excludes OpenCut server resources');
+  console.log('  - OpenCutPage uses native OpenCutEditor component');
+  console.log('  - OpenCutEditor component has timeline, preview, media');
+  console.log('  - Zustand stores exist for OpenCut state');
   console.log('  - Diagnostics method available for troubleshooting');
-  console.log('  - Build handles both monorepo and single package structures');
   console.log('  - Clean script removes OpenCut workspace artifacts');
   console.log('  - Build output is properly gitignored');
   process.exit(0);

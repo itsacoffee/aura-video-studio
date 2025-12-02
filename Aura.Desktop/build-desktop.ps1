@@ -252,22 +252,41 @@ if (-not $SkipFrontend) {
     Write-Host ""
 
     # ========================================
-    # Step 1b: Prepare OpenCut (CapCut-style editor) bundle
+    # Step 1b: OpenCut Native Integration (No Server Build Required)
     # ========================================
-    $openCutRootDir = "$ProjectRoot\OpenCut"
-    $openCutAppDir = "$openCutRootDir\apps\web"
-    $openCutBuildSuccess = $false
+    # OpenCut has been refactored to run natively as React components
+    # within Aura.Web. The separate Next.js server is no longer needed.
+    # See: https://github.com/itsacoffee/aura-video-studio/issues/XXX
+    #
+    # The old OpenCut build process (building a standalone Next.js server
+    # and bundling it into resources/opencut) has been removed because:
+    # 1. OpenCut components now render directly in Aura.Web
+    # 2. No separate server process is needed
+    # 3. No iframe loading or server health checks required
+    # 4. Faster startup and better reliability
+    #
+    # The OpenCut source code in OpenCut/apps/web is preserved for
+    # reference and potential future standalone usage.
+    
+    Write-Info "OpenCut native integration enabled - no server build required"
+    Write-Success "  ✓ OpenCut components integrated directly into Aura.Web"
+    Write-Host ""
+    
+    # Skip the old OpenCut server build process
+    # (The following code block has been disabled but preserved for reference)
+    $SKIP_OPENCUT_SERVER_BUILD = $true
+    
+    if (-not $SKIP_OPENCUT_SERVER_BUILD) {
+        # Legacy OpenCut server build - DISABLED
+        # This section built a standalone Next.js server that was bundled
+        # into resources/opencut and started by OpenCutManager in Electron.
+        # It has been replaced with native React components in Aura.Web.
+        $openCutRootDir = "$ProjectRoot\OpenCut"
+        $openCutAppDir = "$openCutRootDir\apps\web"
+        $openCutBuildSuccess = $false
 
-    if (Test-Path $openCutAppDir) {
-        Write-Info "Preparing OpenCut web editor..."
-
-        # ----------------------------------------
-        # Step 1b.1: Ensure environment file exists
-        # ----------------------------------------
-        $envExamplePath = "$openCutAppDir\.env.example"
-        $envLocalPath = "$openCutAppDir\.env.local"
-
-        if (-not (Test-Path $envLocalPath)) {
+        if (Test-Path $openCutAppDir) {
+            Write-Info "Preparing OpenCut web editor..."
             if (Test-Path $envExamplePath) {
                 Write-Info "Creating .env.local from .env.example..."
                 Copy-Item $envExamplePath $envLocalPath
@@ -1051,6 +1070,7 @@ NEXT_TELEMETRY_DISABLED=1
         Show-Warning "OpenCut source directory not found at $openCutAppDir. Skipping OpenCut bundle."
         Set-Location $ScriptDir
     }
+    } # End of SKIP_OPENCUT_SERVER_BUILD block
 }
 else {
     Show-Warning "Skipping frontend build"
