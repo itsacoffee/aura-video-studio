@@ -144,6 +144,11 @@ export const OfflineMediaDialog: FC<OfflineMediaDialogProps> = ({
 
   /**
    * Handle locating all missing files by searching a directory
+   * Note: The File System Access API in browsers has security limitations.
+   * It only provides file/folder names, not full paths. In a desktop app
+   * context (Electron), this would be handled through IPC to the main process
+   * which has full file system access. The backend API should accept the
+   * directory handle or resolve paths appropriately.
    */
   const handleLocateAll = useCallback(async () => {
     setIsSearching(true);
@@ -168,7 +173,9 @@ export const OfflineMediaDialog: FC<OfflineMediaDialogProps> = ({
         });
         setRelinkStatuses(initialStatuses);
 
-        // Perform bulk relink
+        // In a desktop app, this would use Electron IPC to get the full path.
+        // For web, we pass the directory name and rely on the backend to
+        // search in configured/known locations or user-specified base paths.
         const result = await assetManager.bulkRelink({
           searchDirectory: directoryHandle.name,
           recursive: true,
@@ -238,6 +245,11 @@ export const OfflineMediaDialog: FC<OfflineMediaDialogProps> = ({
 
   /**
    * Handle locating a single missing file
+   * Note: The File System Access API in browsers has security limitations.
+   * It only provides file names, not full paths. In a desktop app context
+   * (Electron), this would be handled through IPC to get the actual file path.
+   * The backend should be configured to resolve file names to full paths
+   * based on project settings or configured media directories.
    */
   const handleLocateSingle = useCallback(
     async (assetId: string) => {
@@ -273,7 +285,8 @@ export const OfflineMediaDialog: FC<OfflineMediaDialogProps> = ({
             return updated;
           });
 
-          // Relink the asset
+          // In a desktop app, this would use Electron IPC to get the full path.
+          // For web, we pass the file name and rely on the backend to resolve it.
           const result = await assetManager.relinkAsset({
             assetId,
             newPath: file.name,

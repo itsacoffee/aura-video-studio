@@ -98,11 +98,105 @@ class AssetManagerService {
 
   /**
    * Check status of all assets
+   * Uses batch API when available for better performance with many assets
    */
   async checkAllAssetStatus(): Promise<Map<string, AssetStatus>> {
     const results = new Map<string, AssetStatus>();
 
+    // Skip if no assets
+    if (this.assets.size === 0) {
+      return results;
+    }
+
+    // Separate embedded assets (no API call needed) from others
+    const { embeddedAssets, checkableAssets } = this.categorizeAssets();
+
+    // Handle embedded assets immediately
+    for (const [id] of embeddedAssets) {
+      results.set(id, 'embedded');
+    }
+
+    // For checkable assets, try batch API first, fall back to individual checks
+    if (checkableAssets.length > 0) {
+      await this.checkAssetsWithFallback(checkableAssets, results);
+    }
+
+    return results;
+  }
+
+  /**
+   * Categorize assets into embedded and checkable groups
+   */
+  private categorizeAssets(): {
+    embeddedAssets: Array<[string, AssetReference]>;
+    checkableAssets: Array<[string, AssetReference]>;
+  } {
+    const embeddedAssets: Array<[string, AssetReference]> = [];
+    const checkableAssets: Array<[string, AssetReference]> = [];
+
     for (const [id, asset] of this.assets) {
+      if (asset.embedded) {
+        embeddedAssets.push([id, asset]);
+      } else {
+        checkableAssets.push([id, asset]);
+      }
+    }
+
+    return { embeddedAssets, checkableAssets };
+  }
+
+  /**
+   * Check assets using batch API, fall back to individual checks if needed
+   */
+  private async checkAssetsWithFallback(
+    checkableAssets: Array<[string, AssetReference]>,
+    results: Map<string, AssetStatus>
+  ): Promise<void> {
+    try {
+      await this.batchCheckAssets(checkableAssets, results);
+    } catch {
+      // Fall back to individual checks if batch endpoint not available
+      await this.individualCheckAssets(checkableAssets, results);
+    }
+  }
+
+  /**
+   * Batch check assets using batch API endpoint
+   */
+  private async batchCheckAssets(
+    checkableAssets: Array<[string, AssetReference]>,
+    results: Map<string, AssetStatus>
+  ): Promise<void> {
+    const batchResult = await post<Record<string, { exists: boolean; hash?: string }>>(
+      `${API_BASE}/check-files-batch`,
+      {
+        paths: checkableAssets.map(([, asset]) => ({
+          id: asset.id,
+          path: asset.originalPath,
+          expectedHash: asset.fileHash,
+        })),
+      }
+    );
+
+    for (const [id, asset] of checkableAssets) {
+      const fileStatus = batchResult[id];
+      const status = this.determineStatusFromFileInfo(fileStatus, asset.fileHash);
+
+      results.set(id, status);
+      if (status !== asset.status) {
+        this.updateAssetStatus(id, status);
+      }
+    }
+  }
+
+  /**
+   * Check assets individually (fallback when batch is not available)
+   */
+  private async individualCheckAssets(
+    checkableAssets: Array<[string, AssetReference]>,
+    results: Map<string, AssetStatus>
+  ): Promise<void> {
+    for (const [id, asset] of checkableAssets) {
       const status = await this.checkAssetStatus(asset);
       results.set(id, status);
 
@@ -110,8 +204,22 @@ class AssetManagerService {
         this.updateAssetStatus(id, status);
       }
     }
+  }
 
-    return results;
+  /**
+   * Determine asset status from file info response
+   */
+  private determineStatusFromFileInfo(
+    fileStatus: { exists: boolean; hash?: string } | undefined,
+    expectedHash?: string
+  ): AssetStatus {
+    if (!fileStatus || !fileStatus.exists) {
+      return 'offline';
+    }
+    if (expectedHash && fileStatus.hash !== expectedHash) {
+      return 'modified';
+    }
+    return 'online';
   }
 
   /**
@@ -402,8 +510,13 @@ class AssetManagerService {
       clearInterval(this.statusCheckInterval);
     }
 
-    // Check asset status every 30 seconds
+    // Check asset status every 30 seconds, but skip if no assets are registered
     this.statusCheckInterval = setInterval(() => {
+      // Skip status checks if no assets are registered
+      if (this.assets.size === 0) {
+        return;
+      }
+
       this.checkAllAssetStatus().catch((error: unknown) => {
         this.logger.error(
           'Status check failed',

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import type { AssetReference } from '../../types/asset';
 import { AssetManagerService } from '../assetManager';
-import type { AssetReference, AssetStatus } from '../../types/asset';
 
 // Mock the API client
 vi.mock('../api/apiClient', () => ({
@@ -311,6 +311,58 @@ describe('AssetManagerService', () => {
       const status = await service.checkAssetStatus(asset);
 
       expect(status).toBe('offline');
+    });
+  });
+
+  describe('checkAllAssetStatus', () => {
+    it('should return empty map when no assets', async () => {
+      service.initialize([]);
+
+      const results = await service.checkAllAssetStatus();
+
+      expect(results.size).toBe(0);
+    });
+
+    it('should handle embedded assets without API call', async () => {
+      const assets = [createMockAsset({ id: 'embedded-1', embedded: { data: 'base64data' } })];
+      service.initialize(assets);
+
+      const results = await service.checkAllAssetStatus();
+
+      expect(results.get('embedded-1')).toBe('embedded');
+      // No API call should have been made for embedded assets
+    });
+
+    it('should use batch API when available', async () => {
+      const assets = [
+        createMockAsset({ id: 'asset-1', fileHash: 'hash1' }),
+        createMockAsset({ id: 'asset-2', fileHash: 'hash2' }),
+      ];
+      service.initialize(assets);
+
+      mockPost.mockResolvedValueOnce({
+        'asset-1': { exists: true, hash: 'hash1' },
+        'asset-2': { exists: false },
+      });
+
+      const results = await service.checkAllAssetStatus();
+
+      expect(results.get('asset-1')).toBe('online');
+      expect(results.get('asset-2')).toBe('offline');
+    });
+
+    it('should fall back to individual checks when batch fails', async () => {
+      const assets = [createMockAsset({ id: 'asset-1', fileHash: 'hash1' })];
+      service.initialize(assets);
+
+      // Batch API fails
+      mockPost.mockRejectedValueOnce(new Error('Batch endpoint not available'));
+      // Individual check succeeds
+      mockPost.mockResolvedValueOnce({ exists: true, hash: 'hash1' });
+
+      const results = await service.checkAllAssetStatus();
+
+      expect(results.get('asset-1')).toBe('online');
     });
   });
 
