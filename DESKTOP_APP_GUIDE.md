@@ -61,7 +61,7 @@ Do not wire `electron.js` (if present) or root `preload.js` into new Electron co
 
 ### Process Model
 
-> **📘 Complete Documentation**: See [docs/internal/PROCESS_MODEL.md](./docs/internal/docs/internal/PROCESS_MODEL.md) for comprehensive process architecture, shutdown behavior, and troubleshooting guide.
+> **📘 Complete Documentation**: See [docs/architecture/PROCESS_MODEL.md](./docs/architecture/PROCESS_MODEL.md) for comprehensive process architecture, shutdown behavior, and troubleshooting guide.
 
 **Quick Overview**:
 
