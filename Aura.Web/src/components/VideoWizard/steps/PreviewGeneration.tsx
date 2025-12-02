@@ -273,7 +273,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   const [currentStage, setCurrentStage] = useState('');
   const [regeneratingScene, setRegeneratingScene] = useState<string | null>(null);
   const [providers, setProviders] = useState<VisualProvider[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  // Initialize selectedProvider with styleData.imageProvider if available (from Step 2 - StyleSelection)
+  const [selectedProvider, setSelectedProvider] = useState<string>(styleData.imageProvider || '');
   const [imageStyle, setImageStyle] = useState<string>(styleData.imageStyle || 'photorealistic');
   const [imageQuality, setImageQuality] = useState<number>(styleData.imageQuality || 80);
   const [aspectRatio, setAspectRatio] = useState<string>(styleData.imageAspectRatio || '16:9');
@@ -307,6 +308,18 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
   // Use ref to track if providers have been selected to avoid stale closure issues
   const hasSelectedProviderRef = useRef(false);
+
+  // Sync selectedProvider when styleData.imageProvider changes (e.g., user goes back to StyleSelection and changes provider)
+  useEffect(() => {
+    if (styleData.imageProvider && styleData.imageProvider !== selectedProvider) {
+      console.info(
+        '[PreviewGeneration] Syncing image provider from style data:',
+        styleData.imageProvider
+      );
+      setSelectedProvider(styleData.imageProvider);
+      hasSelectedProviderRef.current = true;
+    }
+  }, [styleData.imageProvider, selectedProvider]);
 
   // Validate script data before proceeding
   const hasValidScriptData = useMemo(() => {
