@@ -336,56 +336,40 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     // Verify provider type and log detailed information
                     var providerType = _llmProvider.GetType();
                     var providerTypeName = providerType.Name;
-                    var isComposite = providerTypeName == "CompositeLlmProvider";
 
                     _logger.LogInformation(
                         "Calling LLM for ideation (Attempt {Attempt}/{Max}, Provider: {Provider}, Topic: {Topic})",
                         attempt + 1, maxRetries + 1, providerTypeName, request.Topic);
 
-                    // CRITICAL: Verify we're not using RuleBased or mock providers
-                    if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+                    var callStartTime = DateTime.UtcNow;
+
+                    // Use LlmStageAdapter for unified orchestration (same path as script generation)
+                    // This ensures proper provider selection, fallback logic, and timeout configuration
+                    if (_stageAdapter != null)
                     {
-                        _logger.LogError(
-                            "CRITICAL: Ideation is using RuleBased provider instead of real LLM (Ollama). " +
-                            "This will produce low-quality placeholder concepts. Check Ollama is running and configured.");
-                    }
-                    else if (providerTypeName.Contains("Mock", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogError(
-                            "CRITICAL: Ideation is using Mock provider. This should never happen in production. " +
-                            "Check LLM provider configuration.");
-                    }
-                    else if (isComposite)
-                    {
-                        // For CompositeLlmProvider, log that it will select the best available provider
-                        _logger.LogInformation(
-                            "Using CompositeLlmProvider - it will select the best available provider (Ollama if available)");
+                        _logger.LogInformation("Using LlmStageAdapter for ideation (unified orchestration path)");
+                        var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                            currentSystemPrompt,
+                            currentUserPrompt,
+                            "Free", // Use Free tier for ideation (works with Ollama)
+                            false,  // Allow online providers
+                            ideationParams,
+                            ct).ConfigureAwait(false);
+
+                        if (!orchestrationResult.IsSuccess)
+                        {
+                            throw new InvalidOperationException(
+                                orchestrationResult.ErrorMessage ?? "LLM orchestration failed for ideation");
+                        }
+
+                        jsonResponse = orchestrationResult.Data;
+                        _logger.LogInformation("Successfully generated ideation response via LlmStageAdapter (Provider: {Provider})",
+                            orchestrationResult.ProviderUsed ?? "Unknown");
                     }
                     else
                     {
-                        _logger.LogInformation(
-                            "Using direct provider: {Provider} - this should be Ollama or another real LLM provider",
-                            providerTypeName);
-                    }
-
-                    var callStartTime = DateTime.UtcNow;
-
-                    // Try direct Ollama call first (similar to script generation) for better reliability
-                    // This bypasses CompositeLlmProvider fallback logic and ensures we use Ollama when available
-                    try
-                    {
-                        jsonResponse = await GenerateWithOllamaDirectAsync(
-                            currentSystemPrompt,
-                            currentUserPrompt,
-                            ideationParams,
-                            request,
-                            ct).ConfigureAwait(false);
-                        _logger.LogInformation("Successfully used direct Ollama API call for ideation");
-                    }
-                    catch (InvalidOperationException ex) when (ex.Message.Contains("Ollama") || ex.Message.Contains("not available") || ex.Message.Contains("cannot be used"))
-                    {
-                        // Ollama not available or direct call failed - fall back to CompositeLlmProvider
-                        _logger.LogInformation("Direct Ollama call not available, falling back to CompositeLlmProvider: {Error}", ex.Message);
+                        // Fallback to direct provider call if stage adapter is not available
+                        _logger.LogWarning("LlmStageAdapter not available, falling back to direct provider call");
                         jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
                             currentSystemPrompt,
                             currentUserPrompt,
@@ -3544,8 +3528,9 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
     }
 
     /// <summary>
-    /// Helper method to execute LLM generation with proper parameter handling for all providers
-    /// Supports model override, temperature, and other LLM parameters
+    /// Helper method to execute LLM generation with proper parameter handling for all providers.
+    /// Uses LlmStageAdapter for unified orchestration (same path as script generation).
+    /// Supports model override, temperature, and other LLM parameters.
     /// </summary>
     private async Task<string> GenerateWithLlmAsync(
         string prompt,
@@ -3566,65 +3551,65 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             prompt = prompt.Substring(0, MaxPromptLength);
         }
 
-        var providerType = _llmProvider.GetType().Name;
         var llmParams = request?.LlmParameters;
 
         _logger.LogInformation(
-            "Calling LLM provider for ideation (Provider: {Provider}, ModelOverride: {ModelOverride}, Temperature: {Temperature})",
-            providerType, llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
+            "Calling LLM for ideation via orchestration (ModelOverride: {ModelOverride}, Temperature: {Temperature})",
+            llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
 
         try
         {
             var startTime = DateTime.UtcNow;
             string response;
 
-            // Use provider-specific parameter handling if LLM parameters are provided
-            if (request != null && llmParams != null)
+            // Use LlmStageAdapter for unified orchestration (same path as script generation)
+            // This ensures proper provider selection, fallback logic, and timeout configuration
+            if (_stageAdapter != null)
             {
+                _logger.LogDebug("Using LlmStageAdapter for ideation LLM call");
+                var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                    string.Empty, // No system prompt for raw completion style
+                    prompt,
+                    "Free", // Use Free tier for ideation (works with Ollama)
+                    false,  // Allow online providers
+                    llmParams,
+                    ct).ConfigureAwait(false);
 
-                // Use DraftScriptAsync for proper parameter support if any parameters are specified
-                if (!string.IsNullOrWhiteSpace(llmParams.ModelOverride) ||
-                    llmParams.Temperature.HasValue || llmParams.TopP.HasValue ||
-                    llmParams.TopK.HasValue || llmParams.MaxTokens.HasValue)
+                if (!orchestrationResult.IsSuccess)
                 {
-                    // LLM parameters specified - use provider-specific handling
-                    response = await GenerateWithDraftScriptAsync(prompt, request, ct).ConfigureAwait(false);
+                    throw new InvalidOperationException(
+                        orchestrationResult.ErrorMessage ?? "LLM orchestration failed for ideation");
                 }
-                else
-                {
-                    // No special parameters - use CompleteAsync for simplicity
-                    _logger.LogDebug("Using CompleteAsync (no special parameters)");
-                    response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
-                }
+
+                response = orchestrationResult.Data ?? string.Empty;
+                _logger.LogInformation("Ideation LLM call completed via LlmStageAdapter (Provider: {Provider})",
+                    orchestrationResult.ProviderUsed ?? "Unknown");
             }
             else
             {
-                // No request or LLM parameters - use CompleteAsync for simplicity
-                _logger.LogDebug("Using CompleteAsync (no LLM parameters provided)");
+                // Fallback to direct provider call if stage adapter is not available
+                _logger.LogWarning("LlmStageAdapter not available, falling back to direct CompleteAsync");
                 response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
             }
 
             var duration = DateTime.UtcNow - startTime;
-            _logger.LogDebug("LLM provider completed in {Duration}ms", duration.TotalMilliseconds);
+            _logger.LogDebug("LLM call completed in {Duration}ms", duration.TotalMilliseconds);
 
             if (string.IsNullOrWhiteSpace(response))
             {
-                _logger.LogWarning("LLM provider ({Provider}) returned empty response", providerType);
+                _logger.LogWarning("LLM returned empty response");
                 throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
             }
 
             // Validate response quality - check for common error patterns
             var trimmedResponse = response.Trim();
-            _logger.LogDebug("LLM provider ({Provider}) returned response of length {Length} characters",
-                providerType, response.Length);
+            _logger.LogDebug("LLM returned response of length {Length} characters", response.Length);
 
             if (trimmedResponse.Length < 50)
             {
                 _logger.LogWarning(
-                    "LLM response is suspiciously short ({Length} chars) from provider {Provider}. " +
-                    "Response: {Response}",
+                    "LLM response is suspiciously short ({Length} chars). Response: {Response}",
                     trimmedResponse.Length,
-                    providerType,
                     trimmedResponse.Substring(0, Math.Min(100, trimmedResponse.Length)));
             }
             else
@@ -3638,7 +3623,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            _logger.LogError("LLM generation timed out for provider {Provider}", providerType);
+            _logger.LogError("LLM generation timed out");
             throw new TimeoutException("LLM generation timed out. Please try again.", ex);
         }
         catch (OperationCanceledException)
@@ -3646,20 +3631,10 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             _logger.LogWarning("LLM generation was cancelled");
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException)
         {
-            _logger.LogError(ex, "Error calling LLM provider {Provider}: {ErrorMessage}", providerType, ex.Message);
-
-            // Provide helpful error message based on provider type
-            var errorMessage = providerType switch
-            {
-                "OllamaLlmProvider" => "Failed to generate concepts with Ollama. Please ensure Ollama is running and the model is available.",
-                "OpenAiLlmProvider" => "Failed to generate concepts with OpenAI. Please check your API key and network connection.",
-                "GeminiLlmProvider" => "Failed to generate concepts with Gemini. Please check your API key and network connection.",
-                _ => "Failed to generate concepts. Please try again or check your LLM provider configuration."
-            };
-
-            throw new InvalidOperationException(errorMessage, ex);
+            _logger.LogError(ex, "Error calling LLM: {ErrorMessage}", ex.Message);
+            throw new InvalidOperationException("Failed to generate concepts. Please try again or check your LLM provider configuration.", ex);
         }
     }
 

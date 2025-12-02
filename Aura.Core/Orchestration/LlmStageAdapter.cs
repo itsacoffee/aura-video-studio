@@ -134,6 +134,54 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
             result.ProviderUsed);
     }
 
+    /// <summary>
+    /// Generate chat completion using orchestrated LLM call.
+    /// This is the unified path for ideation, translation, and other chat-based LLM operations.
+    /// Routes through the same orchestration as script generation for consistent provider selection,
+    /// fallback logic, timeout configuration, and model override handling.
+    /// </summary>
+    public async Task<OrchestrationResult<string>> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        string preferredTier,
+        bool offlineOnly,
+        LlmParameters? llmParameters = null,
+        CancellationToken ct = default)
+    {
+        var request = new LlmStageRequest
+        {
+            StageType = LlmStageType.ChatCompletion,
+            SystemPrompt = systemPrompt,
+            UserPrompt = userPrompt,
+            LlmParameters = llmParameters
+        };
+
+        var config = new OrchestrationConfig
+        {
+            PreferredTier = preferredTier,
+            OfflineOnly = offlineOnly,
+            EnableCache = true,
+            ValidateSchema = false
+        };
+
+        var result = await ExecuteAsync(request, config, ct).ConfigureAwait(false);
+
+        if (!result.IsSuccess || result.Data == null)
+        {
+            return OrchestrationResult<string>.Failure(
+                result.OperationId,
+                result.ElapsedMs,
+                result.ErrorMessage ?? "Chat completion failed");
+        }
+
+        return OrchestrationResult<string>.Success(
+            result.Data.Content,
+            result.OperationId,
+            result.ElapsedMs,
+            result.WasCached,
+            result.ProviderUsed);
+    }
+
     protected override string GetStageName() => "LLM";
 
     protected override async Task<ProviderInfo[]> GetProvidersAsync(
@@ -226,6 +274,18 @@ value));
                 content = await llmProvider.CompleteAsync(request.Prompt, ct).ConfigureAwait(false);
                 break;
 
+            case LlmStageType.ChatCompletion:
+                if (request.SystemPrompt == null || request.UserPrompt == null)
+                {
+                    throw new InvalidOperationException("SystemPrompt and UserPrompt required for chat completion");
+                }
+                content = await llmProvider.GenerateChatCompletionAsync(
+                    request.SystemPrompt,
+                    request.UserPrompt,
+                    request.LlmParameters,
+                    ct).ConfigureAwait(false);
+                break;
+
             default:
                 throw new NotSupportedException($"Stage type {request.StageType} not supported");
         }
@@ -252,6 +312,7 @@ value));
             LlmStageType.ScriptGeneration => $"script:{request.Brief?.Topic}:{request.Brief?.Tone}:{request.PlanSpec?.TargetDuration}",
             LlmStageType.VisualPrompt => $"visual:{request.SceneText}:{request.VideoTone}:{request.TargetStyle}",
             LlmStageType.RawCompletion => $"completion:{request.Prompt}",
+            LlmStageType.ChatCompletion => $"chat:{request.SystemPrompt}:{request.UserPrompt}",
             _ => null
         };
 
@@ -281,6 +342,21 @@ public record LlmStageRequest
     public VisualStyle? TargetStyle { get; init; }
     
     public string? Prompt { get; init; }
+    
+    /// <summary>
+    /// System prompt for ChatCompletion stage type
+    /// </summary>
+    public string? SystemPrompt { get; init; }
+    
+    /// <summary>
+    /// User prompt for ChatCompletion stage type
+    /// </summary>
+    public string? UserPrompt { get; init; }
+    
+    /// <summary>
+    /// Optional LLM parameters for customizing generation
+    /// </summary>
+    public LlmParameters? LlmParameters { get; init; }
 }
 
 /// <summary>
@@ -300,5 +376,6 @@ public enum LlmStageType
 {
     ScriptGeneration,
     VisualPrompt,
-    RawCompletion
+    RawCompletion,
+    ChatCompletion
 }

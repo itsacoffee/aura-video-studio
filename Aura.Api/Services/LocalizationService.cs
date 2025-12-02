@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Errors;
 using Aura.Core.Models.Localization;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Localization;
 using Microsoft.Extensions.Logging;
@@ -28,15 +29,18 @@ public class LocalizationService : ILocalizationService
     public LocalizationService(
         ILogger<LocalizationService> logger,
         ILlmProvider llmProvider,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
         
         // Create the translation service once for reuse across all methods
+        // Pass the LlmStageAdapter for unified orchestration (same path as script generation)
         _translationService = new TranslationService(
             loggerFactory.CreateLogger<TranslationService>(),
-            llmProvider);
+            llmProvider,
+            stageAdapter);
 
         // Build resilience pipeline for translation operations
         _translationPipeline = new ResiliencePipelineBuilder<TranslationResult>()

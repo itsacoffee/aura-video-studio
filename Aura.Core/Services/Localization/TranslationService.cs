@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Localization;
 using Aura.Core.Models.Audience;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Microsoft.Extensions.Logging;
 
@@ -24,6 +25,7 @@ public class TranslationService
 {
     private readonly ILogger<TranslationService> _logger;
     private readonly ILlmProvider _llmProvider;
+    private readonly LlmStageAdapter? _stageAdapter;
     private readonly CulturalLocalizationEngine _culturalEngine;
     private readonly TranslationQualityValidator _qualityValidator;
     private readonly TimingAdjuster _timingAdjuster;
@@ -31,10 +33,12 @@ public class TranslationService
 
     public TranslationService(
         ILogger<TranslationService> logger,
-        ILlmProvider llmProvider)
+        ILlmProvider llmProvider,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
+        _stageAdapter = stageAdapter;
         _culturalEngine = new CulturalLocalizationEngine(logger, llmProvider);
         _qualityValidator = new TranslationQualityValidator(logger, llmProvider);
         _timingAdjuster = new TimingAdjuster(logger);
@@ -427,40 +431,10 @@ public class TranslationService
 
         try
         {
-            // Use GenerateChatCompletionAsync for translation - this is consistent with how ideation works
-            // and ensures proper fallback behavior through CompositeLlmProvider
-            var providerType = _llmProvider.GetType();
-            var providerTypeName = providerType.Name;
-            var isComposite = providerTypeName == "CompositeLlmProvider";
-
             _logger.LogInformation(
-                "Starting translation: {SourceLang} -> {TargetLang}, Mode: {Mode}, Transcreation: {HasTranscreation}, Provider: {Provider}",
+                "Starting translation: {SourceLang} -> {TargetLang}, Mode: {Mode}, Transcreation: {HasTranscreation}",
                 sourceLanguage, targetLanguage, options.Mode,
-                !string.IsNullOrWhiteSpace(options.TranscreationContext), providerTypeName);
-
-            // CRITICAL: Verify we're not using RuleBased or mock providers
-            if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogError(
-                    "CRITICAL: Translation is using RuleBased provider instead of real LLM (Ollama). " +
-                    "This will produce poor quality translations. Check Ollama is running and configured. " +
-                    "Please ensure Ollama is running: 'ollama serve' and check 'ollama list' to verify models are installed.");
-                throw new InvalidOperationException(
-                    "Translation requires a real LLM provider (Ollama). RuleBased provider cannot produce quality translations. " +
-                    "Please ensure Ollama is running and configured. Start Ollama with: 'ollama serve'");
-            }
-            else if (providerTypeName.Contains("Mock", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogError(
-                    "CRITICAL: Translation is using Mock provider. This should never happen in production. " +
-                    "Check LLM provider configuration.");
-                throw new InvalidOperationException("Translation cannot use Mock provider. Check LLM provider configuration.");
-            }
-            else if (isComposite)
-            {
-                _logger.LogInformation(
-                    "Using CompositeLlmProvider - it will select the best available provider (Ollama if available)");
-            }
+                !string.IsNullOrWhiteSpace(options.TranscreationContext));
 
             // Validate prompts before sending
             if (string.IsNullOrWhiteSpace(systemPrompt))
@@ -485,14 +459,39 @@ public class TranslationService
             string? response = null;
             try
             {
-                // Use CompositeLlmProvider for translation - it will automatically select the best available provider
-                // and handle fallback logic. This is more reliable than direct Ollama calls.
-                // Pass llmParameters if model override was specified by user
-                response = await _llmProvider.GenerateChatCompletionAsync(
-                    systemPrompt,
-                    userPrompt,
-                    llmParameters, // Use LLM parameters with model override if specified
-                    cancellationToken).ConfigureAwait(false);
+                // Use LlmStageAdapter for unified orchestration (same path as script generation)
+                // This ensures proper provider selection, fallback logic, and timeout configuration
+                if (_stageAdapter != null)
+                {
+                    _logger.LogInformation("Using LlmStageAdapter for translation (unified orchestration path)");
+                    var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                        systemPrompt,
+                        userPrompt,
+                        "Free", // Use Free tier for translation (works with Ollama)
+                        false,  // Allow online providers
+                        llmParameters,
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (!orchestrationResult.IsSuccess)
+                    {
+                        throw new InvalidOperationException(
+                            orchestrationResult.ErrorMessage ?? "LLM orchestration failed for translation");
+                    }
+
+                    response = orchestrationResult.Data;
+                    _logger.LogInformation("Successfully generated translation via LlmStageAdapter (Provider: {Provider})",
+                        orchestrationResult.ProviderUsed ?? "Unknown");
+                }
+                else
+                {
+                    // Fallback to direct provider call if stage adapter is not available
+                    _logger.LogWarning("LlmStageAdapter not available, falling back to direct GenerateChatCompletionAsync");
+                    response = await _llmProvider.GenerateChatCompletionAsync(
+                        systemPrompt,
+                        userPrompt,
+                        llmParameters,
+                        cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -501,16 +500,16 @@ public class TranslationService
             }
             catch (InvalidOperationException ioe) when (ioe.Message.Contains("empty response") || ioe.Message.Contains("empty content"))
             {
-                // Ollama returned empty response - provide detailed diagnostics
+                // LLM returned empty response - provide detailed diagnostics
                 _logger.LogError(ioe,
-                    "Ollama returned empty response for translation {SourceLang} -> {TargetLang}. " +
+                    "LLM returned empty response for translation {SourceLang} -> {TargetLang}. " +
                     "This usually means: (1) The model is not responding correctly, " +
                     "(2) The prompt was too restrictive, or (3) The model needs to be reloaded. " +
-                    "Source text length: {SourceLength}, Provider: {Provider}",
-                    sourceLanguage, targetLanguage, text.Length, providerTypeName);
+                    "Source text length: {SourceLength}",
+                    sourceLanguage, targetLanguage, text.Length);
 
                 throw new InvalidOperationException(
-                    $"Translation failed: Ollama returned an empty response. " +
+                    $"Translation failed: LLM returned an empty response. " +
                     $"This may indicate the model is not working correctly. " +
                     $"Try: (1) Test the model directly with 'ollama run <model>', " +
                     $"(2) Reload the model with 'ollama run <model>', " +
@@ -529,17 +528,16 @@ public class TranslationService
             {
                 _logger.LogError(
                     "LLM returned empty response for translation {SourceLang} -> {TargetLang}. " +
-                    "Provider: {Provider}, Duration: {Duration}ms. " +
+                    "Duration: {Duration}ms. " +
                     "If using Ollama, ensure it's running and the model is loaded.",
-                    sourceLanguage, targetLanguage, providerTypeName, translationDuration.TotalMilliseconds);
+                    sourceLanguage, targetLanguage, translationDuration.TotalMilliseconds);
                 throw new InvalidOperationException(
                     $"LLM returned empty response. If using Ollama, ensure it's running and the model is available.");
             }
 
             _logger.LogInformation(
-                "Translation LLM call completed: Provider={Provider}, Duration={Duration}ms, ResponseLength={Length} chars. " +
-                "If Ollama is running, you should see CPU/GPU utilization in system monitor.",
-                providerTypeName, translationDuration.TotalMilliseconds, response.Length);
+                "Translation LLM call completed in {Duration}ms, ResponseLength={Length} chars.",
+                translationDuration.TotalMilliseconds, response.Length);
 
             var translation = ExtractTranslation(response);
 
