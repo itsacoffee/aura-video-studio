@@ -146,4 +146,21 @@ export const ollamaClient = {
     );
     return response.data;
   },
+
+  /**
+   * Get the recommended default Ollama model based on available models
+   * Returns the best model for script generation based on priority order
+   */
+  async getRecommendedModel(): Promise<{
+    success: boolean;
+    recommendedModel: string | null;
+    message: string;
+  }> {
+    const response = await apiClient.get<{
+      success: boolean;
+      recommendedModel: string | null;
+      message: string;
+    }>('/api/providers/ollama/recommended-model');
+    return response.data;
+  },
 };

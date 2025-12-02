@@ -3914,11 +3914,11 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             {
                 _logger.LogError(ex, "Failed to query Ollama for available models");
                 throw new InvalidOperationException(
-                    $"No Ollama model selected. Please either: " +
-                    $"1. Select a model from the AI Model dropdown in the toolbar, " +
-                    $"2. Configure a default model in Settings > Providers > Ollama, " +
-                    $"3. Or ensure Ollama is running with at least one model installed (run 'ollama pull llama3.1'). " +
-                    $"Error: {ex.Message}", ex);
+                    "No Ollama models detected. To get started:\n" +
+                    "1. Ensure Ollama is running (ollama serve)\n" +
+                    "2. Install a model: ollama pull llama3.1:8b\n" +
+                    "3. Refresh the model list in the AI Model dropdown\n\n" +
+                    $"Technical details: {ex.Message}", ex);
             }
         }
         var temperature = parameters?.Temperature ?? llmParams?.Temperature ?? 0.7;

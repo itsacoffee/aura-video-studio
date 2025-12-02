@@ -1666,6 +1666,82 @@ public class ProvidersController : ControllerBase
     }
 
     /// <summary>
+    /// Get the recommended default Ollama model based on available models
+    /// </summary>
+    [HttpGet("ollama/recommended-model")]
+    public async Task<IActionResult> GetRecommendedOllamaModel(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            var ollamaDetectionService = HttpContext.RequestServices.GetService<Aura.Core.Services.Providers.OllamaDetectionService>();
+
+            if (ollamaDetectionService == null)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    recommendedModel = (string?)null,
+                    message = "Ollama detection service not initialized",
+                    correlationId
+                });
+            }
+
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+            
+            if (!status.IsRunning)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    recommendedModel = (string?)null,
+                    message = "Ollama service not running. To get started:\n1. Ensure Ollama is running (ollama serve)\n2. Install a model: ollama pull llama3.1:8b\n3. Refresh the model list in the AI Model dropdown",
+                    installationInstructions = "Start Ollama: ollama serve (or install: curl -fsSL https://ollama.com/install.sh | sh)",
+                    correlationId
+                });
+            }
+
+            var recommendedModel = await ollamaDetectionService.GetRecommendedDefaultModelAsync(cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(recommendedModel))
+            {
+                return Ok(new
+                {
+                    success = false,
+                    recommendedModel = (string?)null,
+                    message = "No Ollama models detected. To get started:\n1. Ensure Ollama is running (ollama serve)\n2. Install a model: ollama pull llama3.1:8b\n3. Refresh the model list in the AI Model dropdown",
+                    correlationId
+                });
+            }
+
+            Log.Information(
+                "Recommended Ollama model: {RecommendedModel}, CorrelationId: {CorrelationId}",
+                recommendedModel,
+                correlationId);
+
+            return Ok(new
+            {
+                success = true,
+                recommendedModel,
+                message = $"Recommended model: {recommendedModel}",
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting recommended Ollama model, CorrelationId: {CorrelationId}", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                recommendedModel = (string?)null,
+                message = $"Error getting recommended model: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
     /// Validate Ollama service availability
     /// </summary>
     [HttpPost("ollama/validate")]

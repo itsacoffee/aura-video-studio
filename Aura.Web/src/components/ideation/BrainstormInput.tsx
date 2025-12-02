@@ -11,15 +11,18 @@ import {
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
+  Link,
 } from '@fluentui/react-components';
 import {
   SparkleRegular,
   SendRegular,
   WarningRegular,
   ErrorCircleRegular,
+  InfoRegular,
 } from '@fluentui/react-icons';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useGlobalLlmStore } from '../../state/globalLlmStore';
+import { ollamaClient } from '../../services/api/ollamaClient';
 
 const useStyles = makeStyles({
   container: {
@@ -146,12 +149,67 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
   onIdeaCountChange,
 }) => {
   const styles = useStyles();
-  const { selection: globalLlmSelection, modelValidation } = useGlobalLlmStore();
+  const { selection: globalLlmSelection, modelValidation, setSelection } = useGlobalLlmStore();
   const [topic, setTopic] = useState('');
   const [audience, setAudience] = useState('');
   const [tone, setTone] = useState('');
   const [targetDuration, setTargetDuration] = useState('');
   const [platform, setPlatform] = useState('');
+  const [autoDetectionStatus, setAutoDetectionStatus] = useState<{
+    attempted: boolean;
+    message?: string;
+    noModelsInstalled?: boolean;
+  }>({ attempted: false });
+
+  // Auto-detect and set default Ollama model on mount
+  const autoDetectOllamaModel = useCallback(async () => {
+    // Only auto-detect if no provider/model is selected yet
+    if (globalLlmSelection?.provider && globalLlmSelection?.modelId) {
+      return;
+    }
+
+    try {
+      const result = await ollamaClient.getRecommendedModel();
+
+      if (result.success && result.recommendedModel) {
+        // Auto-select Ollama with the recommended model
+        setSelection({
+          provider: 'Ollama',
+          modelId: result.recommendedModel,
+        });
+        setAutoDetectionStatus({
+          attempted: true,
+          message: `Auto-selected model: ${result.recommendedModel}`,
+        });
+      } else {
+        // No models available - show helpful message
+        setAutoDetectionStatus({
+          attempted: true,
+          message: result.message,
+          noModelsInstalled: !result.recommendedModel,
+        });
+      }
+    } catch (error: unknown) {
+      // Ollama might not be running - this is okay, user can configure manually
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.debug('Ollama auto-detection skipped:', errorMessage);
+      setAutoDetectionStatus({
+        attempted: true,
+        message: 'Ollama is not available. Configure a provider from the toolbar.',
+      });
+    }
+  }, [globalLlmSelection, setSelection]);
+
+  // Run auto-detection on mount only once
+  useEffect(() => {
+    // Only run once and only if no selection exists
+    if (!autoDetectionStatus.attempted && !globalLlmSelection?.provider) {
+      autoDetectOllamaModel();
+    }
+    // Intentionally only depend on autoDetectionStatus.attempted and globalLlmSelection?.provider
+    // to avoid re-running when the callback reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDetectionStatus.attempted, globalLlmSelection?.provider]);
 
   // Check if Ollama is selected but no model is chosen
   const isOllamaWithoutModel = useMemo(() => {
@@ -326,6 +384,33 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
         </MessageBar>
       )}
 
+      {/* Info when no models are installed in Ollama */}
+      {autoDetectionStatus.noModelsInstalled && !isOllamaWithoutModel && (
+        <MessageBar intent="info" className={styles.warningBar} icon={<InfoRegular />}>
+          <MessageBarBody>
+            <MessageBarTitle>No Ollama models installed</MessageBarTitle>
+            To get started with local AI:
+            <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+              <li>
+                Ensure Ollama is running: <code>ollama serve</code>
+              </li>
+              <li>
+                Install a model: <code>ollama pull llama3.1:8b</code>
+              </li>
+              <li>Refresh the model list in the AI Model dropdown above</li>
+            </ol>
+            <Link
+              href="https://ollama.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginTop: '8px', display: 'inline-block' }}
+            >
+              Download Ollama
+            </Link>
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
       {/* Error when selected model is not available */}
       {isModelInvalid && modelValidation.errorMessage && (
         <MessageBar intent="error" className={styles.warningBar} icon={<ErrorCircleRegular />}>
@@ -337,7 +422,7 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
       )}
 
       {/* Info when no provider is selected - will use auto-detection */}
-      {noProviderSelected && !loading && (
+      {noProviderSelected && !loading && !autoDetectionStatus.noModelsInstalled && (
         <MessageBar intent="info" className={styles.warningBar}>
           <MessageBarBody>
             <MessageBarTitle>Using default AI provider</MessageBarTitle>
