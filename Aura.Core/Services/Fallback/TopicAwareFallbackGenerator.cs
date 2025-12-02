@@ -170,12 +170,15 @@ public class TopicAwareFallbackGenerator
     /// </summary>
     private static int CalculateSceneCount(TimeSpan duration, int defaultCount)
     {
+        const int MinScenes = 3;
+        const int MaxScenes = 8;
+
         if (duration == default)
-            return Math.Max(3, Math.Min(defaultCount, 5));
+            return Math.Max(MinScenes, Math.Min(defaultCount, MaxScenes));
 
         // Roughly 30 seconds per scene
         var calculated = (int)(duration.TotalSeconds / 30);
-        return Math.Max(3, Math.Min(calculated, 8));
+        return Math.Max(MinScenes, Math.Min(calculated, MaxScenes));
     }
 
     /// <summary>

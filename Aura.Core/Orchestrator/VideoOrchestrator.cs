@@ -84,7 +84,8 @@ public class VideoOrchestrator
         PipelineOrchestrationEngine? pipelineEngine = null,
         Services.RAG.RagScriptEnhancer? ragScriptEnhancer = null,
         Dependencies.FFmpegResolver? ffmpegResolver = null,
-        AssetTaggingService? assetTaggingService = null)
+        AssetTaggingService? assetTaggingService = null,
+        TopicAwareFallbackGenerator? fallbackGenerator = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -127,7 +128,7 @@ public class VideoOrchestrator
         _ragScriptEnhancer = ragScriptEnhancer;
         _ffmpegResolver = ffmpegResolver;
         _assetTaggingService = assetTaggingService;
-        _fallbackGenerator = new TopicAwareFallbackGenerator();
+        _fallbackGenerator = fallbackGenerator ?? new TopicAwareFallbackGenerator();
 
         if (_assetTaggingService != null)
         {
