@@ -832,6 +832,7 @@ public class JobsController : ControllerBase
                 {
                     status = "Succeeded",
                     jobId = job.Id,
+                    outputPath = job.OutputPath ?? videoArtifact?.Path ?? "",
                     artifacts = job.Artifacts.Select(a => new {
                         name = a.Name,
                         path = a.Path,
