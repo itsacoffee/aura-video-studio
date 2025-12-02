@@ -112,7 +112,7 @@ describe('useProviderStatus health summary calculation', () => {
     );
 
     expect(result.level).toBe('degraded');
-    expect(result.message).toContain('image');
+    expect(result.message).toContain('image providers');
   });
 
   it('calculates degraded status when no providers configured', () => {
