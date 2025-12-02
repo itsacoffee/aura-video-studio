@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ReactNode } from 'react';
-import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useAnimationsDisabled } from '../../hooks/useAnimationsDisabled';
 import { scaleVariants } from '../../utils/animations';
 
 interface ScaleInProps {
@@ -12,12 +12,12 @@ interface ScaleInProps {
 
 /**
  * Scale-in animation component
- * Perfect for modals, dialogs, and popovers
+ * Respects system reduced motion preferences via CSS variables
  */
 export function ScaleIn({ children, className, delay = 0, duration = 0.25 }: ScaleInProps) {
-  const prefersReducedMotion = useReducedMotion();
+  const animationsDisabled = useAnimationsDisabled();
 
-  if (prefersReducedMotion) {
+  if (animationsDisabled) {
     return <div className={className}>{children}</div>;
   }
 

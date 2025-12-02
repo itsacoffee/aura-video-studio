@@ -1,6 +1,6 @@
 import { motion, Variants } from 'framer-motion';
 import { ReactNode } from 'react';
-import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useAnimationsDisabled } from '../../hooks/useAnimationsDisabled';
 import { slideVariants } from '../../utils/animations';
 
 interface SlideInProps {
@@ -13,7 +13,7 @@ interface SlideInProps {
 
 /**
  * Slide-in animation component
- * Animates content sliding in from a specified direction
+ * Respects system reduced motion preferences via CSS variables
  */
 export function SlideIn({
   children,
@@ -22,9 +22,9 @@ export function SlideIn({
   delay = 0,
   duration = 0.25,
 }: SlideInProps) {
-  const prefersReducedMotion = useReducedMotion();
+  const animationsDisabled = useAnimationsDisabled();
 
-  if (prefersReducedMotion) {
+  if (animationsDisabled) {
     return <div className={className}>{children}</div>;
   }
 

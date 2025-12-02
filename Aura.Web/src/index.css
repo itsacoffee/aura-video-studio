@@ -4,6 +4,7 @@
 @import url('./styles/animations.css');
 @import url('./styles/elevation.css');
 @import url('./styles/adaptive-properties.css');
+@import url('./styles/graphics-variables.css');
 
 @tailwind base;
 @tailwind components;

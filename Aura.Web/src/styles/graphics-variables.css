@@ -1,0 +1,276 @@
+/**
+ * Graphics Settings CSS Variables
+ * Dynamic values controlled by JavaScript based on user preferences
+ */
+
+:root {
+  /* ============================================
+     ANIMATION DURATIONS
+     Set to 0ms when animations disabled
+     ============================================ */
+  --duration-micro: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-very-slow: 600ms;
+
+  /* ============================================
+     EASING CURVES
+     Spring physics or simple easing
+     ============================================ */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-bounce: cubic-bezier(0.68, -0.6, 0.32, 1.6);
+
+  /* ============================================
+     BLUR EFFECTS
+     Set to 0px when blur disabled
+     ============================================ */
+  --blur-sm: 4px;
+  --blur-md: 8px;
+  --blur-lg: 16px;
+  --blur-xl: 24px;
+  --backdrop-blur: blur(12px);
+
+  /* ============================================
+     SHADOWS
+     Set to none when shadows disabled
+     ============================================ */
+  --shadow-opacity: 0.1;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 5%);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -1px rgb(0 0 0 / 6%);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -2px rgb(0 0 0 / 5%);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 10%), 0 10px 10px -5px rgb(0 0 0 / 4%);
+
+  /* ============================================
+     TRANSPARENCY
+     Set to 1 when transparency disabled
+     ============================================ */
+  --transparency-panel: 0.85;
+  --transparency-overlay: 0.7;
+  --transparency-subtle: 0.95;
+
+  /* ============================================
+     GLOW EFFECTS
+     ============================================ */
+  --glow-focus: 0 0 0 3px rgb(59 130 246 / 30%);
+  --glow-brand: 0 0 20px rgb(59 130 246 / 40%);
+
+  /* ============================================
+     STAGGERED ANIMATIONS
+     ============================================ */
+  --stagger-delay: 50ms;
+
+  /* ============================================
+     SCROLLING
+     ============================================ */
+  --scroll-behavior: smooth;
+
+  /* ============================================
+     DPI SCALING
+     ============================================ */
+  --scale-factor: 1;
+  --base-font-size: 14px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* ============================================
+     ACCESSIBILITY
+     ============================================ */
+  --border-width: 1px;
+  --focus-ring-width: 2px;
+}
+
+/* ============================================
+   REDUCED MOTION OVERRIDES
+   Applied when .reduced-motion class is on :root
+   ============================================ */
+.reduced-motion {
+  --duration-micro: 0ms !important;
+  --duration-fast: 0ms !important;
+  --duration-normal: 0ms !important;
+  --duration-slow: 0ms !important;
+  --duration-very-slow: 0ms !important;
+  --stagger-delay: 0ms !important;
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* ============================================
+   HIGH CONTRAST MODE
+   ============================================ */
+.high-contrast {
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+  --blur-sm: 0px;
+  --blur-md: 0px;
+  --blur-lg: 0px;
+  --blur-xl: 0px;
+  --backdrop-blur: none;
+}
+
+.high-contrast *:focus-visible {
+  outline: 3px solid currentcolor !important;
+  outline-offset: 2px !important;
+}
+
+/* ============================================
+   GPU ACCELERATION HINTS
+   ============================================ */
+.gpu-enabled .gpu-accelerate {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.gpu-enabled .gpu-accelerate-opacity {
+  transform: translateZ(0);
+  will-change: opacity, transform;
+}
+
+/* ============================================
+   UTILITY CLASSES FOR GRAPHICS SETTINGS
+   ============================================ */
+
+/* Transition utilities using dynamic durations */
+.transition-micro {
+  transition-duration: var(--duration-micro);
+  transition-timing-function: var(--ease-standard);
+}
+
+.transition-fast {
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-standard);
+}
+
+.transition-normal {
+  transition-duration: var(--duration-normal);
+  transition-timing-function: var(--ease-standard);
+}
+
+.transition-slow {
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--ease-standard);
+}
+
+/* Spring animation utilities */
+.spring-transition {
+  transition-timing-function: var(--ease-spring);
+}
+
+.bounce-transition {
+  transition-timing-function: var(--ease-bounce);
+}
+
+/* Blur utilities */
+.blur-panel {
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.blur-sm {
+  filter: blur(var(--blur-sm));
+}
+
+.blur-md {
+  filter: blur(var(--blur-md));
+}
+
+.blur-lg {
+  filter: blur(var(--blur-lg));
+}
+
+/* Shadow utilities */
+.shadow-dynamic-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow-dynamic-md {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow-dynamic-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+.shadow-dynamic-xl {
+  box-shadow: var(--shadow-xl);
+}
+
+/* Transparency utilities */
+.panel-transparent {
+  background-color: rgb(0 0 0 / var(--transparency-panel));
+}
+
+.overlay-transparent {
+  background-color: rgb(0 0 0 / var(--transparency-overlay));
+}
+
+/* Glow utilities */
+.glow-focus:focus-visible {
+  box-shadow: var(--glow-focus);
+}
+
+.glow-brand {
+  box-shadow: var(--glow-brand);
+}
+
+/* Smooth scroll */
+.smooth-scroll {
+  scroll-behavior: var(--scroll-behavior);
+}
+
+/* Staggered animation children */
+.stagger-children > *:nth-child(1) {
+  animation-delay: calc(var(--stagger-delay) * 1);
+}
+
+.stagger-children > *:nth-child(2) {
+  animation-delay: calc(var(--stagger-delay) * 2);
+}
+
+.stagger-children > *:nth-child(3) {
+  animation-delay: calc(var(--stagger-delay) * 3);
+}
+
+.stagger-children > *:nth-child(4) {
+  animation-delay: calc(var(--stagger-delay) * 4);
+}
+
+.stagger-children > *:nth-child(5) {
+  animation-delay: calc(var(--stagger-delay) * 5);
+}
+
+.stagger-children > *:nth-child(6) {
+  animation-delay: calc(var(--stagger-delay) * 6);
+}
+
+.stagger-children > *:nth-child(7) {
+  animation-delay: calc(var(--stagger-delay) * 7);
+}
+
+.stagger-children > *:nth-child(8) {
+  animation-delay: calc(var(--stagger-delay) * 8);
+}
+
+.stagger-children > *:nth-child(9) {
+  animation-delay: calc(var(--stagger-delay) * 9);
+}
+
+.stagger-children > *:nth-child(10) {
+  animation-delay: calc(var(--stagger-delay) * 10);
+}
