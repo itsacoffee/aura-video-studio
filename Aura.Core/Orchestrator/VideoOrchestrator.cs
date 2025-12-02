@@ -1734,6 +1734,9 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
         var currentStage = orchestrationProgress.CurrentStage.ToLowerInvariant();
         
         // Map stage name to GenerationProgress stage format
+        // Note: Order matters! More specific checks must come before generic ones.
+        // The "batch" check must come before "completed/complete" to avoid
+        // incorrectly mapping "Batch completed (6/8 tasks done)" to PostProcess.
         var stage = currentStage switch
         {
             var s when s.Contains("starting") || s.Contains("analyzing") || s.Contains("task graph") => "Brief",
@@ -1741,8 +1744,13 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
             var s when s.Contains("audio") || s.Contains("tts") || s.Contains("narration") => "TTS",
             var s when s.Contains("image") || s.Contains("visual") || s.Contains("asset") => "Images",
             var s when s.Contains("render") || s.Contains("compose") || s.Contains("composition") => "Rendering",
-            var s when s.Contains("post") || s.Contains("completed") || s.Contains("complete") => "PostProcess",
-            var s when s.Contains("batch") => DetermineStageFromProgress(orchestrationProgress.ProgressPercentage),
+            // Check batch BEFORE completed/complete to handle "Batch completed (X/Y tasks done)"
+            var s when s.Contains("batch") => DetermineStageFromBatchProgress(s, currentItem, totalItems, orchestrationProgress.ProgressPercentage),
+            // Only transition to PostProcess when explicitly post-processing or truly complete
+            var s when s.Contains("post") => "PostProcess",
+            // "completed" or "complete" without "batch" - check if all tasks are done
+            var s when (s.Contains("completed") || s.Contains("complete")) && totalItems > 0 && currentItem >= totalItems => "PostProcess",
+            var s when s.Contains("completed") || s.Contains("complete") => DetermineStageFromProgress(orchestrationProgress.ProgressPercentage),
             _ => "Processing"
         };
 
@@ -1789,5 +1797,34 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
             < 95 => "Rendering",
             _ => "PostProcess"
         };
+    }
+
+    /// <summary>
+    /// Determines stage from batch progress message.
+    /// Only transitions to PostProcess when ALL batch tasks are complete.
+    /// </summary>
+    /// <param name="stageMessage">The original stage message (currently unused, reserved for future parsing)</param>
+    /// <param name="currentItem">Number of completed tasks</param>
+    /// <param name="totalItems">Total number of tasks</param>
+    /// <param name="progressPercent">Overall progress percentage</param>
+    /// <returns>The appropriate stage name</returns>
+    private static string DetermineStageFromBatchProgress(
+        string stageMessage,
+        int currentItem,
+        int totalItems,
+        double progressPercent)
+    {
+        // stageMessage is kept for potential future use (e.g., extracting task type from message)
+        _ = stageMessage;
+        
+        // If we have valid task counts and all tasks are complete, allow PostProcess
+        if (totalItems > 0 && currentItem >= totalItems)
+        {
+            return "PostProcess";
+        }
+
+        // Otherwise, determine stage based on progress percentage
+        // This prevents premature transition to PostProcess when batch tasks are incomplete
+        return DetermineStageFromProgress(progressPercent);
     }
 }

@@ -634,8 +634,10 @@ public class JobsController : ControllerBase
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
             var eventIdCounter = 0;
             // Stall warning threshold in seconds. Can be made configurable via IConfiguration if needed.
-            var stallWarningThresholdSeconds = 120;
+            var stallWarningThresholdSeconds = 120; // 2 minutes for warning
+            var stallFailureThresholdSeconds = 180; // 3 minutes for automatic failure
             var stallWarningEmitted = false;
+            var stallFailureEmitted = false;
 
             while (!cancellationToken.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
             {
@@ -660,10 +662,13 @@ public class JobsController : ControllerBase
                 {
                     lastProgressChangeTime = DateTime.UtcNow;
                     stallWarningEmitted = false; // Reset stall warning on progress
+                    stallFailureEmitted = false; // Reset failure flag on progress
                 }
                 else
                 {
                     var timeSinceLastProgress = (DateTime.UtcNow - lastProgressChangeTime).TotalSeconds;
+                    
+                    // Warning at 2 minutes
                     if (timeSinceLastProgress >= stallWarningThresholdSeconds && !stallWarningEmitted)
                     {
                         Log.Warning(
@@ -680,6 +685,37 @@ public class JobsController : ControllerBase
                         }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
 
                         stallWarningEmitted = true;
+                    }
+
+                    // Failure at 3 minutes - emit job-failed event so frontend can react
+                    if (timeSinceLastProgress >= stallFailureThresholdSeconds && !stallFailureEmitted)
+                    {
+                        Log.Error(
+                            "[{CorrelationId}] Job {JobId} stalled for {Seconds:F0}s at {Percent}% ({Stage}), emitting failure event",
+                            correlationId, jobId, timeSinceLastProgress, job.Percent, job.Stage);
+
+                        var stallError = new JobStepError 
+                        { 
+                            Code = "STALL_TIMEOUT", 
+                            Message = $"Job stalled at {job.Stage} stage ({job.Percent}%) with no progress for {(int)timeSinceLastProgress} seconds",
+                            Remediation = "Cancel and retry the job, or check the logs for potential issues"
+                        };
+
+                        await SendSseEventWithId("job-failed", new
+                        {
+                            status = "Failed",
+                            jobId = job.Id,
+                            stage = job.Stage,
+                            percent = job.Percent,
+                            errors = new[] { stallError },
+                            errorMessage = $"Job stalled at {job.Stage} stage with no progress for over {stallFailureThresholdSeconds / 60.0:F0} minutes",
+                            stallDurationSeconds = (int)timeSinceLastProgress,
+                            correlationId
+                        }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
+
+                        stallFailureEmitted = true;
+                        // Note: We emit the event but don't break the loop, allowing the job to 
+                        // potentially recover. The frontend should handle the job-failed event.
                     }
                 }
 
