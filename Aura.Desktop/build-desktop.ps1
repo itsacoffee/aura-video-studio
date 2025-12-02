@@ -256,7 +256,6 @@ if (-not $SkipFrontend) {
     # ========================================
     # OpenCut has been refactored to run natively as React components
     # within Aura.Web. The separate Next.js server is no longer needed.
-    # See: https://github.com/itsacoffee/aura-video-studio/issues/XXX
     #
     # The old OpenCut build process (building a standalone Next.js server
     # and bundling it into resources/opencut) has been removed because:
