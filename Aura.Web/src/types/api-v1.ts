@@ -2123,3 +2123,62 @@ export interface LlmModelsResponse {
   isLocalProvider: boolean;
   correlationId: string;
 }
+
+// ============================================================================
+// GENERATION COST ESTIMATE TYPES
+// ============================================================================
+
+/**
+ * Request to estimate cost for video generation
+ */
+export interface GenerationCostEstimateRequest {
+  estimatedScriptLength: number;
+  sceneCount: number;
+  llmProvider: string;
+  llmModel: string;
+  ttsProvider: string;
+  imageProvider?: string;
+}
+
+/**
+ * Individual cost breakdown item
+ */
+export interface CostBreakdownItem {
+  name: string;
+  provider: string;
+  cost: number;
+  isFree: boolean;
+  units: number;
+  unitType: string;
+}
+
+/**
+ * Budget check result
+ */
+export interface BudgetCheckResult {
+  isWithinBudget: boolean;
+  shouldBlock: boolean;
+  warnings: string[];
+  currentMonthlyCost: number;
+  estimatedNewTotal: number;
+}
+
+/**
+ * Cost estimate confidence level
+ */
+export type CostEstimateConfidence = 'high' | 'medium' | 'low';
+
+/**
+ * Complete cost estimate for video generation
+ */
+export interface GenerationCostEstimate {
+  llmCost: number;
+  ttsCost: number;
+  imageCost: number;
+  totalCost: number;
+  currency: string;
+  breakdown: CostBreakdownItem[];
+  isFreeGeneration: boolean;
+  confidence: CostEstimateConfidence;
+  budgetCheck?: BudgetCheckResult;
+}

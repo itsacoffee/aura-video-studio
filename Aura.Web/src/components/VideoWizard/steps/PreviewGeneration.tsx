@@ -54,6 +54,7 @@ import type { BatchGenerateProgress, VisualProvider } from '@/api/visualsClient'
 import { VisualsClient, getVisualsClient } from '@/api/visualsClient';
 import apiClient from '@/services/api/apiClient';
 import { ttsService, type TtsProvider, type TtsVoice } from '@/services/ttsService';
+import { GenerationCostEstimate } from '@/components/CostTracking/GenerationCostEstimate';
 
 const useStyles = makeStyles({
   container: {
@@ -1567,70 +1568,104 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     </Card>
   );
 
-  const renderGenerationView = () => (
-    <div className={styles.container}>
-      {renderProviderSettings()}
+  const renderGenerationView = () => {
+    // Calculate estimated script length from scenes
+    const estimatedScriptLength = scriptData.scenes.reduce(
+      (total, scene) => total + scene.text.length,
+      0
+    );
 
-      <div className={styles.generationCard}>
-        <Title3>Generate Scene Previews</Title3>
-        <Text>
-          Create preview thumbnails and audio samples for each scene to review before final
-          generation.
-        </Text>
+    // Get current LLM provider info from script metadata if available
+    const scriptMetadata = (scriptData as unknown as Record<string, unknown>)?.metadata as
+      | {
+          providerName?: string;
+          modelName?: string;
+        }
+      | undefined;
+    const llmProvider = scriptMetadata?.providerName || 'Ollama';
+    const llmModel = scriptMetadata?.modelName || 'default';
 
-        <div className={styles.statsRow}>
-          <div className={styles.statItem}>
-            <Image24Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
-            <Text weight="semibold">{scriptData.scenes.length}</Text>
-            <Text size={200}>Scenes</Text>
-          </div>
-          <div className={styles.statItem}>
-            <Speaker224Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
-            <Text weight="semibold">
-              {selectedTtsProvider || styleData.voiceProvider || 'Not selected'}
-            </Text>
-            <Text size={200}>TTS Provider</Text>
-            {selectedTtsVoice && (
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                Voice: {selectedTtsVoice}
-              </Text>
-            )}
-          </div>
-          {selectedProvider && (
+    return (
+      <div className={styles.container}>
+        {renderProviderSettings()}
+
+        <div className={styles.generationCard}>
+          <Title3>Generate Scene Previews</Title3>
+          <Text>
+            Create preview thumbnails and audio samples for each scene to review before final
+            generation.
+          </Text>
+
+          <div className={styles.statsRow}>
             <div className={styles.statItem}>
               <Image24Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
-              <Text weight="semibold">{selectedProvider}</Text>
-              <Text size={200}>Image Provider</Text>
+              <Text weight="semibold">{scriptData.scenes.length}</Text>
+              <Text size={200}>Scenes</Text>
+            </div>
+            <div className={styles.statItem}>
+              <Speaker224Regular
+                style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }}
+              />
+              <Text weight="semibold">
+                {selectedTtsProvider || styleData.voiceProvider || 'Not selected'}
+              </Text>
+              <Text size={200}>TTS Provider</Text>
+              {selectedTtsVoice && (
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Voice: {selectedTtsVoice}
+                </Text>
+              )}
+            </div>
+            {selectedProvider && (
+              <div className={styles.statItem}>
+                <Image24Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
+                <Text weight="semibold">{selectedProvider}</Text>
+                <Text size={200}>Image Provider</Text>
+              </div>
+            )}
+          </div>
+
+          {/* Cost Estimation Section */}
+          {estimatedScriptLength > 0 && (selectedTtsProvider || styleData.voiceProvider) && (
+            <div style={{ width: '100%', maxWidth: '500px', marginTop: tokens.spacingVerticalL }}>
+              <GenerationCostEstimate
+                estimatedScriptLength={estimatedScriptLength}
+                sceneCount={scriptData.scenes.length}
+                llmProvider={llmProvider}
+                llmModel={llmModel}
+                ttsProvider={selectedTtsProvider || styleData.voiceProvider || 'Windows'}
+                imageProvider={selectedProvider || 'Placeholder'}
+              />
             </div>
           )}
-        </div>
 
-        <Button
-          appearance="primary"
-          size="large"
-          onClick={generatePreviews}
-          disabled={!selectedProvider && providers.length === 0}
-        >
-          Generate Previews
-        </Button>
-
-        {!selectedProvider && providers.length > 0 && (
-          <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
-            Please select an image provider
-          </Text>
-        )}
-
-        {selectedProvider === 'Placeholder' && (
-          <Text
-            size={200}
-            style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalS }}
+          <Button
+            appearance="primary"
+            size="large"
+            onClick={generatePreviews}
+            disabled={!selectedProvider && providers.length === 0}
           >
-            Using Placeholder provider - will generate solid color images for preview
-          </Text>
-        )}
+            Generate Previews
+          </Button>
+
+          {!selectedProvider && providers.length > 0 && (
+            <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+              Please select an image provider
+            </Text>
+          )}
+
+          {selectedProvider === 'Placeholder' && (
+            <Text
+              size={200}
+              style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalS }}
+            >
+              Using Placeholder provider - will generate solid color images for preview
+            </Text>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderGeneratingView = () => (
     <div className={styles.generationCard}>

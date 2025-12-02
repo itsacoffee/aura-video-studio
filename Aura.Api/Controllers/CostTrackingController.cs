@@ -1,4 +1,5 @@
 using Aura.Api.Models.ApiModels.V1;
+using Aura.Core.Configuration;
 using Aura.Core.Models.CostTracking;
 using Aura.Core.Services.CostTracking;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ public class CostTrackingController : ControllerBase
     private readonly EnhancedCostTrackingService? _costTrackingService;
     private readonly TokenTrackingService? _tokenTrackingService;
     private readonly RunCostReportService? _reportService;
+    private readonly LlmPricingConfiguration _pricingConfig;
 
     public CostTrackingController(
         EnhancedCostTrackingService? costTrackingService = null,
@@ -22,6 +24,7 @@ public class CostTrackingController : ControllerBase
         _costTrackingService = costTrackingService;
         _tokenTrackingService = tokenTrackingService;
         _reportService = reportService;
+        _pricingConfig = LlmPricingConfiguration.LoadDefault();
     }
 
     /// <summary>
@@ -249,6 +252,65 @@ public class CostTrackingController : ControllerBase
     }
 
     /// <summary>
+    /// Estimate cost for a video generation before starting
+    /// </summary>
+    /// <remarks>
+    /// Returns estimated costs broken down by LLM, TTS, and image generation.
+    /// Uses current pricing configuration and identifies free (local/offline) providers.
+    /// </remarks>
+    [HttpPost("estimate-generation")]
+    public ActionResult<GenerationCostEstimateDto> EstimateGenerationCost([FromBody] GenerationCostEstimateRequestDto request)
+    {
+        try
+        {
+            var estimate = _pricingConfig.EstimateGenerationCost(
+                request.EstimatedScriptLength,
+                request.SceneCount,
+                request.LlmProvider,
+                request.LlmModel,
+                request.TtsProvider,
+                request.ImageProvider);
+
+            // Check budget if cost tracking is available
+            BudgetCheckDto? budgetCheck = null;
+            if (_costTrackingService != null && estimate.TotalCost > 0)
+            {
+                var result = _costTrackingService.CheckBudget("combined", estimate.TotalCost);
+                budgetCheck = new BudgetCheckDto(
+                    IsWithinBudget: result.IsWithinBudget,
+                    ShouldBlock: result.ShouldBlock,
+                    Warnings: result.Warnings,
+                    CurrentMonthlyCost: result.CurrentMonthlyCost,
+                    EstimatedNewTotal: result.EstimatedNewTotal);
+            }
+
+            var response = new GenerationCostEstimateDto(
+                LlmCost: estimate.LlmCost,
+                TtsCost: estimate.TtsCost,
+                ImageCost: estimate.ImageCost,
+                TotalCost: estimate.TotalCost,
+                Currency: estimate.Currency,
+                Breakdown: estimate.Breakdown.Select(b => new CostBreakdownItemDto(
+                    Name: b.Name,
+                    Provider: b.Provider,
+                    Cost: b.Cost,
+                    IsFree: b.IsFree,
+                    Units: b.Units,
+                    UnitType: b.UnitType)).ToList(),
+                IsFreeGeneration: estimate.IsFreeGeneration,
+                Confidence: estimate.Confidence.ToString().ToLowerInvariant(),
+                BudgetCheck: budgetCheck);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error estimating generation cost");
+            return Problem($"Error estimating generation cost: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
     /// Get all provider pricing
     /// </summary>
     [HttpGet("pricing")]
@@ -306,7 +368,7 @@ public class CostTrackingController : ControllerBase
                 return BadRequest(new { error = $"Invalid provider type: {dto.ProviderType}" });
             }
 
-            var pricing = new ProviderPricing
+            var pricing = new Aura.Core.Models.CostTracking.ProviderPricing
             {
                 ProviderName = providerName,
                 ProviderType = providerType,
