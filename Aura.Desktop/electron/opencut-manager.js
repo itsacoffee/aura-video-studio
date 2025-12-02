@@ -1,21 +1,28 @@
 /**
- * OpenCut Manager
+ * OpenCut Manager (DEPRECATED)
  * 
- * Ensures the OpenCut (CapCut-style) web app is running whenever
- * the Aura Electron shell is running.
- *
- * For development, it runs the Next.js dev server from the repo.
- * For packaged builds (Aura Video Studio-1.0.0-x64.exe), it runs the
- * standalone Next.js server from the bundled copy under resources/opencut.
+ * NOTE: This module is deprecated and no longer used.
  * 
- * In packaged mode, we use Electron's built-in Node.js fork capability
- * to run the server script, since process.execPath points to Electron, not Node.
+ * OpenCut has been refactored to run natively as React components within
+ * Aura.Web, eliminating the need for a separate Next.js server.
+ * 
+ * The old architecture embedded OpenCut via an iframe that loaded from a
+ * separate Next.js server running on port 3100. This caused issues:
+ * - Required starting and managing a separate Node.js process
+ * - Showed loading spinners and connection errors
+ * - Failed when the server wasn't available
+ * 
+ * The new architecture renders OpenCut components directly in Aura.Web:
+ * - No separate server process needed
+ * - Components load immediately
+ * - No connection errors or health checks
+ * - Better performance and reliability
+ * 
+ * This file is preserved for reference but all methods are now no-ops.
+ * 
+ * @deprecated OpenCut now runs natively in Aura.Web - server not needed
  */
 
-const { spawn, execSync, fork } = require("child_process");
-const path = require("path");
-const fs = require("fs");
-const http = require("http");
 const { app } = require("electron");
 
 class OpenCutManager {
@@ -30,447 +37,81 @@ class OpenCutManager {
     this.child = null;
     this.port = parseInt(process.env.OPENCUT_PORT || "3100", 10);
     this.isPackaged = app?.isPackaged ?? false;
-    this.enabled = true;
+    this.enabled = false; // Disabled - OpenCut runs natively now
     this.startAttempts = 0;
     this.maxStartAttempts = 3;
     this.healthCheckInterval = null;
     this.isStarting = false;
+    
+    // Log deprecation notice
+    this.logger.info?.("OpenCutManager", "DEPRECATED: OpenCut now runs natively in Aura.Web - server management disabled");
   }
 
   /**
-   * Check if a command is available in PATH
-   * @param {string} cmd 
-   * @returns {boolean}
-   */
-  _isCommandAvailable(cmd) {
-    try {
-      if (process.platform === "win32") {
-        execSync(`where ${cmd}`, { stdio: "ignore" });
-      } else {
-        execSync(`which ${cmd}`, { stdio: "ignore" });
-      }
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Find the best available package manager/runner for dev mode
-   * @returns {{command: string, args: string[]} | null}
-   */
-  _findDevCommand() {
-    // Priority: bun > npx > npm
-    if (this._isCommandAvailable("bun")) {
-      return { command: "bun", args: ["run", "dev"] };
-    }
-    if (this._isCommandAvailable("npx")) {
-      return { command: "npx", args: ["next", "dev"] };
-    }
-    if (this._isCommandAvailable("npm")) {
-      return { command: "npm", args: ["run", "dev"] };
-    }
-    return null;
-  }
-
-  /**
-   * Check if something is already listening on the OpenCut port
-   * @returns {Promise<boolean>} true if the port is in use (something is responding)
-   */
-  async _isPortInUse() {
-    return new Promise((resolve) => {
-      const req = http.get(`http://127.0.0.1:${this.port}/`, (res) => {
-        // Any HTTP response means something is listening on the port
-        resolve(true);
-      });
-      req.on("error", (err) => {
-        // ECONNREFUSED: nothing is listening on this port (port is free)
-        // ENOTFOUND: host not found (port is free)
-        // Other errors might mean port is in use but unresponsive
-        if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND") {
-          resolve(false); // Port is free
-        } else {
-          // For other errors (like ETIMEDOUT), assume port might be in use
-          resolve(true);
-        }
-      });
-      req.setTimeout(2000, () => {
-        req.destroy();
-        resolve(false); // Timeout with no error means nothing responding - port is free
-      });
-    });
-  }
-
-  /**
-   * Check if OpenCut server is healthy (responding with success)
-   * @returns {Promise<boolean>} true if server responds with 2xx or 3xx
-   */
-  async _healthCheck() {
-    return new Promise((resolve) => {
-      const req = http.get(`http://127.0.0.1:${this.port}/`, (res) => {
-        // Only 2xx and 3xx are considered healthy
-        resolve(res.statusCode >= 200 && res.statusCode < 400);
-      });
-      req.on("error", () => resolve(false));
-      req.setTimeout(2000, () => {
-        req.destroy();
-        resolve(false);
-      });
-    });
-  }
-
-  /**
-   * Start the OpenCut dev server if enabled.
-   * This is a best‑effort helper; failures are logged but do not block Aura.
+   * Start the OpenCut server (DEPRECATED - no-op)
+   * @deprecated OpenCut now runs natively in Aura.Web
    */
   async start() {
-    if (!this.enabled) {
-      this.logger.info?.("OpenCutManager", "Auto‑start disabled; skipping OpenCut server.");
-      return;
-    }
-
-    if (this.child) {
-      this.logger.info?.("OpenCutManager", "OpenCut server already running, skipping start.");
-      return;
-    }
-
-    if (this.isStarting) {
-      this.logger.info?.("OpenCutManager", "OpenCut server start already in progress.");
-      return;
-    }
-
-    this.isStarting = true;
-
-    try {
-      let openCutAppDir;
-      let serverJsPath;
-
-      if (this.isPackaged) {
-        // Packaged app: OpenCut standalone build is bundled under resources/opencut
-        openCutAppDir = path.join(process.resourcesPath, "opencut");
-        serverJsPath = path.join(openCutAppDir, "server.js");
-
-        // Log what we're looking for
-        this.logger.info?.("OpenCutManager", "Looking for OpenCut server", {
-          resourcesPath: process.resourcesPath,
-          openCutAppDir,
-          serverJsPath,
-          exists: fs.existsSync(serverJsPath),
-        });
-
-        if (!fs.existsSync(serverJsPath)) {
-          // Try alternate locations in case of different build structures
-          const altPaths = [
-            path.join(openCutAppDir, "apps", "web", "server.js"),
-            path.join(process.resourcesPath, "app.asar.unpacked", "opencut", "server.js"),
-          ];
-
-          for (const altPath of altPaths) {
-            this.logger.info?.("OpenCutManager", "Checking alternate path", {
-              path: altPath,
-              exists: fs.existsSync(altPath),
-            });
-            if (fs.existsSync(altPath)) {
-              serverJsPath = altPath;
-              openCutAppDir = path.dirname(altPath);
-              this.logger.info?.("OpenCutManager", "Found server at alternate path", { serverJsPath });
-              break;
-            }
-          }
-        }
-
-        if (!fs.existsSync(serverJsPath)) {
-          this.logger.error?.("OpenCutManager", "OpenCut server.js not found in any location", {
-            checked: [
-              path.join(process.resourcesPath, "opencut", "server.js"),
-              path.join(process.resourcesPath, "opencut", "apps", "web", "server.js"),
-              path.join(process.resourcesPath, "app.asar.unpacked", "opencut", "server.js"),
-            ],
-          });
-          this.isStarting = false;
-          return;
-        }
-      } else {
-        // Dev: run from the repo layout
-        openCutAppDir = path.resolve(__dirname, "..", "..", "OpenCut", "apps", "web");
-      }
-
-      // Verify OpenCut directory exists
-      if (!fs.existsSync(openCutAppDir)) {
-        this.logger.warn?.("OpenCutManager", "OpenCut directory not found, skipping server start", {
-          dir: openCutAppDir,
-        });
-        this.isStarting = false;
-        return;
-      }
-
-      const mode = this.isPackaged ? "production" : "development";
-
-      this.logger.info?.("OpenCutManager", "Starting OpenCut server...", {
-        dir: openCutAppDir,
-        port: this.port,
-        mode,
-        attempt: this.startAttempts + 1,
-      });
-
-      let command;
-      let args;
-      let cwd = openCutAppDir;
-      let useNodeFork = false;
-
-      if (this.isPackaged) {
-        // Packaged mode: run the standalone Next.js server
-        // The standalone build creates a server.js that can be run with Node
-        const standaloneServerPath = serverJsPath;
-        
-        if (!fs.existsSync(standaloneServerPath)) {
-          this.logger.warn?.("OpenCutManager", "OpenCut standalone server.js not found, skipping", {
-            expectedPath: standaloneServerPath,
-          });
-          this.isStarting = false;
-          return;
-        }
-        
-        // In packaged mode, we use fork() to run the server script
-        // This uses Electron's embedded Node.js correctly, unlike process.execPath which points to Electron
-        useNodeFork = true;
-        command = standaloneServerPath;
-        args = [];
-      } else {
-        // Dev mode: find available package manager
-        if (process.env.OPENCUT_COMMAND) {
-          command = process.env.OPENCUT_COMMAND;
-          args = process.env.OPENCUT_COMMAND_ARGS
-            ? process.env.OPENCUT_COMMAND_ARGS.split(" ")
-            : ["run", "dev"];
-        } else {
-          const devCmd = this._findDevCommand();
-          if (!devCmd) {
-            this.logger.warn?.("OpenCutManager", "No package manager found (bun/npx/npm). Skipping OpenCut server.");
-            this.isStarting = false;
-            return;
-          }
-          command = devCmd.command;
-          args = devCmd.args;
-        }
-      }
-
-      // Ensure the port is not already in use
-      const portInUse = await this._isPortInUse();
-      if (portInUse) {
-        this.logger.info?.("OpenCutManager", `Port ${this.port} already in use. OpenCut may already be running.`);
-        this.isStarting = false;
-        return;
-      }
-
-      let child;
-      const serverEnv = {
-        ...process.env,
-        PORT: String(this.port),
-        HOSTNAME: "127.0.0.1",
-        NODE_ENV: this.isPackaged ? "production" : "development",
-        // Disable Next.js telemetry for privacy
-        NEXT_TELEMETRY_DISABLED: "1",
-        // Mark as embedded in Aura for OpenCut to detect
-        NEXT_PUBLIC_AURA_EMBEDDED: "true",
-      };
-
-      if (useNodeFork) {
-        // Use fork() to run the Next.js standalone server
-        // This leverages Electron's embedded Node.js properly
-        this.logger.info?.("OpenCutManager", "Starting OpenCut server using Node fork", {
-          serverPath: command,
-        });
-        
-        child = fork(command, args, {
-          cwd,
-          env: serverEnv,
-          stdio: ["pipe", "pipe", "pipe", "ipc"],
-          // Ensure detached on Windows for proper cleanup
-          detached: process.platform !== "win32",
-        });
-      } else {
-        // Use spawn for dev mode with package managers
-        child = spawn(command, args, {
-          cwd,
-          env: serverEnv,
-          stdio: "pipe",
-          // On Windows, use shell for npm/npx commands
-          shell: process.platform === "win32" && (command === "npm" || command === "npx" || command === "bun"),
-        });
-      }
-
-      this.child = child;
-      this.startAttempts++;
-      
-      this.processManager?.register("OpenCutDevServer", child, {
-        cwd,
-        port: this.port,
-        command: [command, ...args].join(" "),
-      });
-
-      child.stdout.on("data", (data) => {
-        const text = data.toString();
-        this.logger.info?.("OpenCutManager", "stdout", text.trim());
-      });
-
-      child.stderr.on("data", (data) => {
-        const text = data.toString();
-        // Next.js often writes info to stderr, so we log it as info unless it looks like an error
-        if (text.toLowerCase().includes("error") || text.toLowerCase().includes("failed")) {
-          this.logger.error?.("OpenCutManager", "stderr", text.trim());
-        } else {
-          this.logger.info?.("OpenCutManager", "stderr", text.trim());
-        }
-      });
-
-      child.on("error", (error) => {
-        this.logger.error?.("OpenCutManager", "Failed to start OpenCut server", {
-          message: error.message,
-        });
-        this.child = null;
-        this.isStarting = false;
-        
-        // Retry if we haven't exceeded max attempts
-        if (this.startAttempts < this.maxStartAttempts) {
-          this.logger.info?.("OpenCutManager", `Retrying start in 3 seconds (attempt ${this.startAttempts + 1}/${this.maxStartAttempts})...`);
-          setTimeout(() => this.start(), 3000);
-        }
-      });
-
-      child.on("exit", (code, signal) => {
-        this.logger.info?.("OpenCutManager", "OpenCut server exited", { code, signal });
-        this.child = null;
-        this.isStarting = false;
-        this._stopHealthCheck();
-        
-        // If it exited unexpectedly and we haven't exceeded max attempts, retry
-        if (code !== 0 && signal !== "SIGTERM" && signal !== "SIGKILL" && this.startAttempts < this.maxStartAttempts) {
-          this.logger.info?.("OpenCutManager", `Server crashed. Retrying in 3 seconds (attempt ${this.startAttempts + 1}/${this.maxStartAttempts})...`);
-          setTimeout(() => this.start(), 3000);
-        }
-      });
-
-      // Start health check after a delay to give server time to start
-      setTimeout(() => {
-        this._startHealthCheck();
-      }, 5000);
-
-      this.isStarting = false;
-    } catch (error) {
-      this.logger.error?.("OpenCutManager", "Unexpected error starting OpenCut server", {
-        message: error.message,
-      });
-      this.isStarting = false;
-    }
+    this.logger.info?.("OpenCutManager", "start() called but OpenCut server is no longer needed");
+    this.logger.info?.("OpenCutManager", "OpenCut components now run natively in Aura.Web");
+    return;
   }
 
   /**
-   * Start periodic health checks
-   */
-  _startHealthCheck() {
-    if (this.healthCheckInterval) return;
-    
-    this.healthCheckInterval = setInterval(async () => {
-      if (!this.child) return;
-      
-      const healthy = await this._healthCheck();
-      if (!healthy) {
-        this.logger.warn?.("OpenCutManager", "Health check failed - server may be unresponsive");
-      }
-    }, 30000); // Check every 30 seconds
-  }
-
-  /**
-   * Stop periodic health checks
-   */
-  _stopHealthCheck() {
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-      this.healthCheckInterval = null;
-    }
-  }
-
-  /**
-   * Stop the OpenCut server
+   * Stop the OpenCut server (DEPRECATED - no-op)
+   * @deprecated OpenCut now runs natively in Aura.Web
    */
   stop() {
-    this._stopHealthCheck();
-    
-    if (this.child) {
-      this.logger.info?.("OpenCutManager", "Stopping OpenCut server...");
-      this.child.kill("SIGTERM");
-      this.child = null;
-    }
+    this.logger.info?.("OpenCutManager", "stop() called but OpenCut server was not running");
   }
 
   /**
-   * Check if OpenCut is available (either server is running or files exist)
-   * @returns {boolean}
+   * Check if OpenCut is available
+   * @returns {boolean} Always returns true since OpenCut runs natively
    */
   isAvailable() {
-    if (this.child) return true;
-    
-    const openCutAppDir = this.isPackaged
-      ? path.join(process.resourcesPath, "opencut")
-      : path.resolve(__dirname, "..", "..", "OpenCut", "apps", "web");
-    
-    return fs.existsSync(openCutAppDir);
+    // OpenCut is always available since it runs natively in Aura.Web
+    return true;
   }
 
   /**
-   * Returns the URL where OpenCut is expected to be available.
+   * Returns the URL where OpenCut would be available (DEPRECATED)
+   * @deprecated OpenCut now runs natively - URL not needed
    */
   getUrl() {
-    const host = process.env.OPENCUT_HOST || "http://127.0.0.1";
-    return `${host}:${this.port}`;
+    // Return a placeholder URL - not actually used
+    return `http://127.0.0.1:${this.port}`;
   }
 
   /**
-   * Reset start attempts counter (useful after successful operation)
+   * Reset start attempts counter (DEPRECATED - no-op)
+   * @deprecated OpenCut now runs natively in Aura.Web
    */
   resetAttempts() {
     this.startAttempts = 0;
   }
 
   /**
-   * Get diagnostics information for troubleshooting OpenCut issues
-   * @returns {object} Diagnostics information
+   * Get diagnostics information
+   * @returns {object} Diagnostics information indicating native mode
    */
   async getDiagnostics() {
-    const openCutAppDir = this.isPackaged
-      ? path.join(process.resourcesPath, "opencut")
-      : path.resolve(__dirname, "..", "..", "OpenCut", "apps", "web");
-
-    const expectedServerPath = path.join(openCutAppDir, "server.js");
-
-    // Check alternate paths
-    const checkedPaths = [
-      { path: expectedServerPath, exists: fs.existsSync(expectedServerPath) },
-      { path: path.join(openCutAppDir, "apps", "web", "server.js"), exists: fs.existsSync(path.join(openCutAppDir, "apps", "web", "server.js")) },
-    ];
-
-    if (this.isPackaged) {
-      const unpackedPath = path.join(process.resourcesPath, "app.asar.unpacked", "opencut", "server.js");
-      checkedPaths.push({ path: unpackedPath, exists: fs.existsSync(unpackedPath) });
-    }
-
-    // Check if port is in use
-    const portInUse = await this._isPortInUse();
-
     return {
-      serverPath: expectedServerPath,
-      serverExists: fs.existsSync(expectedServerPath),
-      openCutDirExists: fs.existsSync(openCutAppDir),
-      portInUse,
+      mode: "native",
+      deprecated: true,
+      message: "OpenCut runs natively in Aura.Web - no server needed",
+      serverPath: null,
+      serverExists: false,
+      openCutDirExists: false,
+      portInUse: false,
       port: this.port,
-      processRunning: this.child !== null,
-      isStarting: this.isStarting,
+      processRunning: false,
+      isStarting: false,
       isPackaged: this.isPackaged,
       resourcesPath: this.isPackaged ? process.resourcesPath : null,
-      checkedPaths,
-      enabled: this.enabled,
-      startAttempts: this.startAttempts,
+      checkedPaths: [],
+      enabled: false,
+      startAttempts: 0,
       maxStartAttempts: this.maxStartAttempts,
     };
   }
