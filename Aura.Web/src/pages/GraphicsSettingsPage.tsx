@@ -18,6 +18,8 @@ import {
   Spinner,
   Badge,
   Text,
+  MessageBar,
+  MessageBarBody,
 } from '@fluentui/react-components';
 import {
   DesktopTower24Regular,
@@ -173,6 +175,7 @@ export function GraphicsSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [_originalSettings, setOriginalSettings] = useState<GraphicsSettings | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -180,6 +183,7 @@ export function GraphicsSettingsPage() {
 
   const loadSettings = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const loaded = await graphicsSettingsService.loadSettings();
       setSettings(loaded);
@@ -204,6 +208,7 @@ export function GraphicsSettingsPage() {
   };
 
   const handleProfileChange = async (profile: PerformanceProfile) => {
+    setErrorMessage(null);
     try {
       const updated = await graphicsSettingsService.applyProfile(profile);
       setSettings(updated);
@@ -212,16 +217,19 @@ export function GraphicsSettingsPage() {
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Failed to apply profile', errorObj);
+      setErrorMessage('Failed to apply profile. Please try again.');
     }
   };
 
   const handleReset = async () => {
+    setErrorMessage(null);
     try {
       await graphicsSettingsService.resetToDefaults();
       await loadSettings();
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Failed to reset settings', errorObj);
+      setErrorMessage('Failed to reset settings. Please try again.');
     }
   };
 
@@ -273,6 +281,13 @@ export function GraphicsSettingsPage() {
             Configure visual effects, GPU acceleration, and display scaling
           </Body1>
         </div>
+
+        {/* Error Message */}
+        {errorMessage && (
+          <MessageBar intent="error" style={{ marginBottom: tokens.spacingVerticalM }}>
+            <MessageBarBody>{errorMessage}</MessageBarBody>
+          </MessageBar>
+        )}
 
         {/* GPU Information */}
         <Card className={styles.card}>
