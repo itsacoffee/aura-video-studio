@@ -273,6 +273,7 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
             string? jsonResponse = null;
             Exception? lastException = null;
             bool lastAttemptHadGenericContent = false;
+            string? providerUsed = null;
 
             // Create LLM parameters with JSON format for ideation (requires structured output)
             // This ensures Ollama and other providers return valid JSON
@@ -361,6 +362,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     }
 
                     jsonResponse = orchestrationResult.Data;
+                    providerUsed = orchestrationResult.ProviderUsed;
                     _logger.LogInformation("Successfully generated ideation response via LlmStageAdapter (Provider: {Provider})",
                         orchestrationResult.ProviderUsed ?? "Unknown");
 
@@ -605,10 +607,34 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}",
                 concepts.Count, request.Topic);
 
+            // Determine if RuleBased provider was used (offline fallback)
+            // The RuleBased provider is the offline fallback that generates basic template content
+            const string RuleBasedProviderName = "RuleBased";
+            var isOfflineFallback = providerUsed != null && 
+                providerUsed.Contains(RuleBasedProviderName, StringComparison.OrdinalIgnoreCase);
+            
+            string? fallbackReason = null;
+            if (isOfflineFallback)
+            {
+                // Provide a more informative fallback reason based on common scenarios
+                fallbackReason = "Primary AI provider not available. Ensure Ollama is running or configure an alternative AI provider.";
+                _logger.LogWarning(
+                    "OFFLINE FALLBACK USED: Ideation used {Provider} provider for topic: {Topic}. " +
+                    "For better results, ensure Ollama is running: 'ollama serve'",
+                    RuleBasedProviderName, request.Topic);
+            }
+
+            var metadata = new BrainstormMetadata(
+                ProviderUsed: providerUsed ?? "Unknown",
+                IsOfflineFallback: isOfflineFallback,
+                FallbackReason: fallbackReason
+            );
+
             return new BrainstormResponse(
                 Concepts: concepts,
                 OriginalTopic: request.Topic,
-                GeneratedAt: DateTime.UtcNow
+                GeneratedAt: DateTime.UtcNow,
+                Metadata: metadata
             );
         }
         catch (OperationCanceledException)

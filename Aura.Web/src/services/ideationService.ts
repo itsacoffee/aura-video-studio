@@ -126,12 +126,19 @@ export interface RagConfigurationDto {
   tightenClaims?: boolean; // Default: false
 }
 
+export interface BrainstormMetadata {
+  providerUsed: string;
+  isOfflineFallback: boolean;
+  fallbackReason?: string;
+}
+
 export interface BrainstormResponse {
   success: boolean;
   concepts: ConceptIdea[];
   originalTopic: string;
   generatedAt: string;
   count: number;
+  metadata?: BrainstormMetadata;
 }
 
 export interface ExpandBriefRequest {
