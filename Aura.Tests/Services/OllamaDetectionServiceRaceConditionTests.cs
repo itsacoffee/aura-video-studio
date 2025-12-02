@@ -248,4 +248,128 @@ public class OllamaDetectionServiceRaceConditionTests : IDisposable
             )
             .ThrowsAsync(new HttpRequestException("Connection refused"));
     }
+
+    [Fact]
+    public async Task GetRecommendedDefaultModelAsync_Should_ReturnNull_WhenNoModelsAvailable()
+    {
+        // Arrange
+        SetupSuccessfulOllamaResponse(); // Empty models list
+
+        var service = new OllamaDetectionService(
+            NullLogger<OllamaDetectionService>.Instance,
+            _httpClient,
+            _cache,
+            "http://localhost:11434"
+        );
+
+        await service.StartAsync(CancellationToken.None);
+        await service.WaitForInitialDetectionAsync(TimeSpan.FromSeconds(5));
+
+        // Act
+        var result = await service.GetRecommendedDefaultModelAsync();
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetRecommendedDefaultModelAsync_Should_ReturnPreferredModel_WhenAvailable()
+    {
+        // Arrange
+        SetupOllamaResponseWithModels(new[] { "phi:latest", "llama3.1:8b", "codellama:7b" });
+
+        var service = new OllamaDetectionService(
+            NullLogger<OllamaDetectionService>.Instance,
+            _httpClient,
+            _cache,
+            "http://localhost:11434"
+        );
+
+        await service.StartAsync(CancellationToken.None);
+        await service.WaitForInitialDetectionAsync(TimeSpan.FromSeconds(5));
+
+        // Act
+        var result = await service.GetRecommendedDefaultModelAsync();
+
+        // Assert - llama3.1 has higher priority than phi
+        Assert.Equal("llama3.1:8b", result);
+    }
+
+    [Fact]
+    public async Task GetRecommendedDefaultModelAsync_Should_ReturnFirstAvailable_WhenNoPreferredModel()
+    {
+        // Arrange
+        SetupOllamaResponseWithModels(new[] { "custom-model:latest", "another-model:7b" });
+
+        var service = new OllamaDetectionService(
+            NullLogger<OllamaDetectionService>.Instance,
+            _httpClient,
+            _cache,
+            "http://localhost:11434"
+        );
+
+        await service.StartAsync(CancellationToken.None);
+        await service.WaitForInitialDetectionAsync(TimeSpan.FromSeconds(5));
+
+        // Act
+        var result = await service.GetRecommendedDefaultModelAsync();
+
+        // Assert - Should return first model when no preferred ones available
+        Assert.Equal("custom-model:latest", result);
+    }
+
+    [Fact]
+    public async Task GetRecommendedDefaultModelAsync_Should_PreferMistral_OverUnknownModels()
+    {
+        // Arrange
+        SetupOllamaResponseWithModels(new[] { "random:latest", "mistral:7b", "unknown:latest" });
+
+        var service = new OllamaDetectionService(
+            NullLogger<OllamaDetectionService>.Instance,
+            _httpClient,
+            _cache,
+            "http://localhost:11434"
+        );
+
+        await service.StartAsync(CancellationToken.None);
+        await service.WaitForInitialDetectionAsync(TimeSpan.FromSeconds(5));
+
+        // Act
+        var result = await service.GetRecommendedDefaultModelAsync();
+
+        // Assert
+        Assert.Equal("mistral:7b", result);
+    }
+
+    private void SetupOllamaResponseWithModels(string[] modelNames)
+    {
+        var modelsJson = string.Join(",", modelNames.Select(m => $"{{\"name\":\"{m}\",\"size\":1000000000}}"));
+        var versionResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{\"version\":\"0.1.0\"}")
+        };
+
+        var tagsResponse = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent($"{{\"models\":[{modelsJson}]}}")
+        };
+
+        _mockHttpHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().Contains("/api/version")),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(versionResponse);
+
+        _mockHttpHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.ToString().Contains("/api/tags")),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(tagsResponse);
+    }
 }
