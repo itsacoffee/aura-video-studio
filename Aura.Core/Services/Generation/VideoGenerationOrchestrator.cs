@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Generation;
+using Aura.Core.Orchestrator;
 using Microsoft.Extensions.Logging;
 using TaskStatus = Aura.Core.Models.Generation.TaskStatus;
 
@@ -28,13 +29,15 @@ public class VideoGenerationOrchestrator
     private readonly ILogger<VideoGenerationOrchestrator> _logger;
     private readonly ResourceMonitor _resourceMonitor;
     private readonly StrategySelector _strategySelector;
+    private readonly OrchestratorOptions _options;
     private readonly ConcurrentDictionary<string, TaskResult> _taskResults = new();
     private readonly SemaphoreSlim _concurrencyLimiter;
 
     public VideoGenerationOrchestrator(
         ILogger<VideoGenerationOrchestrator> logger,
         ResourceMonitor resourceMonitor,
-        StrategySelector strategySelector)
+        StrategySelector strategySelector,
+        OrchestratorOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(resourceMonitor);
@@ -43,7 +46,14 @@ public class VideoGenerationOrchestrator
         _logger = logger;
         _resourceMonitor = resourceMonitor;
         _strategySelector = strategySelector;
-        _concurrencyLimiter = new SemaphoreSlim(4, 4); // Default concurrency
+        _options = options ?? OrchestratorOptions.CreateDefault();
+        _concurrencyLimiter = new SemaphoreSlim(_options.MaxConcurrency, _options.MaxConcurrency);
+        
+        _logger.LogInformation(
+            "VideoGenerationOrchestrator initialized with TaskTimeout={TaskTimeout}min, BatchTimeout={BatchTimeout}min, StuckThreshold={StuckThreshold}s",
+            _options.TaskTimeout.TotalMinutes,
+            _options.BatchTimeout.TotalMinutes,
+            _options.StuckDetectionThresholdSeconds);
     }
 
     /// <summary>
@@ -316,12 +326,8 @@ public class VideoGenerationOrchestrator
     }
 
     /// <summary>
-    /// Batch-level timeout for all tasks in a batch (15 minutes)
-    /// </summary>
-    private static readonly TimeSpan BatchTimeout = TimeSpan.FromMinutes(15);
-
-    /// <summary>
-    /// Executes a batch of tasks in parallel with resource management and batch-level timeout
+    /// Executes a batch of tasks in parallel with resource management and configurable timeouts.
+    /// Uses per-task timeout and batch-level timeout from OrchestratorOptions.
     /// </summary>
     private async Task<List<TaskResult>> ExecuteBatchAsync(
         List<GenerationNode> batch,
@@ -336,12 +342,17 @@ public class VideoGenerationOrchestrator
         var results = new ConcurrentBag<TaskResult>();
         var batchCompletedCount = 0;
         
-        // Timeout for individual tasks (10 minutes per task)
-        var taskTimeout = TimeSpan.FromMinutes(10);
+        // Use configurable timeouts from options
+        var taskTimeout = _options.TaskTimeout;
+        var batchTimeout = _options.BatchTimeout;
+        
+        _logger.LogDebug(
+            "Starting batch execution with {TaskCount} tasks, TaskTimeout={TaskTimeout}min, BatchTimeout={BatchTimeout}min",
+            batch.Count, taskTimeout.TotalMinutes, batchTimeout.TotalMinutes);
 
         // Create batch-level timeout to prevent indefinite hangs
         using var batchTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        batchTimeoutCts.CancelAfter(BatchTimeout);
+        batchTimeoutCts.CancelAfter(batchTimeout);
 
         var tasks = batch.Select(async node =>
         {
@@ -411,7 +422,7 @@ public class VideoGenerationOrchestrator
                     catch (OperationCanceledException) when (!ct.IsCancellationRequested)
                     {
                         var timeoutMessage = batchTimeoutCts.IsCancellationRequested
-                            ? $"Task {node.TaskId} aborted due to batch timeout ({BatchTimeout.TotalMinutes} minutes)"
+                            ? $"Task {node.TaskId} aborted due to batch timeout ({batchTimeout.TotalMinutes} minutes)"
                             : $"Task {node.TaskId} timed out after {taskTimeout.TotalMinutes} minutes";
                         _logger.LogWarning("Task execution timeout for task {TaskId}: {Message}", node.TaskId, timeoutMessage);
                         throw new TimeoutException(timeoutMessage);
@@ -464,7 +475,7 @@ public class VideoGenerationOrchestrator
                 _logger.LogWarning("Task {TaskId} aborted due to batch timeout", node.TaskId);
 
                 node.Status = TaskStatus.TimedOut;
-                node.ErrorMessage = $"Batch timeout exceeded ({BatchTimeout.TotalMinutes} minutes)";
+                node.ErrorMessage = $"Batch timeout exceeded ({batchTimeout.TotalMinutes} minutes)";
                 node.CompletedAt = DateTime.UtcNow;
 
                 var taskResult = new TaskResult(node.TaskId, false, null, node.ErrorMessage);
@@ -501,11 +512,11 @@ public class VideoGenerationOrchestrator
         try
         {
             // Wait for all tasks with batch timeout using WaitAsync for proper timeout handling
-            await Task.WhenAll(tasks).WaitAsync(BatchTimeout, ct).ConfigureAwait(false);
+            await Task.WhenAll(tasks).WaitAsync(batchTimeout, ct).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
-            _logger.LogWarning("Batch execution timed out after {Timeout} minutes, marking remaining tasks as timed out", BatchTimeout.TotalMinutes);
+            _logger.LogWarning("Batch execution timed out after {Timeout} minutes, marking remaining tasks as timed out", batchTimeout.TotalMinutes);
             
             // Mark any tasks that haven't completed yet as timed out
             MarkIncompleteTasksAsTimedOut(batch, results);
@@ -536,7 +547,7 @@ public class VideoGenerationOrchestrator
                 _logger.LogWarning("Marking incomplete task {TaskId} as timed out", node.TaskId);
                 
                 node.Status = TaskStatus.TimedOut;
-                node.ErrorMessage = $"Task did not complete within batch timeout ({BatchTimeout.TotalMinutes} minutes)";
+                node.ErrorMessage = $"Task did not complete within batch timeout ({_options.BatchTimeout.TotalMinutes} minutes)";
                 node.CompletedAt = DateTime.UtcNow;
 
                 var taskResult = new TaskResult(node.TaskId, false, null, node.ErrorMessage);
