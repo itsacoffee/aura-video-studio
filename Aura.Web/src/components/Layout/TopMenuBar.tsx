@@ -280,6 +280,12 @@ export function TopMenuBar({
                 <span className={styles.shortcut}>F11</span>
               </div>
             </MenuItem>
+            <MenuDivider />
+            <MenuItem onClick={() => navigate('/settings/graphics')}>
+              <div className={styles.menuItemContent}>
+                <span>Graphics Settings...</span>
+              </div>
+            </MenuItem>
           </MenuList>
         </MenuPopover>
       </Menu>
