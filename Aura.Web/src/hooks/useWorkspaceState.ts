@@ -116,14 +116,25 @@ export function useWorkspaceState(options: UseWorkspaceStateOptions = {}): UseWo
   }, [saveDebounce]);
 
   /**
-   * Generic state update function
+   * Generic state update function for object-type workspace state properties
+   * All WorkspaceState properties (timeline, selection, panels, preview, mediaLibrary) are objects
    */
   const updateState = useCallback(
-    <K extends keyof WorkspaceState>(key: K, value: Partial<WorkspaceState[K]>) => {
-      setWorkspaceState((prev) => ({
-        ...prev,
-        [key]: { ...(prev[key] as object), ...value },
-      }));
+    <K extends keyof Omit<WorkspaceState, 'activePage' | 'activeTab'>>(
+      key: K,
+      value: Partial<WorkspaceState[K]>
+    ) => {
+      setWorkspaceState((prev) => {
+        const prevValue = prev[key];
+        // All non-string properties in WorkspaceState are objects
+        if (typeof prevValue === 'object' && prevValue !== null) {
+          return {
+            ...prev,
+            [key]: { ...prevValue, ...value },
+          };
+        }
+        return prev;
+      });
       setIsDirty(true);
       scheduleSave();
     },

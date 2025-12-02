@@ -99,7 +99,8 @@ export async function restoreSession(project: ProjectFile): Promise<SessionResto
 async function restoreWorkspaceState(state: WorkspaceState): Promise<void> {
   window.dispatchEvent(new CustomEvent(WORKSPACE_RESTORE_EVENT, { detail: state }));
 
-  // Wait for navigation to complete
+  // Brief delay to allow navigation event handlers to process the restore event
+  // The actual navigation is handled by WorkspaceContext which listens for WORKSPACE_RESTORE_EVENT
   await new Promise((resolve) => setTimeout(resolve, 100));
 }
 
@@ -181,7 +182,8 @@ export function isValidWorkspaceState(workspace: unknown): workspace is Workspac
   }
   if (
     !timeline.scrollPosition ||
-    typeof (timeline.scrollPosition as Record<string, unknown>).x !== 'number'
+    typeof (timeline.scrollPosition as Record<string, unknown>).x !== 'number' ||
+    typeof (timeline.scrollPosition as Record<string, unknown>).y !== 'number'
   ) {
     return false;
   }
