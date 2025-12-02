@@ -730,6 +730,22 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
     return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, ProviderFactory, ollamaDetectionService, providerSettings);
 });
 
+// Register LlmStageAdapter for unified LLM orchestration
+// This ensures Ideation, Translation, and other features use the same orchestration path as Script generation
+builder.Services.AddSingleton<Aura.Core.Orchestration.LlmStageAdapter>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Orchestration.LlmStageAdapter>>();
+    var mixer = sp.GetRequiredService<Aura.Core.Orchestrator.ProviderMixer>();
+    var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var providerSettings = sp.GetService<Aura.Core.Configuration.ProviderSettings>();
+    
+    // Create providers using the same factory as ScriptOrchestrator
+    var providers = factory.CreateAvailableProviders(loggerFactory);
+    
+    return new Aura.Core.Orchestration.LlmStageAdapter(logger, providers, mixer, providerSettings);
+});
+
 // Register streaming orchestrator for SSE support
 builder.Services.AddSingleton<Aura.Core.Services.StreamingOrchestrator>();
 

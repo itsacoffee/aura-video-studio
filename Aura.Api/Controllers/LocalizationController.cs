@@ -10,6 +10,7 @@ using Aura.Core.Models;
 using Aura.Core.Models.Audio;
 using Aura.Core.Models.Localization;
 using Aura.Core.Models.Voice;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.Localization;
@@ -45,7 +46,8 @@ public class LocalizationController : ControllerBase
         ILogger<LocalizationController> logger,
         ILlmProvider llmProvider,
         ILoggerFactory loggerFactory,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        LlmStageAdapter? stageAdapter = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
@@ -58,11 +60,12 @@ public class LocalizationController : ControllerBase
         _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 180);
         
         // Initialize the localization service with retry logic
-        // Note: This could also be injected via DI by registering ILocalizationService in Program.cs
+        // Pass the LlmStageAdapter for unified orchestration (same path as script generation)
         _localizationService = new LocalizationService(
             loggerFactory.CreateLogger<LocalizationService>(),
             llmProvider,
-            loggerFactory);
+            loggerFactory,
+            stageAdapter);
         
         var storageDir = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
