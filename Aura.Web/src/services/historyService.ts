@@ -378,7 +378,31 @@ class HistoryService {
     }
 
     // If this is part of a compound action, get all entries in the group
-    if (entry.groupId && entry.actionType !== 'compound:start') {
+    // Handle compound:end by moving through the group back to compound:start
+    if (
+      entry.groupId &&
+      entry.actionType !== 'compound:start' &&
+      entry.actionType !== 'compound:end'
+    ) {
+      const groupEntries: HistoryEntry[] = [];
+      let index = this.state.currentIndex;
+
+      while (index >= 0) {
+        const currentEntry = this.state.entries[index];
+        if (currentEntry.groupId === entry.groupId) {
+          groupEntries.push(currentEntry);
+          if (currentEntry.actionType === 'compound:start') {
+            break;
+          }
+        }
+        index--;
+      }
+
+      return groupEntries;
+    }
+
+    // If at compound:end, collect all entries back to compound:start
+    if (entry.actionType === 'compound:end' && entry.groupId) {
       const groupEntries: HistoryEntry[] = [];
       let index = this.state.currentIndex;
 
@@ -404,8 +428,8 @@ class HistoryService {
       actionType: entry.actionType,
       description: entry.description,
     });
-    // The actual undo logic will be handled by the consumer of this service
-    // They can subscribe to changes and apply undoData appropriately
+    // State changes are applied by consumers via subscription to history state.
+    // Consumers access undoData from the entry and apply changes to their respective stores.
   }
 
   private executeRedo(entry: HistoryEntry): void {
@@ -413,8 +437,8 @@ class HistoryService {
       actionType: entry.actionType,
       description: entry.description,
     });
-    // The actual redo logic will be handled by the consumer of this service
-    // They can subscribe to changes and apply redoData appropriately
+    // State changes are applied by consumers via subscription to history state.
+    // Consumers access redoData from the entry and apply changes to their respective stores.
   }
 
   private notifyListeners(): void {
