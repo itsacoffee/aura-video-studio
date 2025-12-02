@@ -645,6 +645,40 @@ export const FinalExport: FC<FinalExportProps> = ({
               }
             });
 
+            // Handle job-failed SSE event (emitted when job stalls or fails)
+            eventSource.addEventListener('job-failed', (event) => {
+              clearTimeout(connectionTimeoutId);
+              clearTimeout(jobTimeoutId);
+              try {
+                const data = JSON.parse(event.data) as JobStatusData;
+                console.error('[SSE] Job failed:', data);
+                eventSource.close();
+                eventSourceRef.current = null;
+
+                const errorMsg =
+                  data.errorMessage || data.failureDetails?.message || 'Video generation failed';
+                reject(new Error(errorMsg));
+              } catch (err) {
+                eventSource.close();
+                eventSourceRef.current = null;
+                reject(err instanceof Error ? err : new Error(String(err)));
+              }
+            });
+
+            // Handle warning SSE event (emitted when job appears stalled)
+            eventSource.addEventListener('warning', (event) => {
+              try {
+                const data = JSON.parse(event.data);
+                console.warn('[SSE] Job warning:', data.message || 'Job progress stalled');
+                // Update UI to show warning but don't reject the promise
+                setExportStage(
+                  `Warning: ${data.message || 'Job progress appears stalled. Consider cancelling if this persists.'}`
+                );
+              } catch (err) {
+                console.warn('[SSE] Failed to parse warning event:', err);
+              }
+            });
+
             // Handle backend error event (when job not found initially)
             eventSource.addEventListener('error', (event: Event) => {
               // This is the EventSource built-in error (connection issues)
@@ -743,11 +777,12 @@ export const FinalExport: FC<FinalExportProps> = ({
             const maxConsecutiveErrors = 5;
 
             // Stuck job detection: track if progress/stage hasn't changed
+            // Reduced thresholds from PR fix for stuck export pipeline
             let lastProgress = -1;
             let lastStage = '';
             let stuckStartTime: number | null = null;
-            const STUCK_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
-            const STUCK_CHECK_INTERVAL = 30; // Check every 30 polls (30 seconds)
+            const STUCK_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes (reduced from 5)
+            const STUCK_CHECK_INTERVAL = 10; // Check every 10 polls (10 seconds, reduced from 30)
 
             while (!jobCompleted && pollAttempts < maxPollAttempts) {
               await new Promise((res) => setTimeout(res, 1000));
@@ -814,9 +849,10 @@ export const FinalExport: FC<FinalExportProps> = ({
                             Array.isArray(typedJobData.artifacts) &&
                             typedJobData.artifacts.length > 0);
 
-                        if (hasOutput || jobProgress >= 95) {
+                        // Lowered threshold from 95% to 70% to detect stuck jobs earlier
+                        if (hasOutput || jobProgress >= 70) {
                           console.info(
-                            '[FinalExport] Job has output or is near completion, treating as completed despite stuck status'
+                            '[FinalExport] Job has output or is near completion (>=70%), treating as completed despite stuck status'
                           );
                           jobCompleted = true;
                           break;
@@ -824,7 +860,7 @@ export const FinalExport: FC<FinalExportProps> = ({
 
                         // If truly stuck without output, throw error
                         throw new Error(
-                          `Video generation appears stuck at ${currentStage} stage (${jobProgress}% complete for over 5 minutes). ` +
+                          `Video generation appears stuck at ${currentStage} stage (${jobProgress}% complete for over 2 minutes). ` +
                             'The job may have encountered an issue. Please try again or check the logs.'
                         );
                       }

@@ -1201,7 +1201,23 @@ public partial class JobRunner
                 }
                 else
                 {
-                    formattedMessage = message;
+                    // Important: If batch tasks are NOT complete, ensure we're NOT in PostProcess stage.
+                    // This fixes the bug where stage prematurely transitions to PostProcess.
+                    if (stage == "PostProcess")
+                    {
+                        // Determine appropriate stage based on progress
+                        stage = percent switch
+                        {
+                            < 20 => "Script",
+                            < 45 => "Voice",
+                            < 70 => "Visuals",
+                            _ => "Rendering"
+                        };
+                        _logger.LogDebug(
+                            "[Progress] Correcting premature PostProcess stage to {Stage} (batch {Completed}/{Total})",
+                            stage, completed, total);
+                    }
+                    formattedMessage = $"Processing: {completed}/{total} tasks completed";
                 }
             }
             else
