@@ -185,7 +185,7 @@ public partial class JobRunner
                 {
                     _logger.LogWarning(
                         "Job {JobId} appears stuck: no progress for {Duration:F1}s at {Stage} ({Percent}%)",
-                        jobId, stuckDuration.TotalSeconds, tracking.LastStage, tracking.LastPercent);
+                        jobId, stuckDuration.TotalSeconds, tracking.LastStage ?? "Unknown", tracking.LastPercent);
                     MarkStuckWarningEmitted(jobId);
                 }
                 
