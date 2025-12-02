@@ -320,11 +320,20 @@ public class TranslationService
             };
         }
 
+        // Build LLM parameters with model override if specified
+        LlmParameters? llmParameters = null;
+        if (!string.IsNullOrWhiteSpace(request.ModelId))
+        {
+            llmParameters = new LlmParameters(ModelOverride: request.ModelId);
+            _logger.LogInformation("Using model override for cultural analysis: {ModelId}", request.ModelId);
+        }
+
         return await _culturalEngine.AnalyzeCulturalContentAsync(
             request.Content,
             targetLanguage,
             request.TargetRegion,
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            llmParameters).ConfigureAwait(false);
     }
 
     private async Task<List<TranslatedScriptLine>> TranslateScriptLinesAsync(
@@ -333,6 +342,14 @@ public class TranslationService
         CancellationToken cancellationToken)
     {
         var translatedLines = new List<TranslatedScriptLine>();
+        
+        // Build LLM parameters with model override if specified
+        LlmParameters? llmParameters = null;
+        if (!string.IsNullOrWhiteSpace(request.ModelId))
+        {
+            llmParameters = new LlmParameters(ModelOverride: request.ModelId);
+            _logger.LogInformation("Using model override for translation: {ModelId}", request.ModelId);
+        }
 
         if (request.ScriptLines.Count != 0)
         {
@@ -349,6 +366,7 @@ public class TranslationService
                     context,
                     request.Options,
                     request.Glossary,
+                    llmParameters,
                     cancellationToken).ConfigureAwait(false);
 
                 translatedLines.Add(new TranslatedScriptLine
@@ -374,6 +392,7 @@ public class TranslationService
                 context,
                 request.Options,
                 request.Glossary,
+                llmParameters,
                 cancellationToken).ConfigureAwait(false);
 
             translatedLines.Add(new TranslatedScriptLine
@@ -394,6 +413,7 @@ public class TranslationService
         string context,
         TranslationOptions options,
         Dictionary<string, string> glossary,
+        LlmParameters? llmParameters,
         CancellationToken cancellationToken)
     {
         // Build system and user prompts for chat completion (more consistent with ideation pattern)
@@ -467,10 +487,11 @@ public class TranslationService
             {
                 // Use CompositeLlmProvider for translation - it will automatically select the best available provider
                 // and handle fallback logic. This is more reliable than direct Ollama calls.
+                // Pass llmParameters if model override was specified by user
                 response = await _llmProvider.GenerateChatCompletionAsync(
                     systemPrompt,
                     userPrompt,
-                    null, // Use default LLM parameters - do NOT use format="json" for translation
+                    llmParameters, // Use LLM parameters with model override if specified
                     cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

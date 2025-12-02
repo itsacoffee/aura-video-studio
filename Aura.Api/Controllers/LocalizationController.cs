@@ -445,8 +445,13 @@ public class LocalizationController : ControllerBase
                 TargetLanguage = request.TargetLanguage,
                 SourceText = request.SourceText,
                 ScriptLines = new List<ScriptLine>(),
-                Options = new TranslationOptions()
+                Options = new TranslationOptions(),
+                Provider = request.Provider,
+                ModelId = request.ModelId
             };
+
+            _logger.LogInformation("Translation request with model selection: Provider={Provider}, ModelId={ModelId}, CorrelationId: {CorrelationId}",
+                request.Provider ?? "(default)", request.ModelId ?? "(default)", HttpContext.TraceIdentifier);
 
             var result = await _localizationService.TranslateAsync(translationRequest, linkedCts.Token).ConfigureAwait(false);
             
@@ -650,8 +655,13 @@ public class LocalizationController : ControllerBase
                 TargetLanguage = request.TargetLanguage,
                 TargetRegion = request.TargetRegion,
                 Content = request.Content,
-                AudienceProfileId = request.AudienceProfileId
+                AudienceProfileId = request.AudienceProfileId,
+                Provider = request.Provider,
+                ModelId = request.ModelId
             };
+
+            _logger.LogInformation("Cultural analysis request with model selection: Provider={Provider}, ModelId={ModelId}, CorrelationId: {CorrelationId}",
+                request.Provider ?? "(default)", request.ModelId ?? "(default)", HttpContext.TraceIdentifier);
 
             var result = await _localizationService.AnalyzeCulturalContentAsync(analysisRequest, linkedCts.Token).ConfigureAwait(false);
             

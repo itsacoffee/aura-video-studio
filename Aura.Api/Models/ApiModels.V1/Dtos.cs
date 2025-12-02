@@ -1136,7 +1136,9 @@ public record CulturalAnalysisRequest(
     string TargetLanguage,
     string TargetRegion,
     string Content,
-    string? AudienceProfileId);
+    string? AudienceProfileId,
+    string? Provider = null,
+    string? ModelId = null);
 
 /// <summary>
 /// Cultural analysis result
@@ -2684,7 +2686,9 @@ public record PullOllamaModelRequest(
 public record SimpleTranslationRequest(
     string SourceText,
     string SourceLanguage,
-    string TargetLanguage);
+    string TargetLanguage,
+    string? Provider = null,
+    string? ModelId = null);
 
 /// <summary>
 /// Simple translation response with just the translated text
