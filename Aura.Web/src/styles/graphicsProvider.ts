@@ -122,17 +122,11 @@ export function applyGraphicsSettings(settings: GraphicsSettings): void {
   } else {
     root.classList.remove('reduced-motion');
   }
-
-  console.log('[Graphics] CSS properties applied', {
-    animations: animationEnabled,
-    blur: blurEnabled,
-    shadows: shadowsEnabled,
-    scale: scaleFactor,
-  });
 }
 
 /**
  * Get computed animation duration based on settings
+ * @returns duration in milliseconds
  */
 export function getAnimationDuration(
   type: 'micro' | 'fast' | 'normal' | 'slow' = 'normal'
@@ -140,7 +134,9 @@ export function getAnimationDuration(
   const value = getComputedStyle(document.documentElement)
     .getPropertyValue(`--duration-${type}`)
     .trim();
-  return parseInt(value) || 0;
+  // Remove 'ms' suffix and parse as integer
+  const numericValue = value.replace('ms', '');
+  return parseInt(numericValue, 10) || 0;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ReactNode } from 'react';
+import { useAnimationsDisabled } from '../../hooks/useAnimationsDisabled';
 import { fadeVariants } from '../../utils/animations';
 
 interface FadeInProps {
@@ -14,12 +15,7 @@ interface FadeInProps {
  * Respects system reduced motion preferences via CSS variables
  */
 export function FadeIn({ children, className, delay = 0, duration = 0.25 }: FadeInProps) {
-  // Get the computed duration from CSS variable which respects graphics settings
-  const computedDuration =
-    typeof document !== 'undefined'
-      ? getComputedStyle(document.documentElement).getPropertyValue('--duration-normal').trim()
-      : '250ms';
-  const animationsDisabled = computedDuration === '0ms';
+  const animationsDisabled = useAnimationsDisabled();
 
   if (animationsDisabled) {
     return <div className={className}>{children}</div>;
