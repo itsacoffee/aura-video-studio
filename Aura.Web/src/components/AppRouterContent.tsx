@@ -139,6 +139,11 @@ const AccessibilitySettingsPage = lazy(() =>
     default: m.AccessibilitySettingsPage,
   }))
 );
+const GraphicsSettingsPage = lazy(() =>
+  import('../pages/GraphicsSettingsPage').then((m) => ({
+    default: m.GraphicsSettingsPage,
+  }))
+);
 const CustomTemplatesPage = lazy(() => import('../pages/Templates/CustomTemplatesPage'));
 const TemplatesLibrary = lazy(() => import('../pages/Templates/TemplatesLibrary'));
 const ValidationPage = lazy(() => import('../pages/Validation/ValidationPage'));
@@ -784,6 +789,14 @@ const AppRouterContentInner: FC<
                   element={
                     <LazyRoute routePath="/settings/accessibility">
                       <AccessibilitySettingsPage />
+                    </LazyRoute>
+                  }
+                />
+                <Route
+                  path="settings/graphics"
+                  element={
+                    <LazyRoute routePath="/settings/graphics">
+                      <GraphicsSettingsPage />
                     </LazyRoute>
                   }
                 />
