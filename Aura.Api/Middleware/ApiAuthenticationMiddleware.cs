@@ -1,10 +1,13 @@
 using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Aura.Api.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Aura.Api.Middleware;
 
@@ -117,8 +120,6 @@ public class ApiAuthenticationMiddleware
 
     private bool ValidateJwtToken(HttpContext context)
     {
-        // Basic JWT validation
-        // For production, use Microsoft.AspNetCore.Authentication.JwtBearer
         var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
         if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
@@ -126,10 +127,67 @@ public class ApiAuthenticationMiddleware
         }
 
         var token = authHeader.Substring("Bearer ".Length).Trim();
-        
-        // For now, just check if token is present
-        // Full JWT validation would require JWT library
-        return !string.IsNullOrEmpty(token);
+        if (string.IsNullOrEmpty(token))
+        {
+            return false;
+        }
+
+        // If no signing key configured, JWT validation cannot proceed
+        if (string.IsNullOrEmpty(_options.JwtSecretKey))
+        {
+            _logger.LogWarning("JWT authentication enabled but no signing key configured");
+            return false;
+        }
+
+        try
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(_options.JwtSecretKey)),
+
+                ValidateIssuer = !string.IsNullOrEmpty(_options.JwtIssuer),
+                ValidIssuer = _options.JwtIssuer,
+
+                ValidateAudience = !string.IsNullOrEmpty(_options.JwtAudience),
+                ValidAudience = _options.JwtAudience,
+
+                ValidateLifetime = _options.ValidateLifetime,
+                ClockSkew = _options.ClockSkew
+            };
+
+            var principal = tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+
+            // Set the user principal on the context
+            context.User = principal;
+
+            _logger.LogDebug("JWT token validated successfully for subject: {Subject}",
+                principal.FindFirst("sub")?.Value ?? "unknown");
+
+            return true;
+        }
+        catch (SecurityTokenExpiredException)
+        {
+            _logger.LogWarning("JWT token has expired");
+            return false;
+        }
+        catch (SecurityTokenInvalidSignatureException)
+        {
+            _logger.LogWarning("JWT token has invalid signature");
+            return false;
+        }
+        catch (SecurityTokenException ex)
+        {
+            _logger.LogWarning(ex, "JWT token validation failed");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during JWT validation");
+            return false;
+        }
     }
 }
 
