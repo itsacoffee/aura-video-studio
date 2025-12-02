@@ -223,7 +223,7 @@ public class OllamaDetectionService : IHostedService, IDisposable
 
     /// <summary>
     /// Gets a recommended default model from the available models based on priority order.
-    /// Prefers well-known models suitable for video script generation: llama3.1, llama3, mistral, gemma, phi.
+    /// Prefers well-known models suitable for video script generation: llama3.1, llama3, mistral, gemma, phi, qwen.
     /// </summary>
     /// <param name="ct">Cancellation token</param>
     /// <returns>The name of the recommended model, or null if no models are available</returns>

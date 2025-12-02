@@ -200,13 +200,16 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
     }
   }, [globalLlmSelection, setSelection]);
 
-  // Run auto-detection on mount
+  // Run auto-detection on mount only once
   useEffect(() => {
     // Only run once and only if no selection exists
     if (!autoDetectionStatus.attempted && !globalLlmSelection?.provider) {
       autoDetectOllamaModel();
     }
-  }, [autoDetectionStatus.attempted, globalLlmSelection?.provider, autoDetectOllamaModel]);
+    // Intentionally only depend on autoDetectionStatus.attempted and globalLlmSelection?.provider
+    // to avoid re-running when the callback reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDetectionStatus.attempted, globalLlmSelection?.provider]);
 
   // Check if Ollama is selected but no model is chosen
   const isOllamaWithoutModel = useMemo(() => {

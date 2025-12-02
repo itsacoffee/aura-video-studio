@@ -1675,8 +1675,7 @@ public class ProvidersController : ControllerBase
         
         try
         {
-            var ollamaDetectionService = HttpContext.RequestServices.GetService(typeof(Aura.Core.Services.Providers.OllamaDetectionService)) 
-                as Aura.Core.Services.Providers.OllamaDetectionService;
+            var ollamaDetectionService = HttpContext.RequestServices.GetService<Aura.Core.Services.Providers.OllamaDetectionService>();
 
             if (ollamaDetectionService == null)
             {
