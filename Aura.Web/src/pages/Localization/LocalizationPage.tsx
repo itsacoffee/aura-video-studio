@@ -295,6 +295,8 @@ export const LocalizationPage: React.FC = () => {
           sourceText: sourceText,
           sourceLanguage,
           targetLanguage,
+          provider: llmSelection.provider || undefined,
+          modelId: llmSelection.modelId || undefined,
         }),
         signal: abortController.signal,
       });
@@ -318,7 +320,7 @@ export const LocalizationPage: React.FC = () => {
       setLoadingMessage('');
       abortControllerRef.current = null;
     }
-  }, [sourceText, sourceLanguage, targetLanguage, handleRequestError]);
+  }, [sourceText, sourceLanguage, targetLanguage, llmSelection, handleRequestError]);
 
   const handleGenerateSubtitles = useCallback(async () => {
     if (!videoPath) {
@@ -403,6 +405,8 @@ export const LocalizationPage: React.FC = () => {
           targetRegion: targetLanguage.includes('-')
             ? targetLanguage.split('-')[1]
             : targetLanguage,
+          provider: llmSelection.provider || undefined,
+          modelId: llmSelection.modelId || undefined,
         }),
         signal: abortController.signal,
       });
@@ -442,7 +446,7 @@ export const LocalizationPage: React.FC = () => {
       setLoadingMessage('');
       abortControllerRef.current = null;
     }
-  }, [sourceText, targetLanguage, handleRequestError]);
+  }, [sourceText, targetLanguage, llmSelection, handleRequestError]);
 
   // Retry the last failed operation
   const handleRetry = useCallback(() => {
@@ -475,8 +479,8 @@ export const LocalizationPage: React.FC = () => {
         <div className={styles.headerContent}>
           <Title1>Localization & Translation</Title1>
           <Text className={styles.subtitle}>
-            Translate content, generate subtitles, and adapt your videos for different cultures and
-            languages. Use these tools to reach a global audience with properly localized content.
+            AI-powered translation with cultural adaptation. Supports any language, dialect,
+            regional variant, or creative style for your video content.
           </Text>
         </div>
       </div>
@@ -569,7 +573,9 @@ export const LocalizationPage: React.FC = () => {
                   <Option value="ko">Korean</Option>
                 </Dropdown>
               </Field>
-              <Text className={styles.fieldHint}>The language of your original content</Text>
+              <Text className={styles.fieldHint}>
+                Select source language or type custom descriptions like &quot;Medieval English&quot;
+              </Text>
             </div>
 
             <div className={styles.fieldGroup}>
@@ -589,7 +595,9 @@ export const LocalizationPage: React.FC = () => {
                   <Option value="en">English</Option>
                 </Dropdown>
               </Field>
-              <Text className={styles.fieldHint}>The language to translate your content into</Text>
+              <Text className={styles.fieldHint}>
+                Select target language or type custom descriptions like &quot;Pirate Speak&quot;
+              </Text>
             </div>
 
             <div className={styles.fieldGroup}>
@@ -601,9 +609,6 @@ export const LocalizationPage: React.FC = () => {
                   rows={8}
                 />
               </Field>
-              <Text className={styles.fieldHint}>
-                Enter the text you want to translate. Longer texts may take more time to process.
-              </Text>
             </div>
 
             <div className={styles.actions}>

@@ -45,6 +45,18 @@ public class TranslationRequest
     public string? AudienceProfileId { get; set; }
     
     /// <summary>
+    /// Optional LLM provider name override (e.g., "Ollama", "OpenAI").
+    /// When specified, this provider will be used instead of the default configured provider.
+    /// </summary>
+    public string? Provider { get; set; }
+    
+    /// <summary>
+    /// Optional LLM model ID override (e.g., "qwen3:4b", "gpt-4").
+    /// When specified, this model will be used instead of the default configured model.
+    /// </summary>
+    public string? ModelId { get; set; }
+    
+    /// <summary>
     /// RAG configuration for terminology grounding.
     /// When enabled, the translation service will retrieve relevant terminology
     /// and context from indexed documents to ensure consistency.
@@ -333,6 +345,18 @@ public class CulturalAnalysisRequest
     public string TargetRegion { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public string? AudienceProfileId { get; set; }
+    
+    /// <summary>
+    /// Optional LLM provider name override (e.g., "Ollama", "OpenAI").
+    /// When specified, this provider will be used instead of the default configured provider.
+    /// </summary>
+    public string? Provider { get; set; }
+    
+    /// <summary>
+    /// Optional LLM model ID override (e.g., "qwen3:4b", "gpt-4").
+    /// When specified, this model will be used instead of the default configured model.
+    /// </summary>
+    public string? ModelId { get; set; }
 }
 
 /// <summary>

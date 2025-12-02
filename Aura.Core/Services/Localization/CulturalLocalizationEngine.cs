@@ -107,7 +107,8 @@ public class CulturalLocalizationEngine
         string content,
         LanguageInfo targetLanguage,
         string targetRegion,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        LlmParameters? llmParameters = null)
     {
         _logger.LogInformation("Analyzing cultural content for {Language}/{Region}", 
             targetLanguage.Code, targetRegion);
@@ -116,8 +117,13 @@ public class CulturalLocalizationEngine
 
         try
         {
-            // Use CompleteAsync for direct prompt completion
-            var response = await _llmProvider.CompleteAsync(prompt, cancellationToken).ConfigureAwait(false);
+            // Use GenerateChatCompletionAsync for cultural analysis to support model override
+            var systemPrompt = "You are a cultural analysis expert. Analyze content for cultural appropriateness and provide detailed recommendations.";
+            var response = await _llmProvider.GenerateChatCompletionAsync(
+                systemPrompt, 
+                prompt, 
+                llmParameters, 
+                cancellationToken).ConfigureAwait(false);
             var result = ParseCulturalAnalysis(response, targetLanguage.Code, targetRegion);
             
             _logger.LogDebug("Cultural analysis complete for {Language}/{Region}: Score={Score}",
