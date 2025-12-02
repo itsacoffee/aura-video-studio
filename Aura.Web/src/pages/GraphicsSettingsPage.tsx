@@ -218,8 +218,8 @@ export function GraphicsSettingsPage() {
     try {
       const updated = await graphicsSettingsService.applyProfile(profile);
       setSettings(updated);
-      setHasChanges(false);
       setOriginalSettings(updated);
+      setHasChanges(false);
     } catch (error: unknown) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       console.error('Failed to apply profile', errorObj);
