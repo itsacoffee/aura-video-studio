@@ -310,16 +310,19 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   const hasSelectedProviderRef = useRef(false);
 
   // Sync selectedProvider when styleData.imageProvider changes (e.g., user goes back to StyleSelection and changes provider)
+  const prevImageProviderRef = useRef(styleData.imageProvider);
   useEffect(() => {
-    if (styleData.imageProvider && styleData.imageProvider !== selectedProvider) {
+    // Only sync if styleData.imageProvider has changed from its previous value
+    if (styleData.imageProvider && styleData.imageProvider !== prevImageProviderRef.current) {
       console.info(
         '[PreviewGeneration] Syncing image provider from style data:',
         styleData.imageProvider
       );
       setSelectedProvider(styleData.imageProvider);
       hasSelectedProviderRef.current = true;
+      prevImageProviderRef.current = styleData.imageProvider;
     }
-  }, [styleData.imageProvider, selectedProvider]);
+  }, [styleData.imageProvider]);
 
   // Validate script data before proceeding
   const hasValidScriptData = useMemo(() => {
