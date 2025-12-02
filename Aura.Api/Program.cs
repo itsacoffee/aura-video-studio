@@ -579,6 +579,9 @@ builder.Services.AddScoped<Aura.Core.Configuration.SettingsExportImportService>(
 // Register settings service
 builder.Services.AddScoped<Aura.Core.Services.Settings.ISettingsService, Aura.Core.Services.Settings.SettingsService>();
 
+// Register graphics settings service
+builder.Services.AddSingleton<Aura.Core.Services.Settings.IGraphicsSettingsService, Aura.Core.Services.Settings.GraphicsSettingsService>();
+
 // Register media library services
 builder.Services.AddMediaServices(builder.Configuration);
 
