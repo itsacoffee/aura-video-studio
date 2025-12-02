@@ -29,12 +29,16 @@ public class FirstRunMiddleware
         // Critical: These endpoints must be accessible during first-run wizard to prevent UI deadlock
         if (path.StartsWith("/api/setup", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/settings/first-run", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/settings/llm", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/settings/ollama", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/preflight", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/probes", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/downloads", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/dependencies", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/apikeys", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/keys", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/models", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/engines", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/providers", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/healthz", StringComparison.OrdinalIgnoreCase) ||
