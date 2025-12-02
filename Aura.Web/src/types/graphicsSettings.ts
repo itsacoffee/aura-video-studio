@@ -34,7 +34,11 @@ export interface VisualEffectsSettings {
  */
 export interface DisplayScalingSettings {
   mode: ScalingMode;
-  manualScaleFactor: number; // 1.0 = 100%, 1.5 = 150%, etc.
+  /**
+   * Manual scale factor (1.0 = 100%, 1.5 = 150%, etc.)
+   * Valid range: 0.5 to 3.0
+   */
+  manualScaleFactor: number;
   perMonitorDpiAware: boolean;
   subpixelRendering: boolean;
 }
