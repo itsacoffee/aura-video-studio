@@ -42,6 +42,7 @@ import {
 } from '@fluentui/react-icons';
 import { useRef, useState, useCallback, useMemo } from 'react';
 import type { FC, DragEvent, MouseEvent as ReactMouseEvent } from 'react';
+import { openCutTokens } from '../../styles/designTokens';
 import { useOpenCutMediaStore, type OpenCutMediaFile } from '../../stores/opencutMedia';
 import { useOpenCutTimelineStore } from '../../stores/opencutTimeline';
 import { EmptyState } from './EmptyState';
@@ -65,15 +66,15 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
+    padding: `${openCutTokens.spacing.md} ${openCutTokens.spacing.md}`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
     minHeight: '56px',
-    gap: tokens.spacingHorizontalS,
+    gap: openCutTokens.spacing.sm,
   },
   headerTitle: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
+    gap: openCutTokens.spacing.sm,
   },
   headerIcon: {
     color: tokens.colorNeutralForeground3,

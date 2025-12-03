@@ -33,6 +33,7 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useCallback } from 'react';
 import type { FC } from 'react';
+import { openCutTokens } from '../../styles/designTokens';
 import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutTimelineStore, type BlendMode } from '../../stores/opencutTimeline';
 import { EmptyState } from './EmptyState';
@@ -52,7 +53,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalL}`,
+    padding: `${openCutTokens.spacing.lg} ${openCutTokens.spacing.lg}`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
     minHeight: '56px',
   },

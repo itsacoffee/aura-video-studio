@@ -36,6 +36,7 @@ import {
 import { motion } from 'framer-motion';
 import { useCallback, useRef, useState } from 'react';
 import type { FC } from 'react';
+import { openCutTokens } from '../../styles/designTokens';
 import { PlaybackControls } from './PlaybackControls';
 
 export interface PreviewPanelProps {
@@ -60,7 +61,7 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+    padding: `${openCutTokens.spacing.sm} ${openCutTokens.spacing.md}`,
     borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
     backgroundColor: tokens.colorNeutralBackground2,
     minHeight: '44px',

@@ -48,6 +48,7 @@ import {
 import { motion } from 'framer-motion';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
+import { openCutTokens } from '../../styles/designTokens';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import {
@@ -77,7 +78,7 @@ const useStyles = makeStyles({
     right: 0,
     height: '8px',
     cursor: 'ns-resize',
-    zIndex: 20,
+    zIndex: openCutTokens.zIndex.sticky,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -93,9 +94,9 @@ const useStyles = makeStyles({
       width: '48px',
       height: '3px',
       backgroundColor: tokens.colorNeutralStroke3,
-      borderRadius: tokens.borderRadiusMedium,
+      borderRadius: openCutTokens.radius.md,
       opacity: 0,
-      transition: 'opacity 150ms ease-out, background-color 150ms ease-out',
+      transition: `opacity ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}, background-color ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}`,
     },
   },
   resizeHandleActive: {
@@ -348,8 +349,8 @@ const useStyles = makeStyles({
     top: 0,
     bottom: 0,
     width: '2px',
-    backgroundColor: tokens.colorPaletteRedBackground3,
-    zIndex: 15,
+    backgroundColor: openCutTokens.colors.playhead,
+    zIndex: openCutTokens.zIndex.sticky - 5,
     pointerEvents: 'none',
   },
   playheadHandle: {
@@ -358,12 +359,12 @@ const useStyles = makeStyles({
     left: '-7px',
     width: '16px',
     height: '16px',
-    backgroundColor: tokens.colorPaletteRedBackground3,
+    backgroundColor: openCutTokens.colors.playhead,
     borderRadius: '4px 4px 50% 50%',
-    boxShadow: tokens.shadow4,
+    boxShadow: openCutTokens.shadows.sm,
     pointerEvents: 'auto',
     cursor: 'ew-resize',
-    transition: 'transform 100ms ease-out',
+    transition: `transform ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}`,
     ':hover': {
       transform: 'scale(1.1)',
     },
@@ -377,8 +378,8 @@ const useStyles = makeStyles({
     top: 0,
     bottom: 0,
     width: '1px',
-    backgroundColor: tokens.colorBrandStroke1,
-    zIndex: 14,
+    backgroundColor: openCutTokens.colors.snap,
+    zIndex: openCutTokens.zIndex.sticky - 6,
     pointerEvents: 'none',
   },
 });
