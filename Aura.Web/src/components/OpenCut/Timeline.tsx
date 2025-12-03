@@ -55,6 +55,7 @@ import {
   type ClipType,
   type TimelineClip,
 } from '../../stores/opencutTimeline';
+import { ClipWaveform } from './Waveform';
 
 export interface TimelineProps {
   className?: string;
@@ -306,6 +307,8 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     justifyContent: 'center',
     minWidth: 0,
+    position: 'relative',
+    zIndex: 1,
   },
   clipName: {
     fontSize: tokens.fontSizeBase100,
@@ -320,6 +323,15 @@ const useStyles = makeStyles({
     fontSize: '10px',
     color: 'rgba(255,255,255,0.8)',
     textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+  },
+  clipWaveform: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.6,
+    zIndex: 0,
   },
   clipTrimHandle: {
     position: 'absolute',
@@ -625,6 +637,10 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
       text: styles.clipText,
     }[clip.type];
 
+    // Show waveform for audio and video clips that have a media source
+    const showWaveform =
+      (clip.type === 'audio' || clip.type === 'video') && clip.mediaId && clip.thumbnailUrl; // Using thumbnailUrl as a proxy for audio URL in this context
+
     return (
       <motion.div
         key={clip.id}
@@ -643,7 +659,22 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
         aria-label={`${clip.name} clip`}
         aria-pressed={isSelected}
       >
-        {clip.thumbnailUrl && (
+        {showWaveform && clip.mediaId && clip.thumbnailUrl && (
+          <div className={styles.clipWaveform}>
+            <ClipWaveform
+              mediaId={clip.mediaId}
+              audioUrl={clip.thumbnailUrl}
+              width={Math.max(clipWidth, 30)}
+              height={48}
+              clipType={clip.type as 'audio' | 'video'}
+              trimStart={clip.inPoint}
+              trimEnd={clip.duration > 0 ? clip.outPoint - clip.inPoint - clip.duration : 0}
+              clipDuration={clip.duration}
+              samples={Math.min(Math.max(Math.floor(clipWidth / 2), 50), 500)}
+            />
+          </div>
+        )}
+        {clip.thumbnailUrl && !showWaveform && (
           <img src={clip.thumbnailUrl} alt="" className={styles.clipThumbnail} />
         )}
         <div className={styles.clipInfo}>

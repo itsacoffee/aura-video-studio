@@ -1,7 +1,8 @@
 /**
  * Waveform Service
  *
- * Manages audio waveform generation and caching with priority-based loading
+ * Manages audio waveform generation and caching with priority-based loading.
+ * Supports both server-side (API) and client-side (Web Audio API) generation.
  */
 
 import { apiUrl } from '../config/api';
@@ -12,6 +13,16 @@ export interface WaveformData {
   duration: number;
 }
 
+/**
+ * Waveform peaks data for visualization
+ */
+export interface WaveformPeaksData {
+  peaks: number[];
+  duration: number;
+  sampleRate: number;
+  channels: number;
+}
+
 export interface WaveformGenerateRequest {
   audioPath: string;
   targetSamples?: number;
@@ -19,10 +30,110 @@ export interface WaveformGenerateRequest {
   endTime?: number;
 }
 
+/**
+ * Options for client-side waveform generation
+ */
+export interface WaveformOptions {
+  samples: number;
+  channel?: number;
+  normalize?: boolean;
+}
+
 export interface CachedWaveform {
   data: number[];
   timestamp: number;
   priority: number;
+}
+
+/**
+ * Client-side waveform cache for blob URLs
+ */
+const clientWaveformCache = new Map<string, WaveformPeaksData>();
+
+/**
+ * Generate waveform peaks from audio URL using Web Audio API
+ * This runs entirely client-side without needing a backend.
+ */
+export async function generateWaveformFromUrl(
+  audioUrl: string,
+  options: WaveformOptions = { samples: 200 }
+): Promise<WaveformPeaksData> {
+  const cacheKey = `${audioUrl}-${options.samples}`;
+  if (clientWaveformCache.has(cacheKey)) {
+    return clientWaveformCache.get(cacheKey)!;
+  }
+
+  const audioContext = new AudioContext();
+
+  try {
+    const response = await fetch(audioUrl);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+    const channelData = audioBuffer.getChannelData(options.channel ?? 0);
+    const samplesPerPeak = Math.floor(channelData.length / options.samples);
+    const peaks: number[] = [];
+
+    for (let i = 0; i < options.samples; i++) {
+      const start = i * samplesPerPeak;
+      const end = start + samplesPerPeak;
+      let max = 0;
+
+      for (let j = start; j < end && j < channelData.length; j++) {
+        const abs = Math.abs(channelData[j]);
+        if (abs > max) max = abs;
+      }
+
+      peaks.push(max);
+    }
+
+    // Normalize if requested
+    if (options.normalize) {
+      const maxPeak = Math.max(...peaks);
+      if (maxPeak > 0) {
+        for (let i = 0; i < peaks.length; i++) {
+          peaks[i] = peaks[i] / maxPeak;
+        }
+      }
+    }
+
+    const waveformData: WaveformPeaksData = {
+      peaks,
+      duration: audioBuffer.duration,
+      sampleRate: audioBuffer.sampleRate,
+      channels: audioBuffer.numberOfChannels,
+    };
+
+    clientWaveformCache.set(cacheKey, waveformData);
+    return waveformData;
+  } finally {
+    await audioContext.close();
+  }
+}
+
+/**
+ * Clear client-side waveform cache
+ */
+export function clearClientWaveformCache(audioUrl?: string): void {
+  if (audioUrl) {
+    for (const key of clientWaveformCache.keys()) {
+      if (key.startsWith(audioUrl)) {
+        clientWaveformCache.delete(key);
+      }
+    }
+  } else {
+    clientWaveformCache.clear();
+  }
+}
+
+/**
+ * Get cached waveform from client cache
+ */
+export function getWaveformFromCache(
+  audioUrl: string,
+  samples: number
+): WaveformPeaksData | undefined {
+  return clientWaveformCache.get(`${audioUrl}-${samples}`);
 }
 
 export class WaveformService {

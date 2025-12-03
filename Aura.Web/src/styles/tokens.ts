@@ -203,6 +203,56 @@ export const fontWeights = {
 } as const;
 
 /**
+ * OpenCut Design Tokens
+ *
+ * Design tokens specific to the OpenCut video editor components.
+ * These tokens provide consistent styling across all OpenCut components.
+ */
+export const openCutTokens = {
+  /**
+   * Radius tokens for OpenCut components
+   */
+  radius: {
+    sm: '2px',
+    md: '4px',
+    lg: '6px',
+    xl: '8px',
+    full: '9999px',
+  },
+
+  /**
+   * Spacing tokens
+   */
+  spacing: {
+    xs: '2px',
+    sm: '4px',
+    md: '8px',
+    lg: '12px',
+    xl: '16px',
+  },
+
+  /**
+   * Waveform-specific colors
+   */
+  waveform: {
+    audio: '#22C55E',
+    video: '#3B82F6',
+    loading: 'rgba(255, 255, 255, 0.2)',
+    loadingProgress: '#3B82F6',
+  },
+
+  /**
+   * Timeline clip colors
+   */
+  clips: {
+    video: '#4F46E5',
+    audio: '#22C55E',
+    image: '#8B5CF6',
+    text: '#EAB308',
+  },
+} as const;
+
+/**
  * CSS Custom Properties Generator
  * Converts design tokens to CSS variables
  */
