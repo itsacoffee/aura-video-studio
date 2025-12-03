@@ -1574,11 +1574,22 @@ builder.Services.AddSingleton<Aura.Core.Services.RAG.DocumentIngestService>(sp =
         logger, importService, chunkingService, embeddingService, vectorIndex);
 });
 
+// Register QueryExpansionService for LLM-based query expansion
+builder.Services.AddSingleton<Aura.Core.Services.RAG.QueryExpansionService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.QueryExpansionService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var ragConfig = builder.Configuration.GetSection("RAG");
+    var enableLlmExpansion = ragConfig.GetValue("EnableLlmQueryExpansion", true);
+    return new Aura.Core.Services.RAG.QueryExpansionService(logger, llmProvider, enableLlmExpansion);
+});
+
 builder.Services.AddSingleton<Aura.Core.Services.RAG.RagScriptEnhancer>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.RagScriptEnhancer>>();
     var contextBuilder = sp.GetRequiredService<Aura.Core.Services.RAG.RagContextBuilder>();
-    return new Aura.Core.Services.RAG.RagScriptEnhancer(logger, contextBuilder);
+    var queryExpansion = sp.GetService<Aura.Core.Services.RAG.QueryExpansionService>();
+    return new Aura.Core.Services.RAG.RagScriptEnhancer(logger, contextBuilder, queryExpansion);
 });
 
 // Register Script Enhancement services (for AI Audio Intelligence integration)

@@ -14,13 +14,16 @@ public class RagScriptEnhancer
 {
     private readonly ILogger<RagScriptEnhancer> _logger;
     private readonly RagContextBuilder _contextBuilder;
+    private readonly QueryExpansionService? _queryExpansion;
 
     public RagScriptEnhancer(
         ILogger<RagScriptEnhancer> logger,
-        RagContextBuilder contextBuilder)
+        RagContextBuilder contextBuilder,
+        QueryExpansionService? queryExpansion = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _contextBuilder = contextBuilder ?? throw new ArgumentNullException(nameof(contextBuilder));
+        _queryExpansion = queryExpansion;
     }
 
     /// <summary>
@@ -46,7 +49,7 @@ public class RagScriptEnhancer
                 brief.Topic, brief.RagConfiguration.TopK, brief.RagConfiguration.MinimumScore);
 
             // Use query expansion for better retrieval
-            var queryVariations = BuildRagQueryVariations(brief);
+            var queryVariations = await BuildRagQueryVariationsAsync(brief, ct).ConfigureAwait(false);
             _logger.LogInformation("Using {Count} query variations for RAG retrieval", queryVariations.Count);
 
             var ragConfig = new RagConfig
@@ -211,6 +214,35 @@ public class RagScriptEnhancer
         }
 
         return queries.Distinct().ToList();
+    }
+
+    /// <summary>
+    /// Builds multiple query variations for better RAG retrieval using LLM expansion when available
+    /// </summary>
+    private async Task<System.Collections.Generic.List<string>> BuildRagQueryVariationsAsync(Brief brief, CancellationToken ct)
+    {
+        var baseQuery = BuildRagQuery(brief);
+        
+        // Try LLM-based expansion if available and enabled
+        if (_queryExpansion != null && brief.RagConfiguration?.EnableLlmQueryExpansion == true)
+        {
+            try
+            {
+                var context = $"Goal: {brief.Goal}, Audience: {brief.Audience}";
+                var expanded = await _queryExpansion.ExpandQueryAsync(baseQuery, context, 6, ct)
+                    .ConfigureAwait(false);
+                
+                _logger.LogInformation("LLM-expanded query into {Count} variations", expanded.Count);
+                return expanded;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Query expansion failed, using fallback");
+            }
+        }
+        
+        // Fallback to existing basic expansion
+        return BuildRagQueryVariations(brief);
     }
 
     /// <summary>
