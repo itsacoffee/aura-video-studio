@@ -250,7 +250,7 @@ export interface KeyframeTrack {
 /**
  * Types of markers in the timeline.
  */
-export type MarkerType = 'chapter' | 'todo' | 'note' | 'sync' | 'custom';
+export type MarkerType = 'standard' | 'chapter' | 'todo' | 'beat';
 
 /**
  * Marker color presets.
@@ -275,6 +275,8 @@ export interface Marker {
   color: MarkerColor;
   /** Duration in seconds (for range markers) */
   duration?: number;
+  /** Completion state (for todo markers) */
+  completed?: boolean;
 }
 
 // ============================================================================
