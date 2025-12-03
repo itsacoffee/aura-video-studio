@@ -79,6 +79,7 @@ public class VisualsStage : PipelineStage
                 SceneAssets = sceneAssets,
                 TotalAssetsGenerated = 0,
                 SkippedScenes = scenes.Count,
+                FailureReason = "No image provider available. Configure Pexels, Unsplash, or Pixabay API keys in Settings.",
                 GeneratedAt = DateTime.UtcNow
             });
             
@@ -252,5 +253,6 @@ public record VisualsStageOutput
     public required int TotalAssetsGenerated { get; init; }
     public required int SkippedScenes { get; init; }
     public string? Provider { get; init; }
+    public string? FailureReason { get; init; }
     public required DateTime GeneratedAt { get; init; }
 }

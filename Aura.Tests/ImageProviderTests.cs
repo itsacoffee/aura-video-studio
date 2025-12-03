@@ -174,7 +174,7 @@ public class ImageProviderTests
     }
 
     [Fact]
-    public async Task PexelsProvider_Should_ReturnEmpty_WithoutApiKey()
+    public async Task PexelsProvider_Should_Throw_WithoutApiKey()
     {
         // Arrange
         var httpClient = new HttpClient();
@@ -183,11 +183,9 @@ public class ImageProviderTests
             httpClient,
             apiKey: null);
 
-        // Act
-        var result = await provider.SearchAsync("nature", 10, CancellationToken.None);
-
-        // Assert
-        Assert.Empty(result);
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await provider.SearchAsync("nature", 10, CancellationToken.None));
     }
 
     [Fact]
@@ -383,6 +381,7 @@ public class ImageProviderTests
     public async Task VisualPipeline_StockOnly_ShouldComposeSuccessfully()
     {
         // Arrange - Test that stock-only path works without SD
+        // Pexels now throws when API key is missing to trigger fallback
         var pexelsProvider = new PexelsStockProvider(
             NullLogger<PexelsStockProvider>.Instance,
             new HttpClient(),
@@ -400,13 +399,13 @@ public class ImageProviderTests
 
         var scene = new Scene(0, "Test Scene", "Test script", TimeSpan.Zero, TimeSpan.FromSeconds(5));
 
-        // Act - All should return empty without keys but not fail
-        var pexelsResult = await pexelsProvider.SearchAsync("nature", 5, CancellationToken.None);
+        // Act - Pexels should throw, others return empty
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await pexelsProvider.SearchAsync("nature", 5, CancellationToken.None));
         var pixabayResult = await pixabayProvider.SearchAsync("nature", 5, CancellationToken.None);
         var unsplashResult = await unsplashProvider.SearchAsync("nature", 5, CancellationToken.None);
 
-        // Assert - All providers handle missing keys gracefully
-        Assert.Empty(pexelsResult);
+        // Assert - Pixabay and Unsplash still return empty gracefully
         Assert.Empty(pixabayResult);
         Assert.Empty(unsplashResult);
 
