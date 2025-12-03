@@ -22,6 +22,9 @@ public class AIDirectorService : IAIDirectorService
     private const double TikTokMaxSceneDuration = 4.0;
     private const double CinematicMinSceneDuration = 8.0;
     private const double StandardSceneDuration = 6.0;
+    private const double MinSceneDuration = 2.0;
+    private const double MaxSceneDuration = 20.0;
+    private const double KeyPointEmphasisMultiplier = 1.15;
 
     public AIDirectorService(
         ILogger<AIDirectorService> logger,

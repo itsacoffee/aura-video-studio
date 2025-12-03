@@ -98,17 +98,14 @@ Respond in JSON format with this exact structure:
     {
         try
         {
-            // Extract JSON from response (handle markdown code blocks)
-            var jsonStart = response.IndexOf('{');
-            var jsonEnd = response.LastIndexOf('}');
+            // Extract JSON from response (handle markdown code blocks and nested JSON)
+            var json = ExtractJsonFromResponse(response);
             
-            if (jsonStart < 0 || jsonEnd < jsonStart)
+            if (string.IsNullOrEmpty(json))
             {
-                _logger.LogWarning("Could not find JSON in LLM response");
+                _logger.LogWarning("Could not find valid JSON in LLM response");
                 return null;
             }
-
-            var json = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
             
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
@@ -158,6 +155,122 @@ Respond in JSON format with this exact structure:
         {
             _logger.LogWarning(ex, "Failed to parse emotional arc JSON");
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Extracts JSON from an LLM response, handling markdown code blocks and nested structures.
+    /// </summary>
+    private static string? ExtractJsonFromResponse(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+        {
+            return null;
+        }
+
+        // Try to find JSON inside markdown code blocks first
+        var codeBlockStart = response.IndexOf("```json", StringComparison.OrdinalIgnoreCase);
+        if (codeBlockStart >= 0)
+        {
+            var jsonStart = codeBlockStart + 7; // Skip "```json"
+            var codeBlockEnd = response.IndexOf("```", jsonStart, StringComparison.Ordinal);
+            if (codeBlockEnd > jsonStart)
+            {
+                var jsonCandidate = response.Substring(jsonStart, codeBlockEnd - jsonStart).Trim();
+                if (IsValidJson(jsonCandidate))
+                {
+                    return jsonCandidate;
+                }
+            }
+        }
+
+        // Try generic code block
+        codeBlockStart = response.IndexOf("```", StringComparison.Ordinal);
+        if (codeBlockStart >= 0)
+        {
+            var jsonStart = response.IndexOf('\n', codeBlockStart);
+            if (jsonStart >= 0)
+            {
+                jsonStart++; // Skip newline
+                var codeBlockEnd = response.IndexOf("```", jsonStart, StringComparison.Ordinal);
+                if (codeBlockEnd > jsonStart)
+                {
+                    var jsonCandidate = response.Substring(jsonStart, codeBlockEnd - jsonStart).Trim();
+                    if (IsValidJson(jsonCandidate))
+                    {
+                        return jsonCandidate;
+                    }
+                }
+            }
+        }
+
+        // Find balanced JSON object using brace matching
+        var firstBrace = response.IndexOf('{');
+        if (firstBrace < 0)
+        {
+            return null;
+        }
+
+        var depth = 0;
+        var inString = false;
+        var escape = false;
+        
+        for (int i = firstBrace; i < response.Length; i++)
+        {
+            var c = response[i];
+            
+            if (escape)
+            {
+                escape = false;
+                continue;
+            }
+            
+            if (c == '\\' && inString)
+            {
+                escape = true;
+                continue;
+            }
+            
+            if (c == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+            
+            if (inString) continue;
+            
+            if (c == '{')
+            {
+                depth++;
+            }
+            else if (c == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    var json = response.Substring(firstBrace, i - firstBrace + 1);
+                    if (IsValidJson(json))
+                    {
+                        return json;
+                    }
+                    break;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsValidJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind == JsonValueKind.Object;
+        }
+        catch
+        {
+            return false;
         }
     }
 

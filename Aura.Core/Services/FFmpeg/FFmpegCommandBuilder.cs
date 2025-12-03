@@ -294,7 +294,16 @@ public class FFmpegCommandBuilder
         var syStr = startY.ToString(CultureInfo.InvariantCulture);
         var eyStr = endY.ToString(CultureInfo.InvariantCulture);
 
-        var filter = $"zoompan=z='if(lte(on,1),{ssStr},{ssStr}+({esStr}-{ssStr})*on/{frames})':x='iw*{sxStr}-(iw*{sxStr}-iw*{exStr})*on/{frames}':y='ih*{syStr}-(ih*{syStr}-ih*{eyStr})*on/{frames}':d={frames}:s={width}x{height}:fps={fps}";
+        // Build Ken Burns zoompan filter with zoom and pan expressions
+        // z: zoom expression (interpolates from start to end scale)
+        // x: horizontal position (pans from start to end X)
+        // y: vertical position (pans from start to end Y)
+        // d: total frames, s: output size, fps: frame rate
+        var zoomExpr = $"if(lte(on,1),{ssStr},{ssStr}+({esStr}-{ssStr})*on/{frames})";
+        var xExpr = $"iw*{sxStr}-(iw*{sxStr}-iw*{exStr})*on/{frames}";
+        var yExpr = $"ih*{syStr}-(ih*{syStr}-ih*{eyStr})*on/{frames}";
+        var filter = $"zoompan=z='{zoomExpr}':x='{xExpr}':y='{yExpr}':d={frames}:s={width}x{height}:fps={fps}";
+        
         _filterComplex.Add(filter);
         return this;
     }
