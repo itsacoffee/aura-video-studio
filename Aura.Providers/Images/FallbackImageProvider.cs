@@ -17,6 +17,8 @@ namespace Aura.Providers.Images;
 /// </summary>
 public class FallbackImageProvider : IImageProvider
 {
+    private const int MaxQueryLength = 100;
+    
     private readonly ILogger<FallbackImageProvider> _logger;
     private readonly IReadOnlyList<IStockProvider> _primaryProviders;
     private readonly PlaceholderImageProvider _placeholderProvider;
@@ -51,7 +53,7 @@ public class FallbackImageProvider : IImageProvider
         CancellationToken ct = default)
     {
         var query = !string.IsNullOrEmpty(scene.Heading) ? scene.Heading : scene.Script;
-        var truncatedQuery = query?.Length > 100 ? query[..100] : query ?? "scene";
+        var truncatedQuery = query?.Length > MaxQueryLength ? query[..MaxQueryLength] : query ?? "scene";
         
         _logger.LogDebug("FetchOrGenerateAsync for scene {SceneIndex}: {Query}", scene.Index, truncatedQuery);
 
