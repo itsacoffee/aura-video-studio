@@ -18,6 +18,7 @@ import {
 } from '@fluentui/react-components';
 import { ArrowLeft24Regular } from '@fluentui/react-icons';
 import React, { useState, useEffect, useMemo } from 'react';
+import { apiUrl } from '../../config/api';
 import type { VideoTemplate } from '../../types/videoTemplates';
 import { TemplateIconMap, formatDuration, getCategoryColor } from '../../types/videoTemplates';
 
@@ -156,7 +157,7 @@ export function TemplateGallery({ onSelectTemplate, onBack }: TemplateGalleryPro
     async function fetchTemplates() {
       try {
         setLoading(true);
-        const response = await fetch('/api/video-templates');
+        const response = await fetch(apiUrl('/api/video-templates'));
         if (!response.ok) {
           throw new Error('Failed to fetch templates');
         }

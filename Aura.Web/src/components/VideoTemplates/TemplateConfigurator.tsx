@@ -27,6 +27,7 @@ import {
   Checkmark24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useMemo, useCallback } from 'react';
+import { apiUrl } from '../../config/api';
 import type {
   VideoTemplate,
   TemplatedBrief,
@@ -207,7 +208,7 @@ export function TemplateConfigurator({ template, onBack, onGenerate }: TemplateC
   // Validate variables
   const validateVariables = useCallback(async (): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/video-templates/${template.id}/validate`, {
+      const response = await fetch(apiUrl(`/api/video-templates/${template.id}/validate`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ variableValues }),
@@ -229,7 +230,7 @@ export function TemplateConfigurator({ template, onBack, onGenerate }: TemplateC
 
     setPreviewing(true);
     try {
-      const response = await fetch(`/api/video-templates/${template.id}/preview-script`, {
+      const response = await fetch(apiUrl(`/api/video-templates/${template.id}/preview-script`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ variableValues }),
@@ -255,7 +256,7 @@ export function TemplateConfigurator({ template, onBack, onGenerate }: TemplateC
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/video-templates/${template.id}/apply`, {
+      const response = await fetch(apiUrl(`/api/video-templates/${template.id}/apply`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ variableValues }),

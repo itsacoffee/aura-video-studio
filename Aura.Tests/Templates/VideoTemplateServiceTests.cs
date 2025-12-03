@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 
 namespace Aura.Tests.Templates;
 
+[Trait("Category", "Unit")]
+[Trait("Feature", "VideoTemplates")]
 public class VideoTemplateServiceTests
 {
     private readonly VideoTemplateService _service;

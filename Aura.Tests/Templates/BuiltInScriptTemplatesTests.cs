@@ -6,6 +6,8 @@ using System.Linq;
 
 namespace Aura.Tests.Templates;
 
+[Trait("Category", "Unit")]
+[Trait("Feature", "VideoTemplates")]
 public class BuiltInScriptTemplatesTests
 {
     private readonly IReadOnlyList<VideoTemplate> _templates;

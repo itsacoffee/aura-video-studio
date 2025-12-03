@@ -18,6 +18,14 @@ public class VideoTemplateService : IVideoTemplateService
 {
     private readonly ILogger<VideoTemplateService> _logger;
     private readonly IReadOnlyList<VideoTemplate> _templates;
+
+    /// <summary>
+    /// Regex pattern to match template variables in the format {{variableName}}.
+    /// Used for interpolating user-provided values into prompt templates.
+    /// Example: "Write about {{topic}} for {{audience}}" with variables 
+    /// {topic: "Python", audience: "beginners"} becomes 
+    /// "Write about Python for beginners".
+    /// </summary>
     private static readonly Regex VariablePattern = new(@"\{\{(\w+)\}\}", RegexOptions.Compiled);
 
     public VideoTemplateService(ILogger<VideoTemplateService> logger)
@@ -271,13 +279,20 @@ public class VideoTemplateService : IVideoTemplateService
         IDictionary<string, string> variableValues,
         CancellationToken ct)
     {
-        // Generate content from template
-        // The content generation uses the interpolated prompt template as a base
-        // and creates appropriate fallback content based on section type
+        // Generate fallback content based on section type and variables.
+        // This provides sensible default content when no LLM is available.
+        // When an LLM provider is integrated, this method can be enhanced to use
+        // the section's PromptTemplate with the LLM for higher-quality content generation.
         var content = GenerateFallbackContent(section, variableValues);
         return Task.FromResult(content);
     }
 
+    /// <summary>
+    /// Replaces variable placeholders in a template string with actual values.
+    /// </summary>
+    /// <param name="template">Template string containing {{variableName}} placeholders</param>
+    /// <param name="variables">Dictionary of variable names to values</param>
+    /// <returns>Interpolated string with variables replaced</returns>
     private static string InterpolateVariables(string template, IDictionary<string, string> variables)
     {
         return VariablePattern.Replace(template, match =>
@@ -287,6 +302,10 @@ public class VideoTemplateService : IVideoTemplateService
         });
     }
 
+    /// <summary>
+    /// Generates reasonable default content for a section based on its type.
+    /// This is used as fallback content generation when no LLM provider is available.
+    /// </summary>
     private static string GenerateFallbackContent(
         TemplateSection section,
         IDictionary<string, string> variables)
