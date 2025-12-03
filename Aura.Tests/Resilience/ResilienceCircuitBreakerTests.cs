@@ -67,7 +67,7 @@ public class ResilienceCircuitBreakerTests
     }
 
     [Fact]
-    public void RecordSuccess_ResetsFaiureCount()
+    public void RecordSuccess_ResetsFailureCount()
     {
         // Arrange
         var breaker = new CircuitBreaker(_logger, "TestService", failureThreshold: 5);
