@@ -18,6 +18,7 @@ using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
+using Aura.Core.Services.Resilience;
 using Aura.Core.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -36,6 +37,7 @@ public class OllamaLlmProvider : ILlmProvider
     private readonly int _maxRetries;
     private readonly TimeSpan _timeout;
     private readonly PromptCustomizationService _promptCustomizationService;
+    private CircuitBreaker? _circuitBreaker;
 
     // GPU configuration for hardware acceleration
     // -1 = use all available GPUs, 0 = CPU only, positive number = specific GPU count
@@ -74,6 +76,14 @@ public class OllamaLlmProvider : ILlmProvider
     /// </summary>
     public Action<double, TimeSpan, bool>? PerformanceTrackingCallback { get; set; }
 
+    /// <summary>
+    /// Sets the circuit breaker for this provider. Called by the registry to enable resilience features.
+    /// </summary>
+    public void SetCircuitBreaker(CircuitBreaker circuitBreaker)
+    {
+        _circuitBreaker = circuitBreaker;
+    }
+
     public OllamaLlmProvider(
         ILogger<OllamaLlmProvider> logger,
         HttpClient httpClient,
@@ -84,9 +94,11 @@ public class OllamaLlmProvider : ILlmProvider
         PromptCustomizationService? promptCustomizationService = null,
         bool gpuEnabled = true,
         int numGpu = -1, // -1 = use all GPUs, 0 = CPU only
-        int numCtx = 4096) // Context window size
+        int numCtx = 4096, // Context window size
+        CircuitBreaker? circuitBreaker = null)
     {
         _logger = logger;
+        _circuitBreaker = circuitBreaker;
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _baseUrl = ValidateBaseUrl(baseUrl);
         _model = model;
@@ -202,6 +214,13 @@ public class OllamaLlmProvider : ILlmProvider
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
+        // Check circuit breaker before attempting API call
+        if (_circuitBreaker != null && !_circuitBreaker.IsAllowed())
+        {
+            throw new CircuitBreakerOpenException(
+                $"Circuit breaker for Ollama is open. The service may be experiencing issues. Please try again later.");
+        }
+
         // Use model override from LlmParameters if provided, otherwise use default model
         var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride)
             ? brief.LlmParameters.ModelOverride
@@ -325,6 +344,9 @@ public class OllamaLlmProvider : ILlmProvider
                     // Track performance if callback configured
                     PerformanceTrackingCallback?.Invoke(75.0, duration, true);
 
+                    // Record success with circuit breaker
+                    _circuitBreaker?.RecordSuccess();
+
                     return script;
                 }
 
@@ -344,6 +366,7 @@ public class OllamaLlmProvider : ILlmProvider
             catch (TaskCanceledException ex)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "Ollama request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
@@ -356,6 +379,7 @@ public class OllamaLlmProvider : ILlmProvider
             catch (HttpRequestException ex)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "Failed to connect to Ollama at {BaseUrl} (attempt {Attempt}/{MaxRetries})", _baseUrl, attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
@@ -368,11 +392,13 @@ public class OllamaLlmProvider : ILlmProvider
             catch (Exception ex) when (attempt < _maxRetries)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "Error generating script with Ollama (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
             }
             catch (Exception ex)
             {
                 var duration = DateTime.UtcNow - startTime;
+                _circuitBreaker?.RecordFailure();
                 PerformanceTrackingCallback?.Invoke(0, duration, false);
                 _logger.LogError(ex, "Error generating script with Ollama after all retries");
                 throw;

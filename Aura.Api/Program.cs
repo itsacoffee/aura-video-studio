@@ -610,6 +610,9 @@ builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.CircuitBreakerSettings>>().Value);
 
+// Register CircuitBreakerRegistry for managing provider circuit breakers
+builder.Services.AddSingleton<Aura.Core.Services.Resilience.CircuitBreakerRegistry>();
+
 // Configure OpenAI provider options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.OpenAIConfiguration>(
     builder.Configuration.GetSection("Providers:OpenAI"));
