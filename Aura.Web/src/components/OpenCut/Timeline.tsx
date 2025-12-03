@@ -55,6 +55,7 @@ import {
   type ClipType,
   type TimelineClip,
 } from '../../stores/opencutTimeline';
+import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
 
 export interface TimelineProps {
   className?: string;
@@ -408,6 +409,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const playbackStore = useOpenCutPlaybackStore();
   const projectStore = useOpenCutProjectStore();
   const timelineStore = useOpenCutTimelineStore();
+  const keyframesStore = useOpenCutKeyframesStore();
 
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -480,7 +482,12 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
         case 'backspace':
           if (!cmdOrCtrl) {
             e.preventDefault();
-            timelineStore.deleteSelectedClips();
+            // Delete selected keyframes first if any, otherwise delete clips
+            if (keyframesStore.selectedKeyframeIds.length > 0) {
+              keyframesStore.deleteSelectedKeyframes();
+            } else {
+              timelineStore.deleteSelectedClips();
+            }
           }
           break;
         case 'z':
@@ -502,14 +509,81 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
           break;
         case 'escape':
           e.preventDefault();
+          keyframesStore.clearKeyframeSelection();
           timelineStore.clearSelection();
+          break;
+        // Keyframe shortcuts
+        case 'c':
+          if (cmdOrCtrl && keyframesStore.selectedKeyframeIds.length > 0) {
+            e.preventDefault();
+            keyframesStore.copySelectedKeyframes();
+          }
+          break;
+        case 'v':
+          if (
+            cmdOrCtrl &&
+            keyframesStore.copiedKeyframes.length > 0 &&
+            selectedClipIds.length === 1
+          ) {
+            e.preventDefault();
+            // Paste keyframes to first selected clip at current time
+            const selectedClip = clips.find((c) => c.id === selectedClipIds[0]);
+            if (selectedClip) {
+              // Paste to a default property (opacity) - could be enhanced to track last used property
+              keyframesStore.pasteKeyframes(selectedClip.id, 'opacity', currentTime);
+            }
+          }
+          break;
+        case '[':
+          // Navigate to previous keyframe
+          if (selectedClipIds.length === 1) {
+            e.preventDefault();
+            const clipId = selectedClipIds[0];
+            const tracksList = keyframesStore.getTracksForClip(clipId);
+            let prevTime: number | undefined;
+            tracksList.forEach((track) => {
+              const { prev } = keyframesStore.getAdjacentKeyframes(
+                clipId,
+                track.property,
+                currentTime
+              );
+              if (prev && (prevTime === undefined || prev.time > prevTime)) {
+                prevTime = prev.time;
+              }
+            });
+            if (prevTime !== undefined) {
+              playbackStore.seek(prevTime);
+            }
+          }
+          break;
+        case ']':
+          // Navigate to next keyframe
+          if (selectedClipIds.length === 1) {
+            e.preventDefault();
+            const clipId = selectedClipIds[0];
+            const tracksList = keyframesStore.getTracksForClip(clipId);
+            let nextTime: number | undefined;
+            tracksList.forEach((track) => {
+              const { next } = keyframesStore.getAdjacentKeyframes(
+                clipId,
+                track.property,
+                currentTime
+              );
+              if (next && (nextTime === undefined || next.time < nextTime)) {
+                nextTime = next.time;
+              }
+            });
+            if (nextTime !== undefined) {
+              playbackStore.seek(nextTime);
+            }
+          }
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedClipIds, currentTime, clips, timelineStore]);
+  }, [selectedClipIds, currentTime, clips, timelineStore, keyframesStore, playbackStore]);
 
   // Scroll-to-zoom with Cmd/Ctrl + mouse wheel
   const handleWheel = useCallback(

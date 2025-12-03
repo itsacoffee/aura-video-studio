@@ -24,7 +24,6 @@ import {
   TextT24Regular,
   LinkSquare24Regular,
   SquareMultiple24Regular,
-  Diamond24Regular,
   ArrowRotateClockwise24Regular,
   ScaleFill24Regular,
   Pin24Regular,
@@ -34,8 +33,11 @@ import {
 import { useState, useCallback } from 'react';
 import type { FC } from 'react';
 import { useOpenCutMediaStore } from '../../stores/opencutMedia';
+import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
+import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutTimelineStore, type BlendMode } from '../../stores/opencutTimeline';
 import { EmptyState } from './EmptyState';
+import { KeyframeDiamond } from './KeyframeEditor';
 
 export interface PropertiesPanelProps {
   className?: string;
@@ -256,6 +258,8 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
   const styles = useStyles();
   const mediaStore = useOpenCutMediaStore();
   const timelineStore = useOpenCutTimelineStore();
+  const keyframesStore = useOpenCutKeyframesStore();
+  const playbackStore = useOpenCutPlaybackStore();
 
   const [aspectLocked, setAspectLocked] = useState(true);
 
@@ -265,6 +269,39 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
 
   const selectedClips = timelineStore.getSelectedClips();
   const selectedClip = selectedClips.length === 1 ? selectedClips[0] : null;
+  const currentTime = playbackStore.currentTime;
+
+  // Keyframe helpers
+  const hasKeyframeAt = useCallback(
+    (property: string): boolean => {
+      if (!selectedClip) return false;
+      const kf = keyframesStore.getKeyframeAtTime(selectedClip.id, property, currentTime);
+      return !!kf;
+    },
+    [selectedClip, keyframesStore, currentTime]
+  );
+
+  const hasKeyframes = useCallback(
+    (property: string): boolean => {
+      if (!selectedClip) return false;
+      return keyframesStore.hasKeyframes(selectedClip.id, property);
+    },
+    [selectedClip, keyframesStore]
+  );
+
+  const handleKeyframeToggle = useCallback(
+    (property: string, value: number) => {
+      if (!selectedClip) return;
+
+      const existingKf = keyframesStore.getKeyframeAtTime(selectedClip.id, property, currentTime);
+      if (existingKf) {
+        keyframesStore.removeKeyframe(existingKf.id);
+      } else {
+        keyframesStore.addKeyframe(selectedClip.id, property, currentTime, value);
+      }
+    },
+    [selectedClip, keyframesStore, currentTime]
+  );
 
   const handleTransformChange = useCallback(
     (property: string, value: number) => {
@@ -358,13 +395,21 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
                 onClick={() => setAspectLocked(!aspectLocked)}
               />
             </Tooltip>
-            <Tooltip content="Add keyframe" relationship="label">
-              <Button
-                appearance="subtle"
-                size="small"
-                className={styles.keyframeButton}
-                icon={<Diamond24Regular />}
-              />
+            <Tooltip
+              content={hasKeyframeAt('scaleX') ? 'Remove keyframe' : 'Add keyframe'}
+              relationship="label"
+            >
+              <span className={styles.keyframeButton}>
+                <KeyframeDiamond
+                  isActive={hasKeyframeAt('scaleX')}
+                  color="scale"
+                  size="small"
+                  onClick={() => handleKeyframeToggle('scaleX', transform.scaleX)}
+                  ariaLabel={
+                    hasKeyframeAt('scaleX') ? 'Remove scale keyframe' : 'Add scale keyframe'
+                  }
+                />
+              </span>
             </Tooltip>
           </div>
         </div>
@@ -393,13 +438,23 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
               contentAfter={<Text size={100}>px</Text>}
               size="small"
             />
-            <Tooltip content="Add keyframe" relationship="label">
-              <Button
-                appearance="subtle"
-                size="small"
-                className={styles.keyframeButton}
-                icon={<Diamond24Regular />}
-              />
+            <Tooltip
+              content={hasKeyframeAt('positionX') ? 'Remove keyframe' : 'Add keyframe'}
+              relationship="label"
+            >
+              <span className={styles.keyframeButton}>
+                <KeyframeDiamond
+                  isActive={hasKeyframeAt('positionX')}
+                  color="position"
+                  size="small"
+                  onClick={() => handleKeyframeToggle('positionX', transform.positionX)}
+                  ariaLabel={
+                    hasKeyframeAt('positionX')
+                      ? 'Remove position keyframe'
+                      : 'Add position keyframe'
+                  }
+                />
+              </span>
             </Tooltip>
           </div>
         </div>
@@ -428,13 +483,21 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
                 onClick={() => handleTransformChange('rotation', 0)}
               />
             </Tooltip>
-            <Tooltip content="Add keyframe" relationship="label">
-              <Button
-                appearance="subtle"
-                size="small"
-                className={styles.keyframeButton}
-                icon={<Diamond24Regular />}
-              />
+            <Tooltip
+              content={hasKeyframeAt('rotation') ? 'Remove keyframe' : 'Add keyframe'}
+              relationship="label"
+            >
+              <span className={styles.keyframeButton}>
+                <KeyframeDiamond
+                  isActive={hasKeyframeAt('rotation')}
+                  color="rotation"
+                  size="small"
+                  onClick={() => handleKeyframeToggle('rotation', transform.rotation)}
+                  ariaLabel={
+                    hasKeyframeAt('rotation') ? 'Remove rotation keyframe' : 'Add rotation keyframe'
+                  }
+                />
+              </span>
             </Tooltip>
           </div>
         </div>
@@ -454,13 +517,21 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
               size="small"
             />
             <Text className={styles.sliderValue}>{transform.opacity}%</Text>
-            <Tooltip content="Add keyframe" relationship="label">
-              <Button
-                appearance="subtle"
-                size="small"
-                className={styles.keyframeButton}
-                icon={<Diamond24Regular />}
-              />
+            <Tooltip
+              content={hasKeyframeAt('opacity') ? 'Remove keyframe' : 'Add keyframe'}
+              relationship="label"
+            >
+              <span className={styles.keyframeButton}>
+                <KeyframeDiamond
+                  isActive={hasKeyframeAt('opacity')}
+                  color="opacity"
+                  size="small"
+                  onClick={() => handleKeyframeToggle('opacity', transform.opacity)}
+                  ariaLabel={
+                    hasKeyframeAt('opacity') ? 'Remove opacity keyframe' : 'Add opacity keyframe'
+                  }
+                />
+              </span>
             </Tooltip>
           </div>
         </div>

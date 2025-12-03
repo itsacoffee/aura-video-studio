@@ -7,3 +7,4 @@ export { MediaPanel } from './MediaPanel';
 export { PropertiesPanel } from './PropertiesPanel';
 export { PreviewPanel } from './PreviewPanel';
 export { Timeline } from './Timeline';
+export * from './KeyframeEditor';
