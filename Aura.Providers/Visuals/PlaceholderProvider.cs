@@ -5,25 +5,26 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using SkiaSharp;
 
 namespace Aura.Providers.Visuals;
 
 /// <summary>
-/// Placeholder visual provider that always succeeds by generating a simple image file.
+/// Placeholder visual provider that always succeeds by generating a real PNG image file.
 /// This is the guaranteed fallback provider.
 /// </summary>
 public class PlaceholderProvider : BaseVisualProvider
 {
-    private static readonly (byte R, byte G, byte B)[] ProfessionalColors = new[]
+    private static readonly SKColor[] ProfessionalColors = new[]
     {
-        ((byte)41, (byte)128, (byte)185),   // Blue
-        ((byte)39, (byte)174, (byte)96),    // Green
-        ((byte)142, (byte)68, (byte)173),   // Purple
-        ((byte)230, (byte)126, (byte)34),   // Orange
-        ((byte)231, (byte)76, (byte)60),    // Red
-        ((byte)52, (byte)73, (byte)94),     // Dark Blue
-        ((byte)44, (byte)62, (byte)80),     // Navy
-        ((byte)149, (byte)165, (byte)166)   // Gray
+        new SKColor(41, 128, 185),    // Blue
+        new SKColor(39, 174, 96),     // Green
+        new SKColor(142, 68, 173),    // Purple
+        new SKColor(230, 126, 34),    // Orange
+        new SKColor(231, 76, 60),     // Red
+        new SKColor(52, 73, 94),      // Dark Blue
+        new SKColor(44, 62, 80),      // Navy
+        new SKColor(149, 165, 166)    // Gray
     };
 
     public PlaceholderProvider(ILogger<PlaceholderProvider> logger) : base(logger)
@@ -35,10 +36,8 @@ public class PlaceholderProvider : BaseVisualProvider
     public override bool RequiresApiKey => false;
 
     /// <summary>
-    /// Generates a single image from a prompt.
-    /// Note: This implementation generates text-based placeholder files to avoid
-    /// cross-platform graphics library dependencies. In production, replace with
-    /// a proper image generation library like SkiaSharp or ImageSharp.
+    /// Generates a real PNG image from a prompt using SkiaSharp.
+    /// Creates a solid color background with centered text overlay.
     /// </summary>
     public override Task<string?> GenerateImageAsync(
         string prompt,
@@ -47,29 +46,76 @@ public class PlaceholderProvider : BaseVisualProvider
     {
         try
         {
-            Logger.LogInformation("Generating placeholder image for prompt: {Prompt}", prompt);
+            Logger.LogInformation("Generating placeholder PNG image for prompt: {Prompt}", prompt);
 
-            var tempPath = Path.Combine(Path.GetTempPath(), $"placeholder_{Guid.NewGuid()}.txt");
+            var tempPath = Path.Combine(Path.GetTempPath(), $"placeholder_{Guid.NewGuid()}.png");
             
-            var color = SelectColorForPrompt(prompt);
+            var backgroundColor = SelectColorForPrompt(prompt);
+            var textColor = GetContrastColor(backgroundColor);
             var truncatedPrompt = prompt.Length > 50 ? string.Concat(prompt.AsSpan(0, 47), "...") : prompt;
             
-            var content = $"Placeholder Image\n" +
-                         $"Prompt: {truncatedPrompt}\n" +
-                         $"Size: {options.Width}x{options.Height}\n" +
-                         $"Color: RGB({color.R},{color.G},{color.B})\n" +
-                         $"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
-            
-            File.WriteAllText(tempPath, content);
+            var width = options.Width > 0 ? options.Width : 1920;
+            var height = options.Height > 0 ? options.Height : 1080;
 
-            Logger.LogInformation("Placeholder image generated successfully at: {Path}", tempPath);
+            using var surface = SKSurface.Create(new SKImageInfo(width, height));
+            var canvas = surface.Canvas;
+            
+            canvas.Clear(backgroundColor);
+
+            var fontSize = Math.Min(width, height) / 12f;
+            using var paint = new SKPaint
+            {
+                Color = textColor,
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill,
+                TextAlign = SKTextAlign.Center,
+                Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold),
+                TextSize = fontSize
+            };
+
+            var textBounds = new SKRect();
+            paint.MeasureText(truncatedPrompt, ref textBounds);
+
+            while (textBounds.Width > width - 100 && fontSize > 20)
+            {
+                fontSize -= 5;
+                paint.TextSize = fontSize;
+                paint.MeasureText(truncatedPrompt, ref textBounds);
+            }
+
+            var x = width / 2f;
+            var y = (height - textBounds.Height) / 2f - textBounds.Top;
+
+            using (var shadowPaint = paint.Clone())
+            {
+                shadowPaint.Color = SKColors.Black.WithAlpha(128);
+                canvas.DrawText(truncatedPrompt, x + 3, y + 3, shadowPaint);
+            }
+
+            canvas.DrawText(truncatedPrompt, x, y, paint);
+
+            using var image = surface.Snapshot();
+            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var stream = File.OpenWrite(tempPath);
+            data.SaveTo(stream);
+
+            Logger.LogInformation("Placeholder PNG image generated successfully at: {Path}", tempPath);
             return Task.FromResult<string?>(tempPath);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to generate placeholder image");
+            Logger.LogError(ex, "Failed to generate placeholder PNG image");
             return Task.FromResult<string?>(null);
         }
+    }
+
+    private static SKColor GetContrastColor(SKColor backgroundColor)
+    {
+        var luminance = (0.299 * backgroundColor.Red +
+                        0.587 * backgroundColor.Green +
+                        0.114 * backgroundColor.Blue) / 255;
+
+        return luminance > 0.5 ? SKColors.Black : SKColors.White;
     }
 
     public override VisualProviderCapabilities GetProviderCapabilities()
@@ -96,7 +142,7 @@ public class PlaceholderProvider : BaseVisualProvider
         return Task.FromResult(true);
     }
 
-    private static (byte R, byte G, byte B) SelectColorForPrompt(string prompt)
+    private static SKColor SelectColorForPrompt(string prompt)
     {
         var hash = prompt.GetHashCode();
         var index = Math.Abs(hash) % ProfessionalColors.Length;

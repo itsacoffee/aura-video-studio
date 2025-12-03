@@ -4,7 +4,6 @@ using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Services.Providers;
-using Aura.Providers.Images;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
@@ -229,6 +228,10 @@ public static class ProviderServicesExtensions
 
         // Image provider factory
         services.AddSingleton<ImageProviderFactory>();
+
+        // Note: IImageProvider, PlaceholderImageProvider, and FallbackImageProvider are registered 
+        // in Program.cs to avoid potential DI conflicts. See Program.cs for the registration with 
+        // proper fallback chain that ensures video generation never hangs due to missing images.
 
         // Video composer
         services.AddSingleton<IVideoComposer>(sp =>
