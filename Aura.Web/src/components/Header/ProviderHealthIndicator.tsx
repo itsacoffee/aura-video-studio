@@ -286,7 +286,7 @@ export const ProviderHealthIndicator: FC<ProviderHealthIndicatorProps> = ({
       {/* Provider Status Drawer with detailed information */}
       <Drawer
         open={isDrawerOpen}
-        onOpenChange={(_, { open }) => !open && handleDrawerClose()}
+        onOpenChange={(_, { open }) => setIsDrawerOpen(open)}
         position="end"
         className={styles.drawer}
       >

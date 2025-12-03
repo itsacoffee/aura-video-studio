@@ -146,7 +146,8 @@ public static class ProviderServicesExtensions
             var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
             var settings = sp.GetRequiredService<ProviderSettings>();
             var baseUrl = settings.GetOllamaUrl();
-            return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, cache, baseUrl);
+            // Pass serviceProvider to enable provider cache invalidation when Ollama availability changes
+            return new Aura.Core.Services.Providers.OllamaDetectionService(logger, httpClient, cache, baseUrl, sp);
         });
         
         // Ollama health check service
