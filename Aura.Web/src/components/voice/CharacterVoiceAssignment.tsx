@@ -10,7 +10,7 @@ import {
   Spinner,
   Button,
 } from '@fluentui/react-components';
-import { PersonRegular, MicRegular } from '@fluentui/react-icons';
+import { PersonRegular } from '@fluentui/react-icons';
 import { useEffect } from 'react';
 import type { FC } from 'react';
 import { useVoiceStore } from '@/stores/voiceStore';
@@ -219,24 +219,14 @@ export const CharacterVoiceAssignment: FC<CharacterVoiceAssignmentProps> = ({
                         }
                       }}
                     >
-                      <Option value="">Auto-assign</Option>
+                      <Option value="" text="Auto-assign">Auto-assign</Option>
                       {allVoices.map((voice) => (
-                        <Option key={voice.id} value={voice.id}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                            }}
-                          >
-                            <MicRegular />
-                            {voice.name}
-                            {voice.isCloned && (
-                              <Badge appearance="tint" size="small" color="brand">
-                                Cloned
-                              </Badge>
-                            )}
-                          </div>
+                        <Option 
+                          key={voice.id} 
+                          value={voice.id}
+                          text={voice.isCloned ? `${voice.name} (Cloned)` : voice.name}
+                        >
+                          {voice.isCloned ? `${voice.name} (Cloned)` : voice.name}
                         </Option>
                       ))}
                     </Dropdown>

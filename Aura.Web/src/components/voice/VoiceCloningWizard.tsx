@@ -16,6 +16,7 @@ import {
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
+import type { GriffelStyle } from '@fluentui/react-components';
 import { Dismiss24Regular, MicRegular, Add24Regular } from '@fluentui/react-icons';
 import { useState, useCallback, useRef } from 'react';
 import type { FC } from 'react';
@@ -34,17 +35,12 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXL,
     textAlign: 'center' as const,
     cursor: 'pointer',
-    transition: 'border-color 0.2s, background-color 0.2s',
     backgroundColor: tokens.colorNeutralBackground2,
-    ':hover': {
-      borderColor: tokens.colorBrandStroke1,
-      backgroundColor: tokens.colorNeutralBackground3,
-    },
   },
   dropzoneActive: {
     borderColor: tokens.colorBrandStroke1,
     backgroundColor: tokens.colorBrandBackground2,
-  },
+  } as GriffelStyle,
   sampleList: {
     display: 'flex',
     flexDirection: 'column',
