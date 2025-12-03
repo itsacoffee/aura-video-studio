@@ -12,6 +12,7 @@
 
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { useEffect, useState, useCallback } from 'react';
+import { openCutTokens } from '../../styles/designTokens';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import { MediaPanel } from './MediaPanel';
 import { PreviewPanel } from './PreviewPanel';
@@ -27,6 +28,9 @@ const useStyles = makeStyles({
     width: '100%',
     backgroundColor: tokens.colorNeutralBackground1,
     overflow: 'hidden',
+    fontFamily: openCutTokens.typography.fontFamily.body,
+    fontSize: openCutTokens.typography.fontSize.base,
+    lineHeight: openCutTokens.typography.lineHeight.normal.toString(),
   },
   mainContent: {
     display: 'flex',
@@ -39,8 +43,8 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: tokens.colorNeutralBackground2,
-    boxShadow: tokens.shadow4,
-    zIndex: 2,
+    boxShadow: openCutTokens.shadows.sm,
+    zIndex: openCutTokens.zIndex.dropdown,
   },
   centerPanel: {
     flex: 1,
@@ -48,15 +52,15 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     minWidth: 0,
     backgroundColor: tokens.colorNeutralBackground1,
-    zIndex: 1,
+    zIndex: openCutTokens.zIndex.base,
   },
   rightPanel: {
     borderLeft: `1px solid ${tokens.colorNeutralStroke3}`,
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: tokens.colorNeutralBackground2,
-    boxShadow: tokens.shadow4,
-    zIndex: 2,
+    boxShadow: openCutTokens.shadows.sm,
+    zIndex: openCutTokens.zIndex.dropdown,
   },
 });
 
