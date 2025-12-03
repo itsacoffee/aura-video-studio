@@ -47,3 +47,10 @@ export type { OpenCutPlaybackStore } from './opencutPlayback';
 
 export { useOpenCutProjectStore } from './opencutProject';
 export type { OpenCutProjectState, OpenCutProject } from './opencutProject';
+
+export { useOpenCutMarkersStore } from './opencutMarkers';
+export type {
+  OpenCutMarkersState,
+  OpenCutMarkersActions,
+  OpenCutMarkersStore,
+} from './opencutMarkers';

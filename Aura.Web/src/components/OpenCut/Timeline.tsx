@@ -44,10 +44,13 @@ import {
   SpeakerMute24Regular,
   ChevronDown16Regular,
   Image24Regular,
+  Flag24Regular,
+  BookmarkMultiple24Regular,
 } from '@fluentui/react-icons';
 import { motion } from 'framer-motion';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
+import { useOpenCutMarkersStore } from '../../stores/opencutMarkers';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import {
@@ -55,6 +58,7 @@ import {
   type ClipType,
   type TimelineClip,
 } from '../../stores/opencutTimeline';
+import { MarkerTrack } from './Markers';
 
 export interface TimelineProps {
   className?: string;
@@ -408,6 +412,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const playbackStore = useOpenCutPlaybackStore();
   const projectStore = useOpenCutProjectStore();
   const timelineStore = useOpenCutTimelineStore();
+  const markersStore = useOpenCutMarkersStore();
 
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -415,8 +420,14 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const startHeightRef = useRef(0);
 
   const { tracks, clips, selectedClipIds, selectedTrackId, zoom, snapEnabled } = timelineStore;
+  const { markers, selectedMarkerId, visibleTypes } = markersStore;
   const duration = playbackStore.duration;
   const currentTime = playbackStore.currentTime;
+
+  // Get filtered markers for display
+  const filteredMarkers = useMemo(() => {
+    return markers.filter((m) => visibleTypes.includes(m.type));
+  }, [markers, visibleTypes]);
 
   // Calculate timeline width based on zoom
   const pixelsPerSecond = 100 * zoom;
@@ -503,13 +514,48 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
         case 'escape':
           e.preventDefault();
           timelineStore.clearSelection();
+          markersStore.selectMarker(null);
+          break;
+        case 'm':
+          // Add marker at playhead
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Add chapter marker
+            markersStore.addMarker(currentTime, { type: 'chapter' });
+          } else if (e.altKey) {
+            // Add todo marker
+            markersStore.addMarker(currentTime, { type: 'todo' });
+          } else if (!cmdOrCtrl) {
+            // Add standard marker
+            markersStore.addMarker(currentTime, { type: 'standard' });
+          }
+          break;
+        case ';':
+          // Go to previous marker
+          e.preventDefault();
+          {
+            const prevMarker = markersStore.goToPreviousMarker(currentTime);
+            if (prevMarker) {
+              playbackStore.seek(prevMarker.time);
+            }
+          }
+          break;
+        case "'":
+          // Go to next marker
+          e.preventDefault();
+          {
+            const nextMarker = markersStore.goToNextMarker(currentTime);
+            if (nextMarker) {
+              playbackStore.seek(nextMarker.time);
+            }
+          }
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedClipIds, currentTime, clips, timelineStore]);
+  }, [selectedClipIds, currentTime, clips, timelineStore, markersStore, playbackStore]);
 
   // Scroll-to-zoom with Cmd/Ctrl + mouse wheel
   const handleWheel = useCallback(
@@ -612,6 +658,37 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     },
     [timelineStore]
   );
+
+  // Marker handlers
+  const handleMarkerSelect = useCallback(
+    (markerId: string) => {
+      markersStore.selectMarker(markerId);
+    },
+    [markersStore]
+  );
+
+  const handleMarkerMove = useCallback(
+    (markerId: string, newTime: number) => {
+      markersStore.moveMarker(markerId, newTime);
+    },
+    [markersStore]
+  );
+
+  const handleMarkerClick = useCallback(
+    (marker: { time: number }) => {
+      playbackStore.seek(marker.time);
+    },
+    [playbackStore]
+  );
+
+  // Add marker button handler
+  const handleAddMarker = useCallback(() => {
+    markersStore.addMarker(currentTime, { type: 'standard' });
+  }, [currentTime, markersStore]);
+
+  const handleAddChapterMarker = useCallback(() => {
+    markersStore.addMarker(currentTime, { type: 'chapter' });
+  }, [currentTime, markersStore]);
 
   const renderClip = (clip: TimelineClip) => {
     const isSelected = selectedClipIds.includes(clip.id);
@@ -811,6 +888,26 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
               </MenuList>
             </MenuPopover>
           </Menu>
+
+          {/* Marker Controls */}
+          <Tooltip content="Add marker at playhead (M)" relationship="label">
+            <Button
+              appearance="subtle"
+              icon={<Flag24Regular />}
+              size="small"
+              className={styles.controlButton}
+              onClick={handleAddMarker}
+            />
+          </Tooltip>
+          <Tooltip content="Add chapter marker (Shift+M)" relationship="label">
+            <Button
+              appearance="subtle"
+              icon={<BookmarkMultiple24Regular />}
+              size="small"
+              className={styles.controlButton}
+              onClick={handleAddChapterMarker}
+            />
+          </Tooltip>
         </div>
       </div>
 
@@ -850,6 +947,17 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
             </div>
           </div>
         </div>
+
+        {/* Marker Track */}
+        <MarkerTrack
+          markers={filteredMarkers}
+          selectedMarkerId={selectedMarkerId}
+          pixelsPerSecond={pixelsPerSecond}
+          totalWidth={totalWidth}
+          onSelectMarker={handleMarkerSelect}
+          onMoveMarker={handleMarkerMove}
+          onMarkerClick={handleMarkerClick}
+        />
 
         {/* Tracks */}
         <div className={styles.tracksScrollable}>
