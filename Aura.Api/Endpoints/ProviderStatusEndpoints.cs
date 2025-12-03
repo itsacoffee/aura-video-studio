@@ -37,6 +37,14 @@ public static class ProviderStatusEndpoints
                 var loggerFactory = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("ProviderStatusEndpoints");
 
+                // Wait for initial Ollama detection to complete (with short timeout)
+                // This ensures the first status request returns accurate Ollama status
+                if (ollamaDetection != null && !ollamaDetection.IsDetectionComplete)
+                {
+                    logger.LogDebug("Waiting for initial Ollama detection to complete");
+                    await ollamaDetection.WaitForInitialDetectionAsync(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                }
+
                 // Get LLM provider status
                 var llmProviders = new List<ProviderStatusDto>();
                 var availableLlmProviders = llmFactory.CreateAvailableProviders(loggerFactory);
