@@ -23,6 +23,8 @@ import {
   Checkmark24Regular,
   ChevronDown24Regular,
   ChevronUp24Regular,
+  DocumentBulletList24Regular,
+  Compose24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +33,7 @@ import { ValidatedInput } from '../components/forms/ValidatedInput';
 import { useNotifications } from '../components/Notifications/Toasts';
 import { PreflightPanel } from '../components/PreflightPanel';
 import { ImageProviderSelector } from '../components/Providers/ImageProviderSelector';
+import { TemplateGallery, TemplateConfigurator } from '../components/VideoTemplates';
 import { apiUrl } from '../config/api';
 import { useDisableWhenOffline } from '../hooks/useDisableWhenOffline';
 import { useFormValidation } from '../hooks/useFormValidation';
@@ -39,6 +42,7 @@ import { useActivity } from '../state/activityContext';
 import type { PreflightReport } from '../state/providers';
 import { container, spacing, gaps, formLayout } from '../themes/layout';
 import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
+import type { VideoTemplate, TemplatedBrief } from '../types/videoTemplates';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
 
 const useStyles = makeStyles({
@@ -94,7 +98,48 @@ const useStyles = makeStyles({
   advancedContent: {
     paddingTop: spacing.md,
   },
+  modeSelection: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  modeCard: {
+    padding: spacing.xl,
+    cursor: 'pointer',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    ':hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: tokens.shadow16,
+    },
+  },
+  modeCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  modeIcon: {
+    width: '48px',
+    height: '48px',
+    borderRadius: tokens.borderRadiusMedium,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '24px',
+  },
+  modeTitle: {
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase500,
+  },
+  modeDescription: {
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase300,
+  },
 });
+
+// Creation modes
+type CreateMode = 'select' | 'template' | 'scratch';
 
 export function CreatePage() {
   const styles = useStyles();
@@ -102,6 +147,11 @@ export function CreatePage() {
   const { addActivity, updateActivity } = useActivity();
   const isOfflineDisabled = useDisableWhenOffline();
   const { showSuccessToast, showFailureToast } = useNotifications();
+
+  // Template mode state
+  const [createMode, setCreateMode] = useState<CreateMode>('select');
+  const [selectedTemplate, setSelectedTemplate] = useState<VideoTemplate | null>(null);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [brief, setBrief] = useState<Partial<Brief>>({
     topic: '',
@@ -440,6 +490,121 @@ export function CreatePage() {
       keyboardShortcutManager.unregisterContext('create');
     };
   }, [currentStep, brief.topic, preflightReport, overridePreflightGate, navigate, handleGenerate]);
+
+  // Handle template selection
+  const handleSelectTemplate = useCallback((template: VideoTemplate) => {
+    setSelectedTemplate(template);
+  }, []);
+
+  // Handle template generation
+  const handleTemplateGenerate = useCallback(
+    async (templatedBrief: TemplatedBrief) => {
+      // Convert templated brief to format expected by the job API
+      const combinedScript = templatedBrief.sections
+        .map((s) => `## ${s.name}\n\n${s.content}`)
+        .join('\n\n');
+
+      // Set brief values from template result
+      setBrief({
+        topic: templatedBrief.brief.topic,
+        audience: templatedBrief.brief.audience || 'General',
+        goal: templatedBrief.brief.goal || 'Inform',
+        tone: templatedBrief.brief.tone,
+        language: templatedBrief.brief.language,
+        aspect: templatedBrief.brief.aspect as Brief['aspect'],
+        scriptGuidance: combinedScript,
+      });
+
+      setPlanSpec({
+        targetDurationMinutes: templatedBrief.planSpec.targetDurationSeconds / 60,
+        pacing: templatedBrief.planSpec.pacing as PlanSpec['pacing'],
+        density: templatedBrief.planSpec.density as PlanSpec['density'],
+        style: templatedBrief.planSpec.style,
+      });
+
+      // Switch to scratch mode at step 3 (review)
+      setCreateMode('scratch');
+      setCurrentStep(3);
+
+      showSuccessToast({
+        title: 'Template Applied',
+        message: 'Your brief has been generated from the template. Review and generate your video.',
+      });
+    },
+    [showSuccessToast]
+  );
+
+  // If in template selection mode
+  if (createMode === 'template' && !selectedTemplate) {
+    return (
+      <TemplateGallery
+        onSelectTemplate={handleSelectTemplate}
+        onBack={() => setCreateMode('select')}
+      />
+    );
+  }
+
+  // If configuring a template
+  if (createMode === 'template' && selectedTemplate) {
+    return (
+      <TemplateConfigurator
+        template={selectedTemplate}
+        onBack={() => setSelectedTemplate(null)}
+        onGenerate={handleTemplateGenerate}
+      />
+    );
+  }
+
+  // Mode selection screen
+  if (createMode === 'select') {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title1>Create Video</Title1>
+          <Text className={styles.subtitle}>Choose how you want to get started</Text>
+        </div>
+
+        <div className={styles.modeSelection}>
+          <Card className={styles.modeCard} onClick={() => setCreateMode('template')}>
+            <div className={styles.modeCardHeader}>
+              <div
+                className={styles.modeIcon}
+                style={{ backgroundColor: tokens.colorBrandBackground, color: 'white' }}
+              >
+                <DocumentBulletList24Regular />
+              </div>
+              <div>
+                <Text className={styles.modeTitle}>Start with Template</Text>
+                <Badge appearance="tint" color="success" style={{ marginLeft: '8px' }}>
+                  Recommended
+                </Badge>
+              </div>
+            </div>
+            <Text className={styles.modeDescription}>
+              Choose from pre-built video structures like Explainers, Listicles, Tutorials, and
+              more. Perfect for following proven formats that engage viewers.
+            </Text>
+          </Card>
+
+          <Card className={styles.modeCard} onClick={() => setCreateMode('scratch')}>
+            <div className={styles.modeCardHeader}>
+              <div
+                className={styles.modeIcon}
+                style={{ backgroundColor: tokens.colorNeutralBackground3 }}
+              >
+                <Compose24Regular />
+              </div>
+              <Text className={styles.modeTitle}>Start from Scratch</Text>
+            </div>
+            <Text className={styles.modeDescription}>
+              Build your video with complete creative freedom. Define your own topic, audience, and
+              structure without any template constraints.
+            </Text>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>

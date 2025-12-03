@@ -1129,6 +1129,13 @@ builder.Services.AddAuraProviders();
 builder.Services.AddProviderFactories();
 builder.Services.AddProviderHealthServices();
 
+// Register Video Template Service for script-to-video templates
+builder.Services.AddSingleton<Aura.Core.Services.Templates.IVideoTemplateService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Templates.VideoTemplateService>>();
+    return new Aura.Core.Services.Templates.VideoTemplateService(logger);
+});
+
 // Register Azure TTS voice discovery (additional service beyond basic provider)
 builder.Services.AddSingleton<Aura.Providers.Tts.AzureVoiceDiscovery>(sp =>
 {
