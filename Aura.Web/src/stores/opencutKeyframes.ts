@@ -95,6 +95,8 @@ const easingFunctions: Record<EasingType, (t: number) => number> = {
 /**
  * Calculate cubic bezier value for custom easing curves
  */
+const BEZIER_ITERATIONS = 10;
+
 function cubicBezier(t: number, handles: BezierHandles): number {
   const { x1, y1, x2, y2 } = handles;
 
@@ -103,7 +105,7 @@ function cubicBezier(t: number, handles: BezierHandles): number {
   let high = 1;
   let mid = 0.5;
 
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < BEZIER_ITERATIONS; i++) {
     const x =
       3 * (1 - mid) * (1 - mid) * mid * x1 + 3 * (1 - mid) * mid * mid * x2 + mid * mid * mid;
     if (x < t) {

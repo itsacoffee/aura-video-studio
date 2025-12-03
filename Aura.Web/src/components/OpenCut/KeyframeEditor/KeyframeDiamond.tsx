@@ -7,6 +7,7 @@
  */
 
 import { makeStyles, tokens, mergeClasses, Tooltip } from '@fluentui/react-components';
+import React, { useCallback } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent } from 'react';
 
 export interface KeyframeDiamondProps {
@@ -130,20 +131,41 @@ export const KeyframeDiamond: FC<KeyframeDiamondProps> = ({
     large: styles.large,
   }[size];
 
-  const handleClick = (e: ReactMouseEvent) => {
-    if (disabled) return;
-    onClick?.(e);
-  };
+  const handleClick = useCallback(
+    (e: ReactMouseEvent) => {
+      if (disabled) return;
+      onClick?.(e);
+    },
+    [disabled, onClick]
+  );
 
-  const handleDoubleClick = (e: ReactMouseEvent) => {
-    if (disabled) return;
-    onDoubleClick?.(e);
-  };
+  const handleDoubleClick = useCallback(
+    (e: ReactMouseEvent) => {
+      if (disabled) return;
+      onDoubleClick?.(e);
+    },
+    [disabled, onDoubleClick]
+  );
 
-  const handleMouseDown = (e: ReactMouseEvent) => {
-    if (disabled) return;
-    onMouseDown?.(e);
-  };
+  const handleMouseDown = useCallback(
+    (e: ReactMouseEvent) => {
+      if (disabled) return;
+      onMouseDown?.(e);
+    },
+    [disabled, onMouseDown]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLSpanElement>) => {
+      if (disabled) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        // Trigger click handler with a synthetic-like event
+        onClick?.(e as unknown as ReactMouseEvent);
+      }
+    },
+    [disabled, onClick]
+  );
 
   const diamond = (
     <span
@@ -162,13 +184,7 @@ export const KeyframeDiamond: FC<KeyframeDiamondProps> = ({
       aria-label={ariaLabel}
       aria-pressed={isSelected}
       aria-disabled={disabled}
-      onKeyDown={(e) => {
-        if (disabled) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick?.(e as unknown as ReactMouseEvent);
-        }
-      }}
+      onKeyDown={handleKeyDown}
     >
       <svg
         className={styles.svg}

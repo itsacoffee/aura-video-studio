@@ -184,6 +184,8 @@ const useStyles = makeStyles({
 const PADDING = 40;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 4;
+const CURVE_SAMPLES = 100;
+const HEADER_TOOLBAR_HEIGHT = 80;
 
 export const KeyframeEditor: FC<KeyframeEditorProps> = ({
   clipId,
@@ -314,9 +316,8 @@ export const KeyframeEditor: FC<KeyframeEditorProps> = ({
       ctx.beginPath();
 
       // Sample the curve
-      const samples = 100;
-      for (let i = 0; i <= samples; i++) {
-        const t = (i / samples) * duration;
+      for (let i = 0; i <= CURVE_SAMPLES; i++) {
+        const t = (i / CURVE_SAMPLES) * duration;
         const value = keyframesStore.getValueAtTime(clipId, activeTrack.property, t);
         if (typeof value === 'number') {
           const x = toCanvasX(t);
@@ -630,7 +631,12 @@ export const KeyframeEditor: FC<KeyframeEditorProps> = ({
         onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
       >
-        <canvas ref={canvasRef} className={styles.canvas} width={width} height={height - 80} />
+        <canvas
+          ref={canvasRef}
+          className={styles.canvas}
+          width={width}
+          height={height - HEADER_TOOLBAR_HEIGHT}
+        />
 
         {/* Keyframe markers */}
         <div className={styles.keyframeOverlay}>

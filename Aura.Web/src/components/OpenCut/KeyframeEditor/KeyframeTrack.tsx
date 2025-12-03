@@ -245,17 +245,22 @@ export const KeyframeTrack: FC<KeyframeTrackProps> = ({
     setContextMenuPosition(null);
   }, []);
 
-  if (keyframes.length === 0) return null;
+  // Filter keyframes to only visible ones early
+  const visibleKeyframes = useMemo(() => {
+    return keyframes.filter((keyframe) => {
+      const position = getKeyframePosition(keyframe.time);
+      return position >= 0 && position <= clipDuration * pixelsPerSecond;
+    });
+  }, [keyframes, getKeyframePosition, clipDuration, pixelsPerSecond]);
+
+  if (visibleKeyframes.length === 0) return null;
 
   return (
     <div ref={containerRef} className={`${styles.container} ${className || ''}`}>
-      {keyframes.map((keyframe) => {
+      {visibleKeyframes.map((keyframe) => {
         const position = getKeyframePosition(keyframe.time);
         const isSelected = selectedKeyframeIds.includes(keyframe.id);
         const isDragging = draggingKeyframe === keyframe.id;
-
-        // Skip if outside visible area
-        if (position < 0 || position > clipDuration * pixelsPerSecond) return null;
 
         return (
           <div
