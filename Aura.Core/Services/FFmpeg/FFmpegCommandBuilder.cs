@@ -251,6 +251,111 @@ public class FFmpegCommandBuilder
     }
 
     /// <summary>
+    /// Add Ken Burns effect using the KenBurnsMotion enum for AI Director integration.
+    /// </summary>
+    /// <param name="motion">The type of Ken Burns motion to apply</param>
+    /// <param name="durationSeconds">Duration of the effect in seconds</param>
+    /// <param name="intensity">Motion intensity (0.0-1.0, affects zoom/pan amount)</param>
+    /// <param name="width">Output width</param>
+    /// <param name="height">Output height</param>
+    /// <param name="fps">Frames per second</param>
+    public FFmpegCommandBuilder AddKenBurnsMotion(
+        KenBurnsMotion motion,
+        double durationSeconds,
+        double intensity = 0.1,
+        int width = 1920,
+        int height = 1080,
+        int fps = 30)
+    {
+        if (motion == KenBurnsMotion.None)
+        {
+            return this;
+        }
+
+        var (startScale, endScale, startX, endX, startY, endY) = motion switch
+        {
+            KenBurnsMotion.ZoomIn => (1.0, 1.0 + intensity, 0.5, 0.5, 0.5, 0.5),
+            KenBurnsMotion.ZoomOut => (1.0 + intensity, 1.0, 0.5, 0.5, 0.5, 0.5),
+            KenBurnsMotion.PanLeft => (1.0 + intensity * 0.5, 1.0 + intensity * 0.5, 0.6, 0.4, 0.5, 0.5),
+            KenBurnsMotion.PanRight => (1.0 + intensity * 0.5, 1.0 + intensity * 0.5, 0.4, 0.6, 0.5, 0.5),
+            KenBurnsMotion.PanUp => (1.0 + intensity * 0.5, 1.0 + intensity * 0.5, 0.5, 0.5, 0.6, 0.4),
+            KenBurnsMotion.PanDown => (1.0 + intensity * 0.5, 1.0 + intensity * 0.5, 0.5, 0.5, 0.4, 0.6),
+            KenBurnsMotion.DiagonalTopLeftToBottomRight => (1.0 + intensity * 0.5, 1.0 + intensity * 0.5, 0.4, 0.6, 0.4, 0.6),
+            KenBurnsMotion.DiagonalBottomRightToTopLeft => (1.0 + intensity * 0.5, 1.0 + intensity * 0.5, 0.6, 0.4, 0.6, 0.4),
+            KenBurnsMotion.SubjectTracking => (1.0 + intensity, 1.0 + intensity, 0.5, 0.5, 0.5, 0.5),
+            _ => (1.0, 1.0, 0.5, 0.5, 0.5, 0.5)
+        };
+
+        var frames = (int)(durationSeconds * fps);
+        var ssStr = startScale.ToString(CultureInfo.InvariantCulture);
+        var esStr = endScale.ToString(CultureInfo.InvariantCulture);
+        var sxStr = startX.ToString(CultureInfo.InvariantCulture);
+        var exStr = endX.ToString(CultureInfo.InvariantCulture);
+        var syStr = startY.ToString(CultureInfo.InvariantCulture);
+        var eyStr = endY.ToString(CultureInfo.InvariantCulture);
+
+        var filter = $"zoompan=z='if(lte(on,1),{ssStr},{ssStr}+({esStr}-{ssStr})*on/{frames})':x='iw*{sxStr}-(iw*{sxStr}-iw*{exStr})*on/{frames}':y='ih*{syStr}-(ih*{syStr}-ih*{eyStr})*on/{frames}':d={frames}:s={width}x{height}:fps={fps}";
+        _filterComplex.Add(filter);
+        return this;
+    }
+
+    /// <summary>
+    /// Add a transition effect using the DirectorTransitionType enum for AI Director integration.
+    /// </summary>
+    /// <param name="transitionType">The type of transition to apply</param>
+    /// <param name="durationSeconds">Duration of the transition in seconds</param>
+    /// <param name="isEntry">True for entry transitions (fade in), false for exit (fade out)</param>
+    /// <param name="offsetSeconds">Time offset for xfade transitions (for multi-clip scenarios)</param>
+    public FFmpegCommandBuilder AddTransitionEffect(
+        DirectorTransitionType transitionType,
+        double durationSeconds,
+        bool isEntry = true,
+        double offsetSeconds = 0)
+    {
+        if (transitionType == DirectorTransitionType.None || transitionType == DirectorTransitionType.Cut)
+        {
+            return this;
+        }
+
+        var durationStr = durationSeconds.ToString(CultureInfo.InvariantCulture);
+        
+        string filter;
+        if (transitionType == DirectorTransitionType.Fade)
+        {
+            if (isEntry)
+            {
+                filter = $"fade=t=in:st=0:d={durationStr}";
+            }
+            else
+            {
+                // For fade out, we need the video duration which we don't have here
+                // Use a placeholder that should be calculated externally
+                var startStr = offsetSeconds.ToString(CultureInfo.InvariantCulture);
+                filter = $"fade=t=out:st={startStr}:d={durationStr}";
+            }
+            _filterComplex.Add(filter);
+        }
+        else
+        {
+            // For xfade transitions (require two inputs)
+            var offsetStr = offsetSeconds.ToString(CultureInfo.InvariantCulture);
+            var xfadeType = transitionType switch
+            {
+                DirectorTransitionType.CrossDissolve => "dissolve",
+                DirectorTransitionType.Wipe => "wipeleft",
+                DirectorTransitionType.Zoom => "zoomin",
+                DirectorTransitionType.Slide => "slideleft",
+                DirectorTransitionType.Push => "hlslice",
+                _ => "fade"
+            };
+            filter = $"xfade=transition={xfadeType}:duration={durationStr}:offset={offsetStr}";
+            _filterComplex.Add(filter);
+        }
+        
+        return this;
+    }
+
+    /// <summary>
     /// Add picture-in-picture overlay
     /// </summary>
     /// <param name="overlayInputIndex">Input index of the overlay video (0-based)</param>

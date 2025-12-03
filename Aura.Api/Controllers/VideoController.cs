@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Models.ApiModels.V1;
@@ -8,6 +9,7 @@ using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Api.Controllers;
@@ -753,6 +755,115 @@ public class VideoController : ControllerBase
                 CreateProblemDetails(
                     "Cancellation Failed",
                     "An error occurred while cancelling the video generation job",
+                    StatusCodes.Status500InternalServerError,
+                    correlationId));
+        }
+    }
+
+    /// <summary>
+    /// Preview AI Director decisions for a set of scenes before rendering
+    /// </summary>
+    /// <param name="request">Scenes and brief for director analysis</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Director decisions including motion, transitions, and timing</returns>
+    [HttpPost("preview-direction")]
+    [ProducesResponseType(typeof(DirectorDecisionsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> PreviewDirectorDecisions(
+        [FromBody] PreviewDirectorRequest request,
+        CancellationToken ct = default)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            _logger.LogInformation(
+                "[{CorrelationId}] POST /api/video/preview-direction - Preset: {Preset}, Scenes: {Count}",
+                correlationId, request.Preset, request.Scenes.Count);
+
+            if (request.Scenes.Count == 0)
+            {
+                return BadRequest(CreateProblemDetails(
+                    "Invalid Request",
+                    "At least one scene is required for director preview",
+                    StatusCodes.Status400BadRequest,
+                    correlationId));
+            }
+
+            // Convert DTOs to domain models
+            var scenes = request.Scenes.Select(s => new Core.Models.Scene(
+                s.Index,
+                s.Heading,
+                s.Script,
+                TimeSpan.FromSeconds(s.StartSeconds),
+                TimeSpan.FromSeconds(s.DurationSeconds)
+            )).ToList();
+
+            var brief = new Brief(
+                Topic: request.Brief.Topic,
+                Audience: request.Brief.Audience,
+                Goal: request.Brief.Goal,
+                Tone: request.Brief.Tone,
+                Language: request.Brief.Language ?? "en",
+                Aspect: ParseAspect(request.Brief.Aspect)
+            );
+
+            var preset = request.Preset switch
+            {
+                DirectorPresetDto.Documentary => DirectorPreset.Documentary,
+                DirectorPresetDto.TikTokEnergy => DirectorPreset.TikTokEnergy,
+                DirectorPresetDto.Cinematic => DirectorPreset.Cinematic,
+                DirectorPresetDto.Corporate => DirectorPreset.Corporate,
+                DirectorPresetDto.Educational => DirectorPreset.Educational,
+                DirectorPresetDto.Storytelling => DirectorPreset.Storytelling,
+                DirectorPresetDto.Custom => DirectorPreset.Custom,
+                _ => DirectorPreset.Documentary
+            };
+
+            // Get AI Director service from DI (null-safe)
+            var aiDirectorService = HttpContext.RequestServices
+                .GetService<Core.Services.Director.IAIDirectorService>();
+
+            if (aiDirectorService == null)
+            {
+                _logger.LogWarning("[{CorrelationId}] AI Director service not available", correlationId);
+                return StatusCode(503, CreateProblemDetails(
+                    "Service Unavailable",
+                    "AI Director service is not configured",
+                    503,
+                    correlationId));
+            }
+
+            var decisions = await aiDirectorService.AnalyzeAndDirectAsync(
+                scenes, brief, preset, ct).ConfigureAwait(false);
+
+            var response = new DirectorDecisionsResponse(
+                SceneDirections: decisions.SceneDirections.Select(d => new SceneDirectionDto(
+                    SceneIndex: d.SceneIndex,
+                    Motion: d.Motion.ToString(),
+                    InTransition: d.InTransition.ToString(),
+                    OutTransition: d.OutTransition.ToString(),
+                    EmotionalIntensity: d.EmotionalIntensity,
+                    VisualFocus: d.VisualFocus,
+                    SuggestedDurationSeconds: d.SuggestedDuration.TotalSeconds,
+                    KenBurnsIntensity: d.KenBurnsIntensity
+                )).ToList(),
+                OverallStyle: decisions.OverallStyle,
+                EmotionalArc: decisions.EmotionalArc,
+                CorrelationId: correlationId
+            );
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error previewing director decisions", correlationId);
+            
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                CreateProblemDetails(
+                    "Preview Failed",
+                    $"An error occurred while generating director preview: {ex.Message}",
                     StatusCodes.Status500InternalServerError,
                     correlationId));
         }

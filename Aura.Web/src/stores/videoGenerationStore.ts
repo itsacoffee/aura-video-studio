@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { VideoStatus } from '../services/api/videoApi';
+import type { DirectorPreset } from '../components/director';
 
 export interface VideoGenerationJob {
   jobId: string;
@@ -35,6 +36,9 @@ export interface VideoGenerationState {
   isGenerating: boolean;
   currentJobId: string | null;
 
+  // AI Director settings
+  directorPreset: DirectorPreset;
+
   // Preferences
   autoSaveProjects: boolean;
   showProgressNotifications: boolean;
@@ -50,6 +54,9 @@ export interface VideoGenerationState {
   clearHistory: () => void;
   setCurrentJob: (jobId: string | null) => void;
 
+  // AI Director actions
+  setDirectorPreset: (preset: DirectorPreset) => void;
+
   // Preferences
   setAutoSaveProjects: (enabled: boolean) => void;
   setShowProgressNotifications: (enabled: boolean) => void;
@@ -64,6 +71,7 @@ export const useVideoGenerationStore = create<VideoGenerationState>()(
       maxHistorySize: 50,
       isGenerating: false,
       currentJobId: null,
+      directorPreset: 'Documentary',
       autoSaveProjects: true,
       showProgressNotifications: true,
 
@@ -252,6 +260,11 @@ export const useVideoGenerationStore = create<VideoGenerationState>()(
         set({ currentJobId: jobId });
       },
 
+      // AI Director preset
+      setDirectorPreset: (preset) => {
+        set({ directorPreset: preset });
+      },
+
       // Preferences
       setAutoSaveProjects: (enabled) => {
         set({ autoSaveProjects: enabled });
@@ -266,6 +279,7 @@ export const useVideoGenerationStore = create<VideoGenerationState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         jobHistory: state.jobHistory,
+        directorPreset: state.directorPreset,
         autoSaveProjects: state.autoSaveProjects,
         showProgressNotifications: state.showProgressNotifications,
         // Don't persist active jobs - they should be reloaded from server on app start
