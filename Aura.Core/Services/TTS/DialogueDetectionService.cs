@@ -64,15 +64,19 @@ public class DialogueDetectionService : IDialogueDetectionService
 
     private static string BuildAnalysisPrompt(string script)
     {
-        return $@"Analyze this script for dialogue and characters. 
+        // Sanitize the script to prevent prompt injection
+        var sanitizedScript = SanitizeScriptForPrompt(script);
+        
+        return $@"You are a script analysis assistant. Analyze the following script enclosed in <SCRIPT> tags for dialogue and characters.
 
 For each segment, identify:
 1. Whether it's narration, dialogue, quote, or internal thought
 2. The character speaking (if dialogue)
 3. The emotional tone
 
-Script:
-{script}
+<SCRIPT>
+{sanitizedScript}
+</SCRIPT>
 
 Return ONLY valid JSON with this structure (no markdown, no explanation):
 {{
@@ -100,6 +104,32 @@ Emotion values: neutral, excited, sad, angry, curious, calm (or null)
 Voice type suggestions: male-young, male-mature, female-young, female-mature, neutral";
     }
 
+    /// <summary>
+    /// Sanitizes script content to prevent prompt injection attacks.
+    /// Replaces potential injection markers and limits content length.
+    /// </summary>
+    private static string SanitizeScriptForPrompt(string script)
+    {
+        if (string.IsNullOrWhiteSpace(script))
+        {
+            return string.Empty;
+        }
+
+        // Limit script length to prevent resource exhaustion
+        const int maxLength = 50000;
+        var sanitized = script.Length > maxLength 
+            ? script.Substring(0, maxLength) 
+            : script;
+
+        // Remove or escape potential prompt injection patterns
+        sanitized = sanitized
+            .Replace("</SCRIPT>", "[/script]")  // Prevent closing our delimiter
+            .Replace("<SCRIPT>", "[script]")    // Prevent nesting
+            .Replace("```", "'''");              // Prevent markdown code blocks
+
+        return sanitized;
+    }
+
     private DialogueAnalysis ParseDialogueAnalysis(string response, string originalScript)
     {
         try
@@ -108,11 +138,11 @@ Voice type suggestions: male-young, male-mature, female-young, female-mature, ne
             var jsonContent = response.Trim();
             if (jsonContent.StartsWith("```", StringComparison.Ordinal))
             {
-                var startIndex = jsonContent.IndexOf('{');
-                var endIndex = jsonContent.LastIndexOf('}');
-                if (startIndex >= 0 && endIndex > startIndex)
+                var startIdx = jsonContent.IndexOf('{');
+                var endIdx = jsonContent.LastIndexOf('}');
+                if (startIdx >= 0 && endIdx > startIdx)
                 {
-                    jsonContent = jsonContent.Substring(startIndex, endIndex - startIndex + 1);
+                    jsonContent = jsonContent.Substring(startIdx, endIdx - startIdx + 1);
                 }
             }
 
@@ -124,11 +154,19 @@ Voice type suggestions: male-young, male-mature, female-young, female-mature, ne
 
             if (root.TryGetProperty("lines", out var linesElement))
             {
+                var currentIndex = 0;
                 foreach (var lineElement in linesElement.EnumerateArray())
                 {
-                    var startIndex = lineElement.TryGetProperty("startIndex", out var si) ? si.GetInt32() : 0;
-                    var endIndex = lineElement.TryGetProperty("endIndex", out var ei) ? ei.GetInt32() : 0;
                     var text = lineElement.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
+                    
+                    // Parse indices with validation
+                    var startIndex = lineElement.TryGetProperty("startIndex", out var si) ? si.GetInt32() : currentIndex;
+                    var endIndex = lineElement.TryGetProperty("endIndex", out var ei) ? ei.GetInt32() : startIndex + text.Length;
+                    
+                    // Validate and correct indices if needed
+                    if (startIndex < 0) startIndex = currentIndex;
+                    if (endIndex <= startIndex) endIndex = startIndex + Math.Max(1, text.Length);
+                    
                     var character = lineElement.TryGetProperty("character", out var c) ? c.GetString() : null;
                     var typeStr = lineElement.TryGetProperty("type", out var tp) ? tp.GetString() ?? "narration" : "narration";
                     var emotionStr = lineElement.TryGetProperty("emotion", out var em) ? em.GetString() : null;
@@ -137,6 +175,7 @@ Voice type suggestions: male-young, male-mature, female-young, female-mature, ne
                     var emotion = ParseEmotion(emotionStr);
 
                     lines.Add(new DialogueLine(startIndex, endIndex, text, character, dialogueType, emotion));
+                    currentIndex = endIndex;
                 }
             }
 

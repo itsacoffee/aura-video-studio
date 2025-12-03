@@ -70,11 +70,18 @@ public class MultiVoiceSynthesizer : IMultiVoiceSynthesizer
                     total,
                     voicedLine.AssignedVoice.Name);
 
+                // Estimate duration based on text length and average speaking rate
+                // Average speaking rate is about 150 words per minute (2.5 words per second)
+                // Average word length is about 5 characters
+                var textLength = voicedLine.Line.Text.Length;
+                var estimatedWords = textLength / 5.0;
+                var estimatedSeconds = Math.Max(1.0, estimatedWords / 2.5);
+                
                 var scriptLine = new ScriptLine(
                     SceneIndex: i,
                     Text: voicedLine.Line.Text,
                     Start: TimeSpan.Zero,
-                    Duration: TimeSpan.FromSeconds(5)); // Default duration estimate
+                    Duration: TimeSpan.FromSeconds(estimatedSeconds));
 
                 var audioPath = await provider.SynthesizeAsync(
                     new[] { scriptLine },
@@ -255,8 +262,18 @@ public class MultiVoiceSynthesizer : IMultiVoiceSynthesizer
             // Clean up list file
             if (File.Exists(listFile))
             {
-                try { File.Delete(listFile); }
-                catch { /* Ignore cleanup errors */ }
+                try 
+                { 
+                    File.Delete(listFile); 
+                }
+                catch (IOException ex)
+                {
+                    _logger.LogDebug(ex, "Failed to delete temporary list file: {Path}", listFile);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    _logger.LogDebug(ex, "Unauthorized to delete temporary list file: {Path}", listFile);
+                }
             }
         }
     }
