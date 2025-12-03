@@ -28,7 +28,8 @@ public record VideoGenerationOptions(
     int? Height = null,
     int? Fps = null,
     string? Codec = null,
-    bool EnableHardwareAcceleration = true);
+    bool EnableHardwareAcceleration = true,
+    DirectorPresetDto DirectorPreset = DirectorPresetDto.Documentary);
 
 /// <summary>
 /// Response from video generation initiation
@@ -99,3 +100,55 @@ public record PipelineValidationResponse(
     List<string> Errors,
     DateTime Timestamp,
     string CorrelationId);
+
+/// <summary>
+/// AI Director preset styles for video aesthetics
+/// </summary>
+public enum DirectorPresetDto
+{
+    /// <summary>Steady, informative style with minimal motion</summary>
+    Documentary,
+    /// <summary>Fast-paced, dynamic style with quick cuts</summary>
+    TikTokEnergy,
+    /// <summary>Slow, dramatic style with emotional transitions</summary>
+    Cinematic,
+    /// <summary>Clean, professional style with subtle motion</summary>
+    Corporate,
+    /// <summary>Clear, focused style for comprehension</summary>
+    Educational,
+    /// <summary>Narrative-driven with emotion-matched pacing</summary>
+    Storytelling,
+    /// <summary>Manual control over all settings</summary>
+    Custom
+}
+
+/// <summary>
+/// Request for previewing AI Director decisions.
+/// Uses existing SceneDto and BriefDto from Dtos.cs.
+/// </summary>
+public record PreviewDirectorRequest(
+    List<SceneDto> Scenes,
+    BriefDto Brief,
+    DirectorPresetDto Preset);
+
+/// <summary>
+/// AI Director decisions response
+/// </summary>
+public record DirectorDecisionsResponse(
+    List<SceneDirectionDto> SceneDirections,
+    string OverallStyle,
+    string EmotionalArc,
+    string CorrelationId);
+
+/// <summary>
+/// Direction for a single scene
+/// </summary>
+public record SceneDirectionDto(
+    int SceneIndex,
+    string Motion,
+    string InTransition,
+    string OutTransition,
+    double EmotionalIntensity,
+    string VisualFocus,
+    double SuggestedDurationSeconds,
+    double KenBurnsIntensity);
