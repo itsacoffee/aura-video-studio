@@ -4,11 +4,9 @@ using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Providers;
 using Aura.Core.Services.Providers;
-using Aura.Providers.Images;
 using Aura.Providers.Llm;
 using Aura.Providers.Tts;
 using Aura.Providers.Video;
-using Aura.Providers.Visuals;
 
 namespace Aura.Api.Startup;
 
@@ -231,63 +229,9 @@ public static class ProviderServicesExtensions
         // Image provider factory
         services.AddSingleton<ImageProviderFactory>();
 
-        // Register PlaceholderImageProvider as a singleton (guaranteed fallback)
-        services.AddSingleton<PlaceholderImageProvider>();
-        
-        // Register PlaceholderProvider (Visuals) as a singleton for visual generation fallback
-        services.AddSingleton<PlaceholderProvider>();
-        
-        // Register FallbackImageProvider as the IImageProvider implementation
-        // This wraps primary providers (like Pexels) with PlaceholderImageProvider as fallback
-        services.AddSingleton<IImageProvider>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<FallbackImageProvider>>();
-            var placeholderProvider = sp.GetRequiredService<PlaceholderImageProvider>();
-            var providerSettings = sp.GetRequiredService<ProviderSettings>();
-            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-            
-            // Build list of primary providers based on configured API keys
-            var primaryProviders = new List<IStockProvider>();
-            
-            // Check for Pexels API key
-            var pexelsApiKey = providerSettings.GetPexelsApiKey();
-            if (!string.IsNullOrEmpty(pexelsApiKey))
-            {
-                var pexelsLogger = sp.GetRequiredService<ILogger<PexelsStockProvider>>();
-                var httpClient = httpClientFactory.CreateClient();
-                primaryProviders.Add(new PexelsStockProvider(pexelsLogger, httpClient, pexelsApiKey));
-                logger.LogInformation("Pexels provider registered with API key");
-            }
-            
-            // Check for Pixabay API key
-            var pixabayApiKey = providerSettings.GetPixabayApiKey();
-            if (!string.IsNullOrEmpty(pixabayApiKey))
-            {
-                var pixabayLogger = sp.GetRequiredService<ILogger<PixabayStockProvider>>();
-                var httpClient = httpClientFactory.CreateClient();
-                primaryProviders.Add(new PixabayStockProvider(pixabayLogger, httpClient, pixabayApiKey));
-                logger.LogInformation("Pixabay provider registered with API key");
-            }
-            
-            // Check for Unsplash access key
-            var unsplashAccessKey = providerSettings.GetUnsplashAccessKey();
-            if (!string.IsNullOrEmpty(unsplashAccessKey))
-            {
-                var unsplashLogger = sp.GetRequiredService<ILogger<UnsplashStockProvider>>();
-                var httpClient = httpClientFactory.CreateClient();
-                primaryProviders.Add(new UnsplashStockProvider(unsplashLogger, httpClient, unsplashAccessKey));
-                logger.LogInformation("Unsplash provider registered with access key");
-            }
-            
-            if (primaryProviders.Count == 0)
-            {
-                logger.LogWarning(
-                    "No stock image API keys configured. FallbackImageProvider will use PlaceholderImageProvider only. " +
-                    "Configure Pexels, Pixabay, or Unsplash API keys in Settings to enable stock images.");
-            }
-            
-            return new FallbackImageProvider(logger, primaryProviders, placeholderProvider);
-        });
+        // Note: IImageProvider, PlaceholderImageProvider, and FallbackImageProvider are registered 
+        // in Program.cs to avoid potential DI conflicts. See Program.cs for the registration with 
+        // proper fallback chain that ensures video generation never hangs due to missing images.
 
         // Video composer
         services.AddSingleton<IVideoComposer>(sp =>
