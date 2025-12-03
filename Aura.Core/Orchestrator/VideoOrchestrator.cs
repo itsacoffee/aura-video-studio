@@ -12,6 +12,7 @@ using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Assets;
 using Aura.Core.Services.Audio;
+using Aura.Core.Services.Fallback;
 using Aura.Core.Services.Generation;
 using Aura.Core.Services.Orchestration;
 using Aura.Core.Services.PacingServices;
@@ -57,6 +58,7 @@ public class VideoOrchestrator
     private readonly Telemetry.RunTelemetryCollector _telemetryCollector;
     private readonly Dependencies.FFmpegResolver? _ffmpegResolver;
     private readonly AssetTaggingService? _assetTaggingService;
+    private readonly TopicAwareFallbackGenerator _fallbackGenerator;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -82,7 +84,8 @@ public class VideoOrchestrator
         PipelineOrchestrationEngine? pipelineEngine = null,
         Services.RAG.RagScriptEnhancer? ragScriptEnhancer = null,
         Dependencies.FFmpegResolver? ffmpegResolver = null,
-        AssetTaggingService? assetTaggingService = null)
+        AssetTaggingService? assetTaggingService = null,
+        TopicAwareFallbackGenerator? fallbackGenerator = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -125,6 +128,7 @@ public class VideoOrchestrator
         _ragScriptEnhancer = ragScriptEnhancer;
         _ffmpegResolver = ffmpegResolver;
         _assetTaggingService = assetTaggingService;
+        _fallbackGenerator = fallbackGenerator ?? new TopicAwareFallbackGenerator();
 
         if (_assetTaggingService != null)
         {
@@ -639,7 +643,7 @@ public class VideoOrchestrator
                 _logger.LogWarning("Script validation failed for Quick Demo: {Message}. Using safe fallback script.", vex.Message);
                 progress?.Report("Using safe fallback script...");
 
-                script = GenerateSafeFallbackScript(brief.Topic ?? "Welcome to Aura Video Studio", planSpec.TargetDuration);
+                script = GenerateSafeFallbackScript(brief, planSpec);
                 usedFallback = true;
 
                 _logger.LogInformation("Safe fallback script generated: {Length} characters", script.Length);
@@ -1424,7 +1428,7 @@ public class VideoOrchestrator
                         // For Quick Demo, use safe fallback script instead of failing
                         _logger.LogWarning("Script validation failed for Quick Demo: {Message}. Using safe fallback script.", vex.Message);
 
-                        generatedScript = GenerateSafeFallbackScript(brief.Topic ?? "Welcome to Aura Video Studio", planSpec.TargetDuration);
+                        generatedScript = GenerateSafeFallbackScript(brief, planSpec);
                         // usedFallback = true; // Fallback tracking currently unused
 
                         _logger.LogInformation("Safe fallback script generated: {Length} characters", generatedScript.Length);
@@ -1694,32 +1698,37 @@ public class VideoOrchestrator
     }
 
     /// <summary>
-    /// Generates a minimal, safe fallback script for Quick Demo when LLM generation fails.
-    /// Creates 2-3 short scenes with simple narration that doesn't rely on image providers.
+    /// Generates a topic-aware fallback script for Quick Demo when LLM generation fails.
+    /// Uses the TopicAwareFallbackGenerator to create contextually appropriate content
+    /// based on the topic category (technology, business, education, health, or default).
     /// </summary>
-    private string GenerateSafeFallbackScript(string topic, TimeSpan targetDuration)
+    private string GenerateSafeFallbackScript(Brief brief, PlanSpec planSpec)
     {
-        _logger.LogInformation("Generating safe fallback script for topic: {Topic}, duration: {Duration}s",
-            topic, targetDuration.TotalSeconds);
+        var topic = brief.Topic ?? "Welcome to Aura Video Studio";
+        _logger.LogInformation("Generating topic-aware fallback script for topic: {Topic}, duration: {Duration}s",
+            topic, planSpec.TargetDuration.TotalSeconds);
 
-        // Sanitize topic to prevent script injection - remove any markdown/special characters
-        var safeTopic = System.Text.RegularExpressions.Regex.Replace(topic, @"[#*_\[\]<>]", "");
-        safeTopic = safeTopic.Trim();
-        if (string.IsNullOrWhiteSpace(safeTopic))
-        {
-            safeTopic = "Aura Video Studio";
-        }
-
-        // Create a simple 2-scene script that's always valid
-        var script = $@"## Introduction
-
-Welcome to {safeTopic}. This is a demonstration video created with Aura Video Studio.
-
-## Overview
-
-Aura Video Studio helps you create professional videos quickly and easily. Thank you for trying our Quick Demo feature.";
+        var script = _fallbackGenerator.GenerateFallbackScript(
+            topic: topic,
+            goal: brief.Goal,
+            audience: brief.Audience,
+            targetDuration: planSpec.TargetDuration,
+            sceneCount: EstimateSceneCount(planSpec.TargetDuration));
 
         return script;
+    }
+
+    /// <summary>
+    /// Estimates an appropriate scene count based on target duration.
+    /// Uses approximately 30 seconds per scene as a baseline.
+    /// </summary>
+    private static int EstimateSceneCount(TimeSpan duration)
+    {
+        if (duration == default || duration.TotalSeconds < 30)
+            return 3;
+
+        var estimated = (int)(duration.TotalSeconds / 30);
+        return Math.Max(3, Math.Min(estimated, 8));
     }
 
     /// <summary>
