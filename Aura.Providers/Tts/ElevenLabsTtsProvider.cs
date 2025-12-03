@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Providers;
+using Aura.Core.Services.Resilience;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Tts;
@@ -29,8 +30,17 @@ public class ElevenLabsTtsProvider : ITtsProvider
     private readonly bool _offlineOnly;
     private readonly VoiceCache? _voiceCache;
     private readonly string? _ffmpegPath;
+    private CircuitBreaker? _circuitBreaker;
 
     private const string BaseUrl = "https://api.elevenlabs.io/v1";
+
+    /// <summary>
+    /// Sets the circuit breaker for this provider. Called by the registry to enable resilience features.
+    /// </summary>
+    public void SetCircuitBreaker(CircuitBreaker circuitBreaker)
+    {
+        _circuitBreaker = circuitBreaker;
+    }
 
     public ElevenLabsTtsProvider(
         ILogger<ElevenLabsTtsProvider> logger, 
@@ -38,7 +48,8 @@ public class ElevenLabsTtsProvider : ITtsProvider
         string? apiKey,
         bool offlineOnly = false,
         VoiceCache? voiceCache = null,
-        string? ffmpegPath = null)
+        string? ffmpegPath = null,
+        CircuitBreaker? circuitBreaker = null)
     {
         _logger = logger;
         _httpClient = httpClient;
@@ -46,6 +57,7 @@ public class ElevenLabsTtsProvider : ITtsProvider
         _offlineOnly = offlineOnly;
         _voiceCache = voiceCache;
         _ffmpegPath = ffmpegPath;
+        _circuitBreaker = circuitBreaker;
         _outputDirectory = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "TTS");
         
         // Ensure output directory exists
@@ -111,6 +123,13 @@ public class ElevenLabsTtsProvider : ITtsProvider
 
     public async Task<string> SynthesizeAsync(IEnumerable<ScriptLine> lines, VoiceSpec spec, CancellationToken ct)
     {
+        // Check circuit breaker before attempting API call
+        if (_circuitBreaker != null && !_circuitBreaker.IsAllowed())
+        {
+            throw new CircuitBreakerOpenException(
+                $"Circuit breaker for ElevenLabs is open. The service may be experiencing issues. Please try again later.");
+        }
+
         if (_offlineOnly)
         {
             throw new InvalidOperationException("ElevenLabs is not available in offline mode. Please disable offline-only mode in settings or use a local TTS provider (Piper, Mimic3, or Windows TTS).");
@@ -187,6 +206,13 @@ public class ElevenLabsTtsProvider : ITtsProvider
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
                     
+                    // Record failure with circuit breaker for transient errors
+                    if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+                        (int)response.StatusCode >= 500)
+                    {
+                        _circuitBreaker?.RecordFailure();
+                    }
+                    
                     if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                     {
                         throw new InvalidOperationException("ElevenLabs API key is invalid. Please check your API key in settings.");
@@ -205,6 +231,9 @@ public class ElevenLabsTtsProvider : ITtsProvider
                         throw new InvalidOperationException($"ElevenLabs synthesis failed with status {response.StatusCode}. {errorContent}");
                     }
                 }
+
+                // Record success with circuit breaker
+                _circuitBreaker?.RecordSuccess();
 
                 response.EnsureSuccessStatusCode();
 

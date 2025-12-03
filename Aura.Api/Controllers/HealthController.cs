@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Data;
 using Aura.Core.Services.Health;
+using Aura.Core.Services.Resilience;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -26,6 +27,7 @@ public class HealthController : ControllerBase
     private readonly ProviderHealthMonitor _healthMonitor;
     private readonly ProviderHealthService _healthService;
     private readonly SystemHealthChecker _systemHealthChecker;
+    private readonly CircuitBreakerRegistry _circuitBreakerRegistry;
     private readonly ILogger<HealthController> _logger;
     private readonly IHostEnvironment _hostEnvironment;
     private readonly IDbContextFactory<AuraDbContext> _dbContextFactory;
@@ -34,6 +36,7 @@ public class HealthController : ControllerBase
         ProviderHealthMonitor healthMonitor,
         ProviderHealthService healthService,
         SystemHealthChecker systemHealthChecker,
+        CircuitBreakerRegistry circuitBreakerRegistry,
         ILogger<HealthController> logger,
         IHostEnvironment hostEnvironment,
         IDbContextFactory<AuraDbContext> dbContextFactory)
@@ -41,6 +44,7 @@ public class HealthController : ControllerBase
         _healthMonitor = healthMonitor;
         _healthService = healthService;
         _systemHealthChecker = systemHealthChecker;
+        _circuitBreakerRegistry = circuitBreakerRegistry;
         _logger = logger;
         _hostEnvironment = hostEnvironment;
         _dbContextFactory = dbContextFactory;
@@ -385,6 +389,66 @@ public class HealthController : ControllerBase
         return Ok(new { message = $"Circuit breaker reset for provider '{name}'" });
     }
 
+    /// <summary>
+    /// Get status of all circuit breakers
+    /// </summary>
+    [HttpGet("circuit-breakers")]
+    public ActionResult<Dictionary<string, string>> GetCircuitBreakerStatus()
+    {
+        var states = _circuitBreakerRegistry.GetAllStates();
+        return Ok(states.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ToString()
+        ));
+    }
+
+    /// <summary>
+    /// Get detailed information about all circuit breakers
+    /// </summary>
+    [HttpGet("circuit-breakers/details")]
+    public ActionResult<Dictionary<string, CircuitBreakerInfoDto>> GetCircuitBreakerDetails()
+    {
+        var info = _circuitBreakerRegistry.GetAllInfo();
+        return Ok(info.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new CircuitBreakerInfoDto
+            {
+                ServiceName = kvp.Value.ServiceName,
+                State = kvp.Value.State.ToString(),
+                FailureCount = kvp.Value.FailureCount,
+                OpenedAt = kvp.Value.OpenedAt
+            }
+        ));
+    }
+
+    /// <summary>
+    /// Reset circuit breaker for a specific service
+    /// </summary>
+    [HttpPost("circuit-breakers/{serviceName}/reset")]
+    public ActionResult ResetCircuitBreaker(string serviceName)
+    {
+        var success = _circuitBreakerRegistry.Reset(serviceName);
+        
+        if (!success)
+        {
+            return NotFound(new { error = $"Circuit breaker for '{serviceName}' not found" });
+        }
+
+        _logger.LogInformation("Circuit breaker reset for service: {ServiceName}", serviceName);
+        return Ok(new { message = $"Circuit breaker for {serviceName} reset" });
+    }
+
+    /// <summary>
+    /// Reset all circuit breakers
+    /// </summary>
+    [HttpPost("circuit-breakers/reset-all")]
+    public ActionResult ResetAllCircuitBreakers()
+    {
+        _circuitBreakerRegistry.ResetAll();
+        _logger.LogInformation("All circuit breakers reset");
+        return Ok(new { message = "All circuit breakers reset" });
+    }
+
     private ProviderHealthCheckDto ToDto(ProviderHealthMetrics metrics)
     {
         return new ProviderHealthCheckDto
@@ -506,4 +570,15 @@ public class SystemHealthDto
     public double MemoryUsagePercent { get; set; }
     public bool IsHealthy { get; set; }
     public List<string> Issues { get; set; } = new();
+}
+
+/// <summary>
+/// DTO for circuit breaker information
+/// </summary>
+public class CircuitBreakerInfoDto
+{
+    public string ServiceName { get; set; } = string.Empty;
+    public string State { get; set; } = "Closed";
+    public int FailureCount { get; set; }
+    public DateTime? OpenedAt { get; set; }
 }
