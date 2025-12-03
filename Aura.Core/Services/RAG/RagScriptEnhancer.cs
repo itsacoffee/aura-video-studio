@@ -250,7 +250,8 @@ public class RagScriptEnhancer
     /// </summary>
     private Brief EnhanceBriefWithContext(Brief brief, RagContext ragContext)
     {
-        var ragInstructions = FormatRagInstructions(ragContext);
+        var tightenClaims = brief.RagConfiguration?.TightenClaims ?? false;
+        var ragInstructions = FormatRagInstructions(ragContext, tightenClaims);
 
         var existingModifiers = brief.PromptModifiers;
         var existingInstructions = existingModifiers?.AdditionalInstructions ?? string.Empty;
@@ -271,7 +272,9 @@ public class RagScriptEnhancer
     /// <summary>
     /// Formats RAG context into prompt instructions
     /// </summary>
-    private string FormatRagInstructions(RagContext ragContext)
+    /// <param name="ragContext">The RAG context to format</param>
+    /// <param name="tightenClaims">Whether to include claim grounding instructions</param>
+    private string FormatRagInstructions(RagContext ragContext, bool tightenClaims)
     {
         var instructions = new System.Text.StringBuilder();
 
@@ -298,6 +301,35 @@ public class RagScriptEnhancer
                     (citation.Section != null ? $" - {citation.Section}" : "") +
                     (citation.PageNumber.HasValue ? $" (p. {citation.PageNumber})" : ""));
             }
+        }
+
+        if (tightenClaims)
+        {
+            instructions.AppendLine();
+            instructions.AppendLine();
+            instructions.AppendLine("# Claim Grounding Requirements");
+            instructions.AppendLine();
+            instructions.AppendLine("IMPORTANT: Follow these rules for factual accuracy:");
+            instructions.AppendLine();
+            instructions.AppendLine("1. **Only make claims that are supported by the reference material above.**");
+            instructions.AppendLine("   - If you cannot find support for a claim, either omit it or phrase it as an opinion/general statement.");
+            instructions.AppendLine();
+            instructions.AppendLine("2. **Always cite your sources inline.**");
+            instructions.AppendLine("   - When stating a fact, include the citation immediately: \"Studies show X [Citation 1].\"");
+            instructions.AppendLine();
+            instructions.AppendLine("3. **Distinguish between facts and opinions.**");
+            instructions.AppendLine("   - Facts: Use when supported by citations.");
+            instructions.AppendLine("   - Opinions/General statements: Use phrases like \"Many believe...\", \"It's often said...\", \"Generally speaking...\"");
+            instructions.AppendLine();
+            instructions.AppendLine("4. **Avoid these unsupported claim patterns:**");
+            instructions.AppendLine("   - \"Research shows...\" (without citation)");
+            instructions.AppendLine("   - \"Studies have found...\" (without citation)");
+            instructions.AppendLine("   - \"X percent of...\" (without citation)");
+            instructions.AppendLine("   - \"According to experts...\" (without citation)");
+            instructions.AppendLine();
+            instructions.AppendLine("5. **When in doubt, use hedging language:**");
+            instructions.AppendLine("   - \"This may...\" instead of \"This will...\"");
+            instructions.AppendLine("   - \"Some suggest...\" instead of \"Everyone knows...\"");
         }
 
         return instructions.ToString();
