@@ -36,6 +36,26 @@ GitHub Copilot Instructions for consistent, high-quality code generation.
 
 **Build Enforcement**: Zero-placeholder policy enforced via Husky pre-commit hooks and CI from PR 144. All code must be production-ready when committed.
 
+### Video Editing Architecture
+
+**IMPORTANT: OpenCut is the PRIMARY video editing interface.**
+
+- **OpenCut** (`/opencut` route, `Aura.Web/src/pages/OpenCutPage.tsx`, `Aura.Web/src/components/OpenCut/`):
+  - Modern, native React video editor
+  - Full timeline editing with tracks and clips
+  - Real-time preview
+  - Professional NLE (Non-Linear Editor) features
+  - This is the ACTIVE development target
+  - All new video editing features should be added here
+
+- **VideoEditorPage** (`Aura.Web/src/pages/VideoEditorPage.tsx`):
+  - **DEPRECATED** - Will be removed in a future release
+  - Do NOT add new features to this component
+  - Do NOT reference this as the video editor in documentation
+  - Maintained only for backwards compatibility
+
+When working on video editing features, always target OpenCut components.
+
 ---
 
 ## SECTION 2: Technology Stack and Versions

@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +14,7 @@ using Aura.Core.Models.Export;
 using Aura.Core.Providers;
 using Aura.Core.Runtime;
 using Aura.Core.Services.FFmpeg;
+using Aura.Core.Services.FFmpeg.Filters;
 using Aura.Core.Services.Render;
 using Microsoft.Extensions.Logging;
 
@@ -26,6 +29,13 @@ public class FfmpegVideoComposer : IVideoComposer
     private const float ProgressValidatingAudio = 3f;
     private const float ProgressBuildingCommand = 4f;
     private const float ProgressStartingEncode = 5f;
+
+    // Default Ken Burns effect settings - subtle zoom from 1.0 to 1.1 for professional look
+    private const double DefaultKenBurnsZoomStart = 1.0;
+    private const double DefaultKenBurnsZoomEnd = 1.1;
+    
+    // Default fade transition duration between scenes (in seconds)
+    private const double DefaultFadeTransitionDuration = 0.5;
 
     private readonly ILogger<FfmpegVideoComposer> _logger;
     private readonly IFfmpegLocator _ffmpegLocator;
@@ -621,7 +631,8 @@ public class FfmpegVideoComposer : IVideoComposer
     }
 
     /// <summary>
-    /// Build FFmpeg command using FFmpegCommandBuilder with hardware acceleration support
+    /// Build FFmpeg command using FFmpegCommandBuilder with hardware acceleration support.
+    /// Applies Ken Burns effects to static images and fade transitions between scenes by default.
     /// </summary>
     private async Task<string> BuildFfmpegCommandAsync(Timeline timeline, RenderSpec spec, string outputPath, string ffmpegPath, CancellationToken ct)
     {
@@ -638,6 +649,11 @@ public class FfmpegVideoComposer : IVideoComposer
         {
             _logger.LogWarning("Music file not found, will skip music: {Path}", timeline.MusicPath);
         }
+
+        // Collect visual assets from scenes for video composition
+        var visualAssets = CollectVisualAssets(timeline);
+        _logger.LogInformation("Collected {AssetCount} visual assets from {SceneCount} scenes",
+            visualAssets.Count, timeline.Scenes.Count);
 
         // Determine aspect ratio from resolution
         var aspectRatio = spec.Res.Width == spec.Res.Height ? AspectRatio.OneByOne :
@@ -717,13 +733,52 @@ public class FfmpegVideoComposer : IVideoComposer
             }
         }
 
-        // Add input files
-        builder.AddInput(timeline.NarrationPath);
+        // Track input file indices for complex filter graph
+        int inputIndex = 0;
 
+        // Add visual asset inputs first (images/videos for scenes)
+        foreach (var asset in visualAssets)
+        {
+            builder.AddInput(asset.Path);
+            inputIndex++;
+        }
+
+        // Add narration audio input
+        int narrationInputIndex = inputIndex;
+        builder.AddInput(timeline.NarrationPath);
+        inputIndex++;
+
+        // Add music input if available
+        int musicInputIndex = -1;
         bool hasMusicInput = !string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath);
         if (hasMusicInput)
         {
+            musicInputIndex = inputIndex;
             builder.AddInput(timeline.MusicPath);
+            inputIndex++;
+        }
+
+        // Build complex filter graph for visual composition with effects
+        if (visualAssets.Count > 0)
+        {
+            var filterGraph = BuildVisualCompositionFilter(
+                visualAssets,
+                timeline.Scenes,
+                spec.Res.Width,
+                spec.Res.Height,
+                spec.Fps,
+                narrationInputIndex,
+                musicInputIndex);
+            
+            if (!string.IsNullOrEmpty(filterGraph))
+            {
+                builder.AddFilter(filterGraph);
+                _logger.LogInformation("Applied Ken Burns effects and fade transitions to {Count} visual assets", visualAssets.Count);
+            }
+        }
+        else
+        {
+            _logger.LogWarning("No visual assets found in timeline - video will be audio-only with black screen");
         }
 
         // Set video codec (use hardware encoder if available)
@@ -787,6 +842,151 @@ public class FfmpegVideoComposer : IVideoComposer
         _logger.LogDebug("Full command: ffmpeg {Command}", command);
 
         return command;
+    }
+
+    /// <summary>
+    /// Represents a visual asset with its associated scene timing
+    /// </summary>
+    private record VisualAssetInfo(string Path, int SceneIndex, TimeSpan Start, TimeSpan Duration, bool IsImage);
+
+    /// <summary>
+    /// Collects visual assets from the timeline's scene assets dictionary
+    /// </summary>
+    private List<VisualAssetInfo> CollectVisualAssets(Timeline timeline)
+    {
+        var assets = new List<VisualAssetInfo>();
+
+        foreach (var scene in timeline.Scenes)
+        {
+            if (timeline.SceneAssets.TryGetValue(scene.Index, out var sceneAssets) && sceneAssets.Count > 0)
+            {
+                // Take the first valid asset for each scene
+                var primaryAsset = sceneAssets.FirstOrDefault(a => 
+                    !string.IsNullOrEmpty(a.PathOrUrl) && 
+                    File.Exists(a.PathOrUrl));
+
+                if (primaryAsset != null)
+                {
+                    var isImage = IsImageFile(primaryAsset.PathOrUrl);
+                    assets.Add(new VisualAssetInfo(
+                        primaryAsset.PathOrUrl,
+                        scene.Index,
+                        scene.Start,
+                        scene.Duration,
+                        isImage));
+                }
+            }
+        }
+
+        return assets;
+    }
+
+    /// <summary>
+    /// Checks if a file is an image based on extension
+    /// </summary>
+    private static bool IsImageFile(string path)
+    {
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        return extension is ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".tif";
+    }
+
+    /// <summary>
+    /// Builds a complex filter graph for visual composition with Ken Burns effects and fade transitions.
+    /// Applies subtle Ken Burns effect (1.0 to 1.1 zoom) to static images by default.
+    /// Applies fade transitions (0.5s) between scenes.
+    /// </summary>
+    private string BuildVisualCompositionFilter(
+        List<VisualAssetInfo> assets,
+        IReadOnlyList<Scene> scenes,
+        int width,
+        int height,
+        int fps,
+        int narrationInputIndex,
+        int musicInputIndex)
+    {
+        if (assets.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var filterParts = new List<string>();
+        var currentOffset = 0.0;
+
+        // Process each visual asset with Ken Burns effect for images
+        for (int i = 0; i < assets.Count; i++)
+        {
+            var asset = assets[i];
+            var durationSeconds = asset.Duration.TotalSeconds;
+
+            // Build Ken Burns filter for static images, scale for videos
+            if (asset.IsImage)
+            {
+                // Apply Ken Burns effect: subtle zoom from 1.0 to 1.1 with centered pan
+                var kenBurnsFilter = EffectBuilder.BuildKenBurns(
+                    duration: durationSeconds,
+                    fps: fps,
+                    zoomStart: DefaultKenBurnsZoomStart,
+                    zoomEnd: DefaultKenBurnsZoomEnd,
+                    panX: 0.0,  // Centered pan
+                    panY: 0.0,  // Centered pan
+                    width: width,
+                    height: height);
+
+                filterParts.Add($"[{i}:v]{kenBurnsFilter}[v{i}]");
+                _logger.LogDebug("Applied Ken Burns effect to scene {SceneIndex} image: zoom {Start} to {End} over {Duration}s",
+                    asset.SceneIndex, DefaultKenBurnsZoomStart, DefaultKenBurnsZoomEnd, durationSeconds);
+            }
+            else
+            {
+                // Scale video to target resolution
+                filterParts.Add($"[{i}:v]scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1[v{i}]");
+            }
+        }
+
+        // Build transition chain between processed clips
+        if (assets.Count == 1)
+        {
+            // Single asset - just output it
+            filterParts.Add("[v0]null[vout]");
+        }
+        else
+        {
+            // Multiple assets - add fade transitions between them
+            string lastLabel = "v0";
+            currentOffset = assets[0].Duration.TotalSeconds;
+
+            for (int i = 0; i < assets.Count - 1; i++)
+            {
+                var nextLabel = $"v{i + 1}";
+                var outputLabel = i == assets.Count - 2 ? "vout" : $"vt{i}";
+                var transitionOffset = currentOffset - DefaultFadeTransitionDuration;
+
+                // Build fade transition using TransitionBuilder
+                var fadeTransition = TransitionBuilder.BuildCrossfade(
+                    DefaultFadeTransitionDuration,
+                    transitionOffset,
+                    TransitionBuilder.TransitionType.Fade);
+
+                filterParts.Add($"[{lastLabel}][{nextLabel}]{fadeTransition}[{outputLabel}]");
+                _logger.LogDebug("Applied fade transition between scenes at offset {Offset}s with duration {Duration}s",
+                    transitionOffset, DefaultFadeTransitionDuration);
+
+                lastLabel = outputLabel;
+                if (i + 1 < assets.Count)
+                {
+                    currentOffset += assets[i + 1].Duration.TotalSeconds;
+                }
+            }
+        }
+
+        // Add audio mixing if music is present
+        if (musicInputIndex >= 0)
+        {
+            // Mix narration with background music (music at 30% volume)
+            filterParts.Add($"[{narrationInputIndex}:a]volume=1.0[voice];[{musicInputIndex}:a]volume=0.3[music];[voice][music]amix=inputs=2:duration=shortest[aout]");
+        }
+
+        return string.Join(";", filterParts);
     }
 
     /// <summary>
