@@ -50,8 +50,8 @@ export const ClipWaveform: FC<ClipWaveformProps> = ({
     }
   }, [mediaId, audioUrl, samples, loadWaveform]);
 
-  const waveformData = getWaveform(mediaId);
-  const loading = isLoading(mediaId);
+  const waveformData = getWaveform(mediaId, samples);
+  const loading = isLoading(mediaId, samples);
 
   const color = clipType === 'audio' ? openCutTokens.waveform.audio : openCutTokens.waveform.video;
 

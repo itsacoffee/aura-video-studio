@@ -8,6 +8,13 @@
 import { create } from 'zustand';
 import { generateWaveformFromUrl, type WaveformPeaksData } from '../services/waveformService';
 
+/**
+ * Generate a cache key that includes both mediaId and samples
+ */
+function getCacheKey(mediaId: string, samples: number): string {
+  return `${mediaId}:${samples}`;
+}
+
 interface WaveformState {
   waveforms: Map<string, WaveformPeaksData>;
   loading: Set<string>;
@@ -16,9 +23,9 @@ interface WaveformState {
 
 interface WaveformActions {
   loadWaveform: (mediaId: string, audioUrl: string, samples?: number) => Promise<void>;
-  getWaveform: (mediaId: string) => WaveformPeaksData | undefined;
-  isLoading: (mediaId: string) => boolean;
-  getError: (mediaId: string) => string | undefined;
+  getWaveform: (mediaId: string, samples?: number) => WaveformPeaksData | undefined;
+  isLoading: (mediaId: string, samples?: number) => boolean;
+  getError: (mediaId: string, samples?: number) => string | undefined;
   clearWaveform: (mediaId: string) => void;
   clearAll: () => void;
 }
@@ -31,15 +38,17 @@ export const useWaveformStore = create<OpenCutWaveformsStore>((set, get) => ({
   errors: new Map(),
 
   loadWaveform: async (mediaId, audioUrl, samples = 200) => {
+    const cacheKey = getCacheKey(mediaId, samples);
+
     // Don't reload if already loaded or loading
-    if (get().waveforms.has(mediaId) || get().loading.has(mediaId)) return;
+    if (get().waveforms.has(cacheKey) || get().loading.has(cacheKey)) return;
 
     // Mark as loading
     set((state) => {
       const newLoading = new Set(state.loading);
-      newLoading.add(mediaId);
+      newLoading.add(cacheKey);
       const newErrors = new Map(state.errors);
-      newErrors.delete(mediaId);
+      newErrors.delete(cacheKey);
       return {
         loading: newLoading,
         errors: newErrors,
@@ -54,9 +63,9 @@ export const useWaveformStore = create<OpenCutWaveformsStore>((set, get) => ({
 
       set((state) => {
         const newWaveforms = new Map(state.waveforms);
-        newWaveforms.set(mediaId, waveformData);
+        newWaveforms.set(cacheKey, waveformData);
         const newLoading = new Set(state.loading);
-        newLoading.delete(mediaId);
+        newLoading.delete(cacheKey);
         return {
           waveforms: newWaveforms,
           loading: newLoading,
@@ -66,9 +75,9 @@ export const useWaveformStore = create<OpenCutWaveformsStore>((set, get) => ({
       const errorMessage = error instanceof Error ? error.message : 'Failed to load waveform';
       set((state) => {
         const newErrors = new Map(state.errors);
-        newErrors.set(mediaId, errorMessage);
+        newErrors.set(cacheKey, errorMessage);
         const newLoading = new Set(state.loading);
-        newLoading.delete(mediaId);
+        newLoading.delete(cacheKey);
         return {
           errors: newErrors,
           loading: newLoading,
@@ -77,20 +86,44 @@ export const useWaveformStore = create<OpenCutWaveformsStore>((set, get) => ({
     }
   },
 
-  getWaveform: (mediaId) => get().waveforms.get(mediaId),
+  getWaveform: (mediaId, samples = 200) => {
+    const cacheKey = getCacheKey(mediaId, samples);
+    return get().waveforms.get(cacheKey);
+  },
 
-  isLoading: (mediaId) => get().loading.has(mediaId),
+  isLoading: (mediaId, samples = 200) => {
+    const cacheKey = getCacheKey(mediaId, samples);
+    return get().loading.has(cacheKey);
+  },
 
-  getError: (mediaId) => get().errors.get(mediaId),
+  getError: (mediaId, samples = 200) => {
+    const cacheKey = getCacheKey(mediaId, samples);
+    return get().errors.get(cacheKey);
+  },
 
   clearWaveform: (mediaId) => {
     set((state) => {
       const newWaveforms = new Map(state.waveforms);
-      newWaveforms.delete(mediaId);
       const newLoading = new Set(state.loading);
-      newLoading.delete(mediaId);
       const newErrors = new Map(state.errors);
-      newErrors.delete(mediaId);
+
+      // Clear all entries that match this mediaId (any samples value)
+      for (const key of newWaveforms.keys()) {
+        if (key.startsWith(`${mediaId}:`)) {
+          newWaveforms.delete(key);
+        }
+      }
+      for (const key of newLoading) {
+        if (key.startsWith(`${mediaId}:`)) {
+          newLoading.delete(key);
+        }
+      }
+      for (const key of newErrors.keys()) {
+        if (key.startsWith(`${mediaId}:`)) {
+          newErrors.delete(key);
+        }
+      }
+
       return {
         waveforms: newWaveforms,
         loading: newLoading,

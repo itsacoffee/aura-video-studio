@@ -51,6 +51,50 @@ export interface CachedWaveform {
 const clientWaveformCache = new Map<string, WaveformPeaksData>();
 
 /**
+ * Reusable AudioContext for waveform generation
+ * Lazily created and reused to avoid overhead of creating/closing contexts
+ */
+let sharedAudioContext: AudioContext | null = null;
+
+function getAudioContext(): AudioContext {
+  if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+    sharedAudioContext = new AudioContext();
+  }
+  return sharedAudioContext;
+}
+
+/**
+ * Draw a rounded rectangle (polyfill for older browsers)
+ */
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+): void {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, radius);
+  } else {
+    // Fallback for browsers without roundRect
+    const r = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+}
+
+/**
  * Generate waveform peaks from audio URL using Web Audio API
  * This runs entirely client-side without needing a backend.
  */
@@ -63,52 +107,48 @@ export async function generateWaveformFromUrl(
     return clientWaveformCache.get(cacheKey)!;
   }
 
-  const audioContext = new AudioContext();
+  const audioContext = getAudioContext();
 
-  try {
-    const response = await fetch(audioUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  const response = await fetch(audioUrl);
+  const arrayBuffer = await response.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-    const channelData = audioBuffer.getChannelData(options.channel ?? 0);
-    const samplesPerPeak = Math.floor(channelData.length / options.samples);
-    const peaks: number[] = [];
+  const channelData = audioBuffer.getChannelData(options.channel ?? 0);
+  const samplesPerPeak = Math.floor(channelData.length / options.samples);
+  const peaks: number[] = [];
 
-    for (let i = 0; i < options.samples; i++) {
-      const start = i * samplesPerPeak;
-      const end = start + samplesPerPeak;
-      let max = 0;
+  for (let i = 0; i < options.samples; i++) {
+    const start = i * samplesPerPeak;
+    const end = start + samplesPerPeak;
+    let max = 0;
 
-      for (let j = start; j < end && j < channelData.length; j++) {
-        const abs = Math.abs(channelData[j]);
-        if (abs > max) max = abs;
-      }
-
-      peaks.push(max);
+    for (let j = start; j < end && j < channelData.length; j++) {
+      const abs = Math.abs(channelData[j]);
+      if (abs > max) max = abs;
     }
 
-    // Normalize if requested
-    if (options.normalize) {
-      const maxPeak = Math.max(...peaks);
-      if (maxPeak > 0) {
-        for (let i = 0; i < peaks.length; i++) {
-          peaks[i] = peaks[i] / maxPeak;
-        }
-      }
-    }
-
-    const waveformData: WaveformPeaksData = {
-      peaks,
-      duration: audioBuffer.duration,
-      sampleRate: audioBuffer.sampleRate,
-      channels: audioBuffer.numberOfChannels,
-    };
-
-    clientWaveformCache.set(cacheKey, waveformData);
-    return waveformData;
-  } finally {
-    await audioContext.close();
+    peaks.push(max);
   }
+
+  // Normalize if requested
+  if (options.normalize) {
+    const maxPeak = Math.max(...peaks);
+    if (maxPeak > 0) {
+      for (let i = 0; i < peaks.length; i++) {
+        peaks[i] = peaks[i] / maxPeak;
+      }
+    }
+  }
+
+  const waveformData: WaveformPeaksData = {
+    peaks,
+    duration: audioBuffer.duration,
+    sampleRate: audioBuffer.sampleRate,
+    channels: audioBuffer.numberOfChannels,
+  };
+
+  clientWaveformCache.set(cacheKey, waveformData);
+  return waveformData;
 }
 
 /**

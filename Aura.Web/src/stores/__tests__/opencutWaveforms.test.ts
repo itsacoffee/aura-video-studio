@@ -46,10 +46,9 @@ describe('OpenCutWaveformsStore', () => {
     await useWaveformStore.getState().loadWaveform('media-1', 'http://example.com/audio.mp3', 100);
 
     const state = useWaveformStore.getState();
-    expect(state.waveforms.has('media-1')).toBe(true);
-    expect(state.waveforms.get('media-1')).toEqual(mockWaveformData);
-    expect(state.loading.has('media-1')).toBe(false);
-    expect(state.errors.has('media-1')).toBe(false);
+    expect(state.getWaveform('media-1', 100)).toEqual(mockWaveformData);
+    expect(state.isLoading('media-1', 100)).toBe(false);
+    expect(state.getError('media-1', 100)).toBeUndefined();
   });
 
   it('should handle loading error', async () => {
@@ -58,10 +57,9 @@ describe('OpenCutWaveformsStore', () => {
     await useWaveformStore.getState().loadWaveform('media-2', 'http://example.com/audio.mp3');
 
     const state = useWaveformStore.getState();
-    expect(state.waveforms.has('media-2')).toBe(false);
-    expect(state.loading.has('media-2')).toBe(false);
-    expect(state.errors.has('media-2')).toBe(true);
-    expect(state.errors.get('media-2')).toBe('Failed to fetch audio');
+    expect(state.getWaveform('media-2')).toBeUndefined();
+    expect(state.isLoading('media-2')).toBe(false);
+    expect(state.getError('media-2')).toBe('Failed to fetch audio');
   });
 
   it('should not reload if already loaded', async () => {
@@ -79,6 +77,36 @@ describe('OpenCutWaveformsStore', () => {
 
     // Should only be called once
     expect(mockGenerateWaveform).toHaveBeenCalledTimes(1);
+  });
+
+  it('should load different waveforms for different samples values', async () => {
+    const mockWaveformData100 = {
+      peaks: [0.5, 0.8],
+      duration: 5,
+      sampleRate: 44100,
+      channels: 1,
+    };
+    const mockWaveformData500 = {
+      peaks: [0.3, 0.6, 0.9, 0.4, 0.7],
+      duration: 5,
+      sampleRate: 44100,
+      channels: 1,
+    };
+
+    mockGenerateWaveform.mockResolvedValueOnce(mockWaveformData100);
+    mockGenerateWaveform.mockResolvedValueOnce(mockWaveformData500);
+
+    await useWaveformStore
+      .getState()
+      .loadWaveform('media-diff', 'http://example.com/audio.mp3', 100);
+    await useWaveformStore
+      .getState()
+      .loadWaveform('media-diff', 'http://example.com/audio.mp3', 500);
+
+    // Should be called twice for different samples values
+    expect(mockGenerateWaveform).toHaveBeenCalledTimes(2);
+    expect(useWaveformStore.getState().getWaveform('media-diff', 100)).toEqual(mockWaveformData100);
+    expect(useWaveformStore.getState().getWaveform('media-diff', 500)).toEqual(mockWaveformData500);
   });
 
   it('should return undefined for non-existent waveform', () => {
@@ -128,10 +156,10 @@ describe('OpenCutWaveformsStore', () => {
     mockGenerateWaveform.mockResolvedValueOnce(mockWaveformData);
 
     await useWaveformStore.getState().loadWaveform('media-5', 'http://example.com/audio.mp3');
-    expect(useWaveformStore.getState().waveforms.has('media-5')).toBe(true);
+    expect(useWaveformStore.getState().getWaveform('media-5')).toEqual(mockWaveformData);
 
     useWaveformStore.getState().clearWaveform('media-5');
-    expect(useWaveformStore.getState().waveforms.has('media-5')).toBe(false);
+    expect(useWaveformStore.getState().getWaveform('media-5')).toBeUndefined();
   });
 
   it('should clear all waveforms', async () => {

@@ -123,8 +123,23 @@ export const WaveformDisplay: FC<WaveformDisplayProps> = ({
       if (typeof ctx.roundRect === 'function') {
         ctx.roundRect(x, y, barActualWidth, barHeight, radius);
       } else {
-        // Fallback for browsers without roundRect
-        ctx.rect(x, y, barActualWidth, barHeight);
+        // Fallback with proper rounded corners for older browsers
+        const r = Math.min(radius, barActualWidth / 2, barHeight / 2);
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + barActualWidth - r, y);
+        ctx.quadraticCurveTo(x + barActualWidth, y, x + barActualWidth, y + r);
+        ctx.lineTo(x + barActualWidth, y + barHeight - r);
+        ctx.quadraticCurveTo(
+          x + barActualWidth,
+          y + barHeight,
+          x + barActualWidth - r,
+          y + barHeight
+        );
+        ctx.lineTo(x + r, y + barHeight);
+        ctx.quadraticCurveTo(x, y + barHeight, x, y + barHeight - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
       }
       ctx.fill();
     });
