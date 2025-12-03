@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Aura.Core.Models.RAG;
 using Microsoft.Extensions.Logging;
@@ -128,7 +129,7 @@ public class ClaimAnalysisService
             return string.Empty;
         }
 
-        var sb = new System.Text.StringBuilder();
+        var sb = new StringBuilder();
         sb.AppendLine();
         sb.AppendLine("# Pre-Verified Claims You Can Use");
         sb.AppendLine();
