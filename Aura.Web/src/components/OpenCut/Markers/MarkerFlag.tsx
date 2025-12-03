@@ -215,13 +215,13 @@ export const MarkerFlag: FC<MarkerFlagProps> = ({
           style={{ backgroundColor: markerColor }}
         />
 
-        {/* Duration bar for range markers */}
+        {/* Duration bar for range markers - uses fixed multiplier; parent component handles zoom */}
         {marker.duration && marker.duration > 0 && (
           <div
             className={styles.durationBar}
             style={{
               backgroundColor: markerColor,
-              width: `${marker.duration * 100}px`, // This should be calculated based on zoom
+              width: `${marker.duration * 100}px`,
             }}
           />
         )}

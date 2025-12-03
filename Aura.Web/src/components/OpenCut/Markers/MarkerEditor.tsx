@@ -8,6 +8,7 @@
 import {
   makeStyles,
   tokens,
+  mergeClasses,
   Input,
   Label,
   Select,
@@ -284,10 +285,5 @@ export const MarkerEditor: FC<MarkerEditorProps> = ({
     </Popover>
   );
 };
-
-// Helper for mergeClasses compatibility
-function mergeClasses(...classes: (string | undefined | false)[]): string {
-  return classes.filter(Boolean).join(' ');
-}
 
 export default MarkerEditor;
