@@ -48,6 +48,7 @@ import {
 import { motion } from 'framer-motion';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
+import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import {
@@ -417,6 +418,7 @@ const TRACK_TYPE_ICONS: Record<ClipType, React.ReactNode> = {
 
 export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const styles = useStyles();
+  const mediaStore = useOpenCutMediaStore();
   const playbackStore = useOpenCutPlaybackStore();
   const projectStore = useOpenCutProjectStore();
   const timelineStore = useOpenCutTimelineStore();
@@ -637,9 +639,18 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
       text: styles.clipText,
     }[clip.type];
 
+    // Get the actual media file from the store to access the audio/video URL
+    const mediaFile = clip.mediaId ? mediaStore.getMediaById(clip.mediaId) : null;
+    const mediaUrl = mediaFile?.url;
+
     // Show waveform for audio and video clips that have a media source
     const showWaveform =
-      (clip.type === 'audio' || clip.type === 'video') && clip.mediaId && clip.thumbnailUrl; // Using thumbnailUrl as a proxy for audio URL in this context
+      (clip.type === 'audio' || clip.type === 'video') && clip.mediaId && mediaUrl;
+
+    // Calculate trim values: inPoint is where we start in the source, outPoint is where we end
+    // trimStart: how much to skip from the beginning of the source
+    // trimEnd: not used here since we use clipDuration to control the visible portion
+    const trimStart = clip.inPoint;
 
     return (
       <motion.div
@@ -659,16 +670,15 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
         aria-label={`${clip.name} clip`}
         aria-pressed={isSelected}
       >
-        {showWaveform && clip.mediaId && clip.thumbnailUrl && (
+        {showWaveform && mediaUrl && clip.mediaId && (
           <div className={styles.clipWaveform}>
             <ClipWaveform
               mediaId={clip.mediaId}
-              audioUrl={clip.thumbnailUrl}
+              audioUrl={mediaUrl}
               width={Math.max(clipWidth, 30)}
               height={48}
               clipType={clip.type as 'audio' | 'video'}
-              trimStart={clip.inPoint}
-              trimEnd={clip.duration > 0 ? clip.outPoint - clip.inPoint - clip.duration : 0}
+              trimStart={trimStart}
               clipDuration={clip.duration}
               samples={Math.min(Math.max(Math.floor(clipWidth / 2), 50), 500)}
             />
