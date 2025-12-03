@@ -305,24 +305,3 @@ export const reducedMotionTransition = {
   duration: 0,
   ease: 'linear',
 } as const;
-
-/**
- * Type for track type color keys.
- */
-export type TrackType = 'video' | 'audio' | 'image' | 'text' | 'effect';
-
-/**
- * Get the color for a specific track type.
- * @param type - The track type
- * @returns The hex color for the track type
- */
-export function getTrackColor(type: TrackType): string {
-  const colors: Record<TrackType, string> = {
-    video: openCutTokens.colors.trackVideo,
-    audio: openCutTokens.colors.trackAudio,
-    image: openCutTokens.colors.trackImage,
-    text: openCutTokens.colors.trackText,
-    effect: openCutTokens.colors.trackEffect,
-  };
-  return colors[type];
-}

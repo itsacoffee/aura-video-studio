@@ -703,3 +703,33 @@ export interface Bounds {
   width: number;
   height: number;
 }
+
+// ============================================================================
+// Track Types
+// ============================================================================
+
+/**
+ * Type for track type in the timeline editor.
+ */
+export type TrackType = 'video' | 'audio' | 'image' | 'text' | 'effect';
+
+/**
+ * Track type color mapping.
+ * These colors are defined in designTokens.ts and mapped here for type safety.
+ */
+export const TRACK_TYPE_COLORS: Record<TrackType, string> = {
+  video: '#3B82F6',
+  audio: '#22C55E',
+  image: '#A855F7',
+  text: '#F59E0B',
+  effect: '#EC4899',
+};
+
+/**
+ * Get the color for a specific track type.
+ * @param type - The track type
+ * @returns The hex color for the track type
+ */
+export function getTrackColor(type: TrackType): string {
+  return TRACK_TYPE_COLORS[type];
+}
