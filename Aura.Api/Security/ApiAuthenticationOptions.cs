@@ -38,6 +38,16 @@ public class ApiAuthenticationOptions
     public int JwtExpirationMinutes { get; set; } = 60;
 
     /// <summary>
+    /// Whether to validate token lifetime (expiration)
+    /// </summary>
+    public bool ValidateLifetime { get; set; } = true;
+
+    /// <summary>
+    /// Clock skew tolerance for token expiration (default: 5 minutes)
+    /// </summary>
+    public TimeSpan ClockSkew { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
     /// Valid API keys (should be set via environment variable or secure configuration)
     /// </summary>
     public string[]? ValidApiKeys { get; set; }
