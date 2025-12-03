@@ -15,7 +15,7 @@ import {
 } from '@fluentui/react-icons';
 import { motion } from 'framer-motion';
 import type { FC, MouseEvent as ReactMouseEvent } from 'react';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Marker, MarkerType } from '../../../types/opencut';
 import { getMarkerColorHex } from './MarkerColorPicker';
 
@@ -143,7 +143,7 @@ export const MarkerFlag: FC<MarkerFlagProps> = ({
   }, []);
 
   // Attach global mouse listeners when dragging
-  useState(() => {
+  useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
@@ -152,7 +152,7 @@ export const MarkerFlag: FC<MarkerFlagProps> = ({
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  });
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   const handleClick = useCallback(
     (e: ReactMouseEvent) => {

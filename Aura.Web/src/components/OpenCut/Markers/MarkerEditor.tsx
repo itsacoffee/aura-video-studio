@@ -11,15 +11,15 @@ import {
   tokens,
   Button,
   Input,
-  Label,
   Textarea,
   Dropdown,
   Option,
   Field,
   Divider,
+  Checkbox,
 } from '@fluentui/react-components';
 import { Delete24Regular, Dismiss24Regular } from '@fluentui/react-icons';
-import type { FC } from 'react';
+import type { FC, ChangeEvent } from 'react';
 import { useState, useCallback, useEffect } from 'react';
 import type { Marker, MarkerType } from '../../../types/opencut';
 import { MarkerColorPicker } from './MarkerColorPicker';
@@ -255,17 +255,13 @@ export const MarkerEditor: FC<MarkerEditorProps> = ({ marker, onUpdate, onDelete
         />
       </Field>
 
-      {/* Todo completion toggle */}
+      {/* Completion toggle for task markers */}
       {marker.type === 'todo' && (
-        <Label>
-          <input
-            type="checkbox"
-            checked={marker.completed || false}
-            onChange={(e) => onUpdate({ completed: e.target.checked })}
-            style={{ marginRight: tokens.spacingHorizontalS }}
-          />
-          Mark as completed
-        </Label>
+        <Checkbox
+          checked={marker.completed || false}
+          onChange={(_, data) => onUpdate({ completed: data.checked === true })}
+          label="Mark as completed"
+        />
       )}
     </div>
   );
