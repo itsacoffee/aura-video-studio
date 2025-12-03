@@ -10,6 +10,7 @@
  * - Clip rendering with thumbnails and waveforms
  * - Selection support with multi-select
  * - Undo/redo support
+ * - Timeline markers support
  */
 
 import {
@@ -48,7 +49,9 @@ import {
 import { motion } from 'framer-motion';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
-import { openCutTokens } from '../../styles/designTokens';
+
+import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
+import { useOpenCutMarkersStore } from '../../stores/opencutMarkers';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import {
@@ -56,7 +59,10 @@ import {
   type ClipType,
   type TimelineClip,
 } from '../../stores/opencutTimeline';
-import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
+import { openCutTokens } from '../../styles/designTokens';
+import type { MarkerType } from '../../types/opencut';
+
+import { MarkerTrack } from './Markers';
 
 export interface TimelineProps {
   className?: string;
@@ -411,6 +417,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const projectStore = useOpenCutProjectStore();
   const timelineStore = useOpenCutTimelineStore();
   const keyframesStore = useOpenCutKeyframesStore();
+  const markersStore = useOpenCutMarkersStore();
 
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -418,6 +425,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const startHeightRef = useRef(0);
 
   const { tracks, clips, selectedClipIds, selectedTrackId, zoom, snapEnabled } = timelineStore;
+  const { markers, selectedMarkerId, getFilteredMarkers } = markersStore;
   const duration = playbackStore.duration;
   const currentTime = playbackStore.currentTime;
 
@@ -426,6 +434,9 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const totalWidth = Math.max(duration * pixelsPerSecond, 800);
 
   const playheadPosition = duration > 0 ? (currentTime / duration) * totalWidth : 0;
+
+  // Get filtered markers for display
+  const visibleMarkers = getFilteredMarkers();
 
   // Generate time ruler marks based on zoom level
   const rulerMarks = useMemo(() => {
@@ -579,12 +590,60 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
             }
           }
           break;
+        // Marker shortcuts
+        case 'm':
+          e.preventDefault();
+          if (e.shiftKey) {
+            // Shift+M - Add chapter marker
+            markersStore.addMarker(currentTime, {
+              type: 'chapter',
+              name: `Chapter ${markersStore.getChapterMarkers().length + 1}`,
+            });
+          } else if (e.altKey) {
+            // Alt+M - Add to-do marker
+            markersStore.addMarker(currentTime, {
+              type: 'todo',
+              name: `Task ${markersStore.getTodoMarkers().length + 1}`,
+            });
+          } else if (!cmdOrCtrl) {
+            // M - Add standard marker
+            markersStore.addMarker(currentTime);
+          }
+          break;
+        case ';':
+          if (!cmdOrCtrl && !e.shiftKey && !e.altKey) {
+            e.preventDefault();
+            // Go to previous marker
+            const prevMarker = markersStore.goToPreviousMarker(currentTime);
+            if (prevMarker) {
+              playbackStore.seek(prevMarker.time);
+            }
+          }
+          break;
+        case "'":
+          if (!cmdOrCtrl && !e.shiftKey && !e.altKey) {
+            e.preventDefault();
+            // Go to next marker
+            const nextMarker = markersStore.goToNextMarker(currentTime);
+            if (nextMarker) {
+              playbackStore.seek(nextMarker.time);
+            }
+          }
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedClipIds, currentTime, clips, timelineStore, keyframesStore, playbackStore]);
+  }, [
+    selectedClipIds,
+    currentTime,
+    clips,
+    timelineStore,
+    keyframesStore,
+    playbackStore,
+    markersStore,
+  ]);
 
   // Scroll-to-zoom with Cmd/Ctrl + mouse wheel
   const handleWheel = useCallback(
@@ -686,6 +745,49 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
       timelineStore.selectTrack(trackId);
     },
     [timelineStore]
+  );
+
+  // Marker handlers
+  const handleSelectMarker = useCallback(
+    (markerId: string | null) => {
+      markersStore.selectMarker(markerId);
+    },
+    [markersStore]
+  );
+
+  const handleMoveMarker = useCallback(
+    (markerId: string, newTime: number) => {
+      markersStore.moveMarker(markerId, newTime);
+    },
+    [markersStore]
+  );
+
+  const handleUpdateMarker = useCallback(
+    (markerId: string, updates: Parameters<typeof markersStore.updateMarker>[1]) => {
+      markersStore.updateMarker(markerId, updates);
+    },
+    [markersStore]
+  );
+
+  const handleDeleteMarker = useCallback(
+    (markerId: string) => {
+      markersStore.removeMarker(markerId);
+    },
+    [markersStore]
+  );
+
+  const handleAddMarker = useCallback(
+    (time: number, type?: MarkerType) => {
+      markersStore.addMarker(time, type ? { type } : undefined);
+    },
+    [markersStore]
+  );
+
+  const handleSeekToTime = useCallback(
+    (time: number) => {
+      playbackStore.seek(time);
+    },
+    [playbackStore]
   );
 
   const renderClip = (clip: TimelineClip) => {
@@ -925,6 +1027,21 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
             </div>
           </div>
         </div>
+
+        {/* Marker Track */}
+        <MarkerTrack
+          markers={visibleMarkers}
+          selectedMarkerId={selectedMarkerId}
+          pixelsPerSecond={pixelsPerSecond}
+          totalWidth={totalWidth}
+          currentTime={currentTime}
+          onSelectMarker={handleSelectMarker}
+          onMoveMarker={handleMoveMarker}
+          onUpdateMarker={handleUpdateMarker}
+          onDeleteMarker={handleDeleteMarker}
+          onAddMarker={handleAddMarker}
+          onSeek={handleSeekToTime}
+        />
 
         {/* Tracks */}
         <div className={styles.tracksScrollable}>

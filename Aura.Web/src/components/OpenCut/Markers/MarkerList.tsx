@@ -405,7 +405,7 @@ export const MarkerList: FC<MarkerListProps> = ({
                   }
                 }}
               >
-                {/* Todo checkbox */}
+                {/* Completion checkbox for to-do markers */}
                 {marker.type === 'todo' && (
                   <Checkbox
                     className={styles.checkbox}
