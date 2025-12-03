@@ -47,3 +47,12 @@ export type { OpenCutPlaybackStore } from './opencutPlayback';
 
 export { useOpenCutProjectStore } from './opencutProject';
 export type { OpenCutProjectState, OpenCutProject } from './opencutProject';
+
+export { useOpenCutKeyframesStore } from './opencutKeyframes';
+export type {
+  OpenCutKeyframesStore,
+  Keyframe,
+  KeyframeTrack,
+  EasingType,
+  BezierHandles,
+} from './opencutKeyframes';
