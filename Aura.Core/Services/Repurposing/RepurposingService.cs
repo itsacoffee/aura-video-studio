@@ -304,24 +304,38 @@ Respond with JSON array only, no additional text:
 
             foreach (var element in doc.RootElement.EnumerateArray())
             {
-                var startIndex = element.GetProperty("startSceneIndex").GetInt32();
-                var endIndex = element.GetProperty("endSceneIndex").GetInt32();
+                if (!element.TryGetProperty("startSceneIndex", out var startProp) ||
+                    !element.TryGetProperty("endSceneIndex", out var endProp))
+                {
+                    _logger.LogWarning("Missing scene index properties in shorts plan JSON");
+                    continue;
+                }
 
-                // Validate indices
+                var startIndex = startProp.GetInt32();
+                var endIndex = endProp.GetInt32();
+
+                // Validate indices (require at least one scene)
                 if (startIndex < 0 || endIndex >= timeline.Scenes.Count || startIndex > endIndex)
                 {
                     _logger.LogWarning("Invalid scene indices in shorts plan: {Start}-{End}", startIndex, endIndex);
                     continue;
                 }
 
+                // Get estimated duration with null check
+                var estimatedDurationSeconds = 30.0; // Default to 30 seconds
+                if (element.TryGetProperty("estimatedDurationSeconds", out var durationProp))
+                {
+                    estimatedDurationSeconds = durationProp.GetDouble();
+                }
+
                 var plan = new ShortsPlan(
-                    Title: element.GetProperty("title").GetString() ?? "Untitled Short",
+                    Title: element.TryGetProperty("title", out var titleProp) ? titleProp.GetString() ?? "Untitled Short" : "Untitled Short",
                     StartSceneIndex: startIndex,
                     EndSceneIndex: endIndex,
-                    HookText: element.GetProperty("hookText").GetString() ?? string.Empty,
-                    EstimatedDuration: TimeSpan.FromSeconds(element.GetProperty("estimatedDurationSeconds").GetDouble()),
+                    HookText: element.TryGetProperty("hookText", out var hookProp) ? hookProp.GetString() ?? string.Empty : string.Empty,
+                    EstimatedDuration: TimeSpan.FromSeconds(estimatedDurationSeconds),
                     ViralPotential: element.TryGetProperty("viralPotential", out var vp) ? vp.GetDouble() : 0.5,
-                    Platform: element.GetProperty("platform").GetString() ?? "tiktok",
+                    Platform: element.TryGetProperty("platform", out var platformProp) ? platformProp.GetString() ?? "tiktok" : "tiktok",
                     Reasoning: element.TryGetProperty("reasoning", out var r) ? r.GetString() ?? string.Empty : string.Empty,
                     SourceTimeline: timeline,
                     SourceVideoPath: sourceVideoPath);

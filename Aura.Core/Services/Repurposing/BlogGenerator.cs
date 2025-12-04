@@ -104,7 +104,7 @@ Output as Markdown format only.";
 
         var html = markdown;
 
-        // Convert headers
+        // Convert headers (must be done before paragraphs)
         html = Header1Regex().Replace(html, "<h1>$1</h1>");
         html = Header2Regex().Replace(html, "<h2>$1</h2>");
         html = Header3Regex().Replace(html, "<h3>$1</h3>");
@@ -136,14 +136,11 @@ Output as Markdown format only.";
         // Convert blockquotes
         html = BlockquoteRegex().Replace(html, "<blockquote>$1</blockquote>");
 
-        // Convert paragraphs (double newlines)
-        html = ParagraphRegex().Replace(html, "</p>\n\n<p>");
-        html = $"<p>{html}</p>";
+        // Convert line breaks to <br> tags, but preserve block elements
+        html = html.Replace("\n\n", "<br/><br/>");
+        html = html.Replace("\n", "<br/>");
 
-        // Clean up empty paragraphs
-        html = EmptyParagraphRegex().Replace(html, "");
-
-        return html;
+        return $"<div class=\"blog-content\">{html}</div>";
     }
 
     private static string ConvertMarkdownToPlainText(string markdown)

@@ -166,13 +166,15 @@ public class AspectConverter : IAspectConverter
 
         if (sourceRatio > targetRatio)
         {
-            // Source is wider, crop width
-            return $"crop=ih*{targetWidth}/{targetHeight}:ih,scale={targetWidth}:{targetHeight}";
+            // Source is wider than target - crop width from center
+            // Calculate new width to match target aspect ratio: width = height * (targetWidth / targetHeight)
+            return $"crop=in_h*{targetWidth}/{targetHeight}:in_h,scale={targetWidth}:{targetHeight}";
         }
         else
         {
-            // Source is taller, crop height
-            return $"crop=iw:iw*{targetHeight}/{targetWidth},scale={targetWidth}:{targetHeight}";
+            // Source is taller than target - crop height from center
+            // Calculate new height to match target aspect ratio: height = width * (targetHeight / targetWidth)
+            return $"crop=in_w:in_w*{targetHeight}/{targetWidth},scale={targetWidth}:{targetHeight}";
         }
     }
 

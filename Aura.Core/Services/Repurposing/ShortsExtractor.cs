@@ -52,15 +52,17 @@ public class ShortsExtractor : IShortsExtractor
             Path.GetTempPath(), "AuraVideoStudio", "Shorts", Guid.NewGuid().ToString());
         Directory.CreateDirectory(outputDir);
 
-        // Calculate start and end times from scene indices
-        var startTime = plan.SourceTimeline.Scenes
-            .Take(plan.StartSceneIndex)
-            .Aggregate(TimeSpan.Zero, (sum, s) => sum + s.Duration);
+        // Get start time from the scene at startSceneIndex
+        var scenes = plan.SourceTimeline.Scenes.ToList();
+        if (plan.StartSceneIndex >= scenes.Count || plan.EndSceneIndex >= scenes.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(plan), "Scene indices are out of range");
+        }
 
-        var endTime = plan.SourceTimeline.Scenes
-            .Take(plan.EndSceneIndex + 1)
-            .Aggregate(TimeSpan.Zero, (sum, s) => sum + s.Duration);
-
+        var startScene = scenes[plan.StartSceneIndex];
+        var endScene = scenes[plan.EndSceneIndex];
+        var startTime = startScene.Start;
+        var endTime = endScene.Start + endScene.Duration;
         var duration = endTime - startTime;
 
         // Ensure we're within short-form limits (max 60 seconds)
@@ -124,8 +126,13 @@ public class ShortsExtractor : IShortsExtractor
             _ => (1080, 1920)
         };
 
-        // Smart crop filter for vertical conversion
-        var cropFilter = $"crop=ih*9/16:ih,scale={width}:{height}";
+        // Build crop filter based on target aspect ratio
+        var cropFilter = targetAspect switch
+        {
+            Aspect.Vertical9x16 => $"crop=ih*9/16:ih,scale={width}:{height}",
+            Aspect.Square1x1 => $"crop=min(iw\\,ih):min(iw\\,ih),scale={width}:{height}",
+            _ => $"crop=ih*9/16:ih,scale={width}:{height}"
+        };
 
         var builder = new FFmpegCommandBuilder()
             .AddInput(sourcePath)
