@@ -29,6 +29,19 @@ export interface WaveformOptions {
 /** Internal cache for waveform data */
 const waveformCache = new Map<string, WaveformData>();
 
+/** Shared AudioContext for waveform generation (reused to avoid browser limits) */
+let sharedAudioContext: AudioContext | null = null;
+
+/**
+ * Get or create a shared AudioContext
+ */
+function getAudioContext(): AudioContext {
+  if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+    sharedAudioContext = new AudioContext();
+  }
+  return sharedAudioContext;
+}
+
 /**
  * Generate waveform data from an audio URL using the Web Audio API
  */
@@ -42,52 +55,52 @@ export async function generateWaveform(
     return cached;
   }
 
-  const audioContext = new AudioContext();
+  const audioContext = getAudioContext();
 
-  try {
-    const response = await fetch(audioUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-    const channelData = audioBuffer.getChannelData(options.channel ?? 0);
-    const samplesPerPeak = Math.floor(channelData.length / options.samples);
-    const peaks: number[] = [];
-
-    for (let i = 0; i < options.samples; i++) {
-      const start = i * samplesPerPeak;
-      const end = start + samplesPerPeak;
-      let max = 0;
-
-      for (let j = start; j < end && j < channelData.length; j++) {
-        const abs = Math.abs(channelData[j]);
-        if (abs > max) max = abs;
-      }
-
-      peaks.push(max);
-    }
-
-    // Normalize if requested
-    if (options.normalize) {
-      const maxPeak = Math.max(...peaks);
-      if (maxPeak > 0) {
-        for (let i = 0; i < peaks.length; i++) {
-          peaks[i] = peaks[i] / maxPeak;
-        }
-      }
-    }
-
-    const waveformData: WaveformData = {
-      peaks,
-      duration: audioBuffer.duration,
-      sampleRate: audioBuffer.sampleRate,
-      channels: audioBuffer.numberOfChannels,
-    };
-
-    waveformCache.set(cacheKey, waveformData);
-    return waveformData;
-  } finally {
-    await audioContext.close();
+  const response = await fetch(audioUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch audio: ${response.status} ${response.statusText}`);
   }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+  const channelData = audioBuffer.getChannelData(options.channel ?? 0);
+  const samplesPerPeak = Math.floor(channelData.length / options.samples);
+  const peaks: number[] = [];
+
+  for (let i = 0; i < options.samples; i++) {
+    const start = i * samplesPerPeak;
+    const end = start + samplesPerPeak;
+    let max = 0;
+
+    for (let j = start; j < end && j < channelData.length; j++) {
+      const abs = Math.abs(channelData[j]);
+      if (abs > max) max = abs;
+    }
+
+    peaks.push(max);
+  }
+
+  // Normalize if requested
+  if (options.normalize) {
+    const maxPeak = Math.max(...peaks);
+    if (maxPeak > 0) {
+      for (let i = 0; i < peaks.length; i++) {
+        peaks[i] = peaks[i] / maxPeak;
+      }
+    }
+  }
+
+  const waveformData: WaveformData = {
+    peaks,
+    duration: audioBuffer.duration,
+    sampleRate: audioBuffer.sampleRate,
+    channels: audioBuffer.numberOfChannels,
+  };
+
+  waveformCache.set(cacheKey, waveformData);
+  return waveformData;
 }
 
 /**

@@ -423,6 +423,15 @@ const TRACK_TYPE_ICONS: Record<ClipType, React.ReactNode> = {
   text: <TextT24Regular />,
 };
 
+/** Minimum samples for waveform generation */
+const WAVEFORM_MIN_SAMPLES = 50;
+
+/** Maximum samples for waveform generation */
+const WAVEFORM_MAX_SAMPLES = 500;
+
+/** Pixels per sample for waveform detail calculation */
+const WAVEFORM_PIXELS_PER_SAMPLE = 2;
+
 export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const styles = useStyles();
   const playbackStore = useOpenCutPlaybackStore();
@@ -821,7 +830,10 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     const waveformColor = clip.type === 'audio' ? '#22C55E' : '#3B82F6';
 
     // Calculate samples based on clip width for appropriate detail
-    const waveformSamples = Math.max(50, Math.min(500, Math.floor(clipWidth / 2)));
+    const waveformSamples = Math.max(
+      WAVEFORM_MIN_SAMPLES,
+      Math.min(WAVEFORM_MAX_SAMPLES, Math.floor(clipWidth / WAVEFORM_PIXELS_PER_SAMPLE))
+    );
 
     return (
       <motion.div

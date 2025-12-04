@@ -12,6 +12,12 @@ import type { FC } from 'react';
 import { openCutTokens } from '../../../styles/designTokens';
 import type { WaveformData } from '../../../stores/opencutWaveforms';
 
+/** Height scale factor for waveform bars (0-1) */
+const WAVEFORM_HEIGHT_SCALE = 0.8;
+
+/** Maximum corner radius for rounded bars */
+const MAX_BAR_CORNER_RADIUS = 2;
+
 interface WaveformDisplayProps {
   /** Waveform peak data to display */
   waveformData: WaveformData | null;
@@ -87,6 +93,34 @@ if (typeof document !== 'undefined') {
 }
 
 /**
+ * Draw a rounded rectangle with fallback for older browsers
+ */
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+): void {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, width, height, radius);
+  } else {
+    // Fallback for browsers without roundRect support
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+}
+
+/**
  * WaveformDisplay renders audio waveform visualization on a canvas
  */
 export const WaveformDisplay: FC<WaveformDisplayProps> = ({
@@ -138,16 +172,16 @@ export const WaveformDisplay: FC<WaveformDisplayProps> = ({
     ctx.fillStyle = color;
 
     visiblePeaks.forEach((peak, i) => {
-      const barHeight = Math.max(peak * height * 0.8, 1);
+      const barHeight = Math.max(peak * height * WAVEFORM_HEIGHT_SCALE, 1);
       const x = i * barWidth;
       const y = centerY - barHeight / 2;
 
-      // Draw rounded bars
-      const radius = Math.min(barWidth / 2, 2);
+      // Draw rounded bars with fallback
+      const radius = Math.min(barWidth / 2, MAX_BAR_CORNER_RADIUS);
       const barW = Math.max(barWidth - 1, 1);
 
       ctx.beginPath();
-      ctx.roundRect(x, y, barW, barHeight, radius);
+      drawRoundedRect(ctx, x, y, barW, barHeight, radius);
       ctx.fill();
     });
   }, [waveformData, width, height, color, backgroundColor, trimStart, trimEnd, clipDuration]);
