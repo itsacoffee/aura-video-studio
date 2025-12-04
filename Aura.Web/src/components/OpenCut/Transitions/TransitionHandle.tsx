@@ -164,16 +164,11 @@ export const TransitionHandle: FC<TransitionHandleProps> = ({
     const handleMouseMove = (e: globalThis.MouseEvent) => {
       const deltaX = e.clientX - startXRef.current;
       const deltaDuration = deltaX / pixelsPerSecond;
-
-      let newDuration: number;
-      if (dragSide === 'right') {
-        newDuration = startDurationRef.current + deltaDuration;
-      } else {
-        newDuration = startDurationRef.current - deltaDuration;
-      }
-
-      // Clamp duration between 0.1 and 5 seconds
-      newDuration = Math.max(0.1, Math.min(5, newDuration));
+      const multiplier = dragSide === 'right' ? 1 : -1;
+      const newDuration = Math.max(
+        0.1,
+        Math.min(5, startDurationRef.current + deltaDuration * multiplier)
+      );
       onDurationChange?.(transition.id, newDuration);
     };
 

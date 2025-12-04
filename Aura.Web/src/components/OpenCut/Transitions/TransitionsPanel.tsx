@@ -120,25 +120,24 @@ export const TransitionsPanel: FC<TransitionsPanelProps> = ({ className, onTrans
 
   // Filter transitions based on search and category
   const filteredTransitions = useMemo(() => {
-    let transitions = [...BUILTIN_TRANSITIONS];
+    return BUILTIN_TRANSITIONS.filter((t) => {
+      // Filter by category
+      if (selectedCategory !== 'all' && t.category !== selectedCategory) {
+        return false;
+      }
 
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      transitions = transitions.filter((t) => t.category === selectedCategory);
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      transitions = transitions.filter(
-        (t) =>
+      // Filter by search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
           t.name.toLowerCase().includes(query) ||
           t.description.toLowerCase().includes(query) ||
           t.category.toLowerCase().includes(query)
-      );
-    }
+        );
+      }
 
-    return transitions;
+      return true;
+    });
   }, [searchQuery, selectedCategory]);
 
   // Group transitions by category when showing all

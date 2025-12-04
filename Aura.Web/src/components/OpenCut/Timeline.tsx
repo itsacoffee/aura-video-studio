@@ -449,8 +449,8 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const startHeightRef = useRef(0);
 
   const { tracks, clips, selectedClipIds, selectedTrackId, zoom, snapEnabled } = timelineStore;
-  const { markers, selectedMarkerId, getFilteredMarkers } = markersStore;
-  const { applied: appliedTransitions, selectedTransitionId } = transitionsStore;
+  const { selectedMarkerId, getFilteredMarkers } = markersStore;
+  const { selectedTransitionId } = transitionsStore;
   const duration = playbackStore.duration;
   const currentTime = playbackStore.currentTime;
 
@@ -920,18 +920,6 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
       });
     });
   };
-
-  // Handle drop of transition on timeline
-  const handleTransitionDrop = useCallback(
-    (e: React.DragEvent, clipId: string, position: 'start' | 'end') => {
-      e.preventDefault();
-      const transitionId = e.dataTransfer.getData('application/x-opencut-transition');
-      if (transitionId) {
-        transitionsStore.applyTransition(transitionId, clipId, position);
-      }
-    },
-    [transitionsStore]
-  );
 
   const sortedTracks = useMemo(() => [...tracks].sort((a, b) => a.order - b.order), [tracks]);
 
