@@ -12,8 +12,8 @@
 
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { useEffect, useState, useCallback } from 'react';
-import { openCutTokens } from '../../styles/designTokens';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
+import { openCutTokens } from '../../styles/designTokens';
 import { MediaPanel } from './MediaPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { PropertiesPanel } from './PropertiesPanel';

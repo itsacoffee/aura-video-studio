@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { HistoryService } from '../historyService';
 import type { HistoryActionType, HistoryScope } from '../../types/history';
+import { HistoryService } from '../historyService';
 
 describe('HistoryService', () => {
   let historyService: HistoryService;

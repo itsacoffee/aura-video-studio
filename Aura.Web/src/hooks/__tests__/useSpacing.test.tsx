@@ -2,11 +2,11 @@
  * Tests for useSpacing hook
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useSpacing } from '../useSpacing';
-import { DensityProvider } from '../../contexts/DensityContext';
 import type { ReactNode } from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { DensityProvider } from '../../contexts/DensityContext';
+import { useSpacing } from '../useSpacing';
 
 // Mock localStorage
 const mockLocalStorage = () => {

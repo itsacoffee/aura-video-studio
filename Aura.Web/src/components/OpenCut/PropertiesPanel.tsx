@@ -32,11 +32,11 @@ import {
 } from '@fluentui/react-icons';
 import { useState, useCallback } from 'react';
 import type { FC } from 'react';
-import { openCutTokens } from '../../styles/designTokens';
-import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
+import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutTimelineStore, type BlendMode } from '../../stores/opencutTimeline';
+import { openCutTokens } from '../../styles/designTokens';
 import { EmptyState } from './EmptyState';
 import { KeyframeDiamond } from './KeyframeEditor';
 

@@ -8,8 +8,8 @@
 import { makeStyles, tokens, Text, Spinner, mergeClasses } from '@fluentui/react-components';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { FC, ReactNode } from 'react';
-import { openCutTokens, motionVariants, defaultTransition } from '../../../styles/designTokens';
 import { useReducedMotion } from '../../../hooks/useReducedMotion';
+import { openCutTokens, motionVariants, defaultTransition } from '../../../styles/designTokens';
 
 export interface PanelContainerProps {
   /** Panel title displayed in the header */

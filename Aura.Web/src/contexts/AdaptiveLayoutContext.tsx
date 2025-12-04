@@ -8,16 +8,6 @@
 
 import React, { createContext, useContext, useMemo, useEffect, type ReactNode } from 'react';
 import {
-  useDisplayEnvironment,
-  applyDisplayEnvironmentProperties,
-  type DisplayEnvironment,
-} from '../hooks/useDisplayEnvironment';
-import {
-  useContentDensity,
-  applyContentDensityProperties,
-  type ContentDensity,
-} from '../hooks/useContentDensity';
-import {
   calculateLayoutConfig,
   type AdaptiveLayoutConfig,
   type SidebarConfig,
@@ -27,6 +17,16 @@ import {
   type TimelineConfig,
   type TypographyConfig,
 } from '../hooks/useAdaptiveLayout';
+import {
+  useContentDensity,
+  applyContentDensityProperties,
+  type ContentDensity,
+} from '../hooks/useContentDensity';
+import {
+  useDisplayEnvironment,
+  applyDisplayEnvironmentProperties,
+  type DisplayEnvironment,
+} from '../hooks/useDisplayEnvironment';
 
 /**
  * Extended context value including both config and display state
@@ -224,8 +224,7 @@ export function AdaptiveLayoutProvider({
  * ```
  */
 export function useAdaptiveLayoutContext(): AdaptiveLayoutContextValue {
-  const context = useContext(AdaptiveLayoutContext);
-  return context;
+  return useContext(AdaptiveLayoutContext);
 }
 
 // Re-export types for convenience

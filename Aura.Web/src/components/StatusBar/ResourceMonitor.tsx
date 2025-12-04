@@ -68,49 +68,94 @@ interface ResourceMetrics {
 }
 
 // Backend API response types matching SystemResourceMetrics from Aura.Core.Models
+// All properties are optional to handle partial/null responses defensively
 interface SystemResourceMetrics {
-  timestamp: string;
-  cpu: {
-    overallUsagePercent: number;
-    perCoreUsagePercent: number[];
-    logicalCores: number;
-    physicalCores: number;
-    processUsagePercent: number;
+  timestamp?: string;
+  cpu?: {
+    overallUsagePercent?: number;
+    perCoreUsagePercent?: number[];
+    logicalCores?: number;
+    physicalCores?: number;
+    processUsagePercent?: number;
   };
-  memory: {
-    totalBytes: number;
-    availableBytes: number;
-    usedBytes: number;
-    usagePercent: number;
-    processUsageBytes: number;
-    processPrivateBytes: number;
-    processWorkingSetBytes: number;
+  memory?: {
+    totalBytes?: number;
+    availableBytes?: number;
+    usedBytes?: number;
+    usagePercent?: number;
+    processUsageBytes?: number;
+    processPrivateBytes?: number;
+    processWorkingSetBytes?: number;
   };
   gpu?: {
-    name: string;
-    vendor: string;
-    usagePercent: number;
-    totalMemoryBytes: number;
-    usedMemoryBytes: number;
-    availableMemoryBytes: number;
-    memoryUsagePercent: number;
-    temperatureCelsius: number;
+    name?: string;
+    vendor?: string;
+    usagePercent?: number;
+    totalMemoryBytes?: number;
+    usedMemoryBytes?: number;
+    availableMemoryBytes?: number;
+    memoryUsagePercent?: number;
+    temperatureCelsius?: number;
   };
-  disks: Array<{
-    driveName: string;
-    driveLabel: string;
-    totalBytes: number;
-    availableBytes: number;
-    usedBytes: number;
-    usagePercent: number;
-    readBytesPerSecond: number;
-    writeBytesPerSecond: number;
+  disks?: Array<{
+    driveName?: string;
+    driveLabel?: string;
+    totalBytes?: number;
+    availableBytes?: number;
+    usedBytes?: number;
+    usagePercent?: number;
+    readBytesPerSecond?: number;
+    writeBytesPerSecond?: number;
   }>;
-  network: {
-    bytesSentPerSecond: number;
-    bytesReceivedPerSecond: number;
-    totalBytesSent: number;
-    totalBytesReceived: number;
+  network?: {
+    bytesSentPerSecond?: number;
+    bytesReceivedPerSecond?: number;
+    totalBytesSent?: number;
+    totalBytesReceived?: number;
+  };
+}
+
+/**
+ * Parses system metrics response with defensive handling for null/undefined fields.
+ *
+ * @param response - The system metrics response from the API, which may be null, undefined, or have missing properties
+ * @returns ResourceMetrics object with the following fallback behavior:
+ *   - cpu: Falls back to 0 if cpu object or overallUsagePercent is missing. Clamped to 0-100.
+ *   - memory: Falls back to 0 if memory object or usagePercent is missing. Clamped to 0-100.
+ *   - gpu: Returns null if GPU is not available or usagePercent is not a number (displays as "N/A"). Otherwise clamped to 0-100.
+ *   - diskIO: Falls back to 0 if disks array is missing or empty. Calculated from first disk's read/write bytes per second.
+ */
+function parseMetricsResponse(response: SystemResourceMetrics | null | undefined): ResourceMetrics {
+  if (!response) {
+    return { cpu: 0, memory: 0, gpu: null, diskIO: 0 };
+  }
+
+  // Parse CPU usage with fallback to 0
+  const cpuUsage = response.cpu?.overallUsagePercent ?? 0;
+
+  // Parse memory usage with fallback to 0
+  const memoryUsage = response.memory?.usagePercent ?? 0;
+
+  // Parse GPU usage - null if GPU object is not present or usagePercent is undefined
+  const gpuUsage =
+    response.gpu && typeof response.gpu.usagePercent === 'number'
+      ? response.gpu.usagePercent
+      : null;
+
+  // Calculate disk I/O from first disk if available
+  let diskIO = 0;
+  if (response.disks && response.disks.length > 0) {
+    const firstDisk = response.disks[0];
+    const readBytes = firstDisk.readBytesPerSecond ?? 0;
+    const writeBytes = firstDisk.writeBytesPerSecond ?? 0;
+    diskIO = (readBytes + writeBytes) / (1024 * 1024); // Convert to MB/s
+  }
+
+  return {
+    cpu: Math.max(0, Math.min(100, cpuUsage)),
+    memory: Math.max(0, Math.min(100, memoryUsage)),
+    gpu: gpuUsage !== null ? Math.max(0, Math.min(100, gpuUsage)) : null,
+    diskIO: Math.max(0, diskIO),
   };
 }
 
@@ -145,27 +190,15 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
           _skipCircuitBreaker: true, // Don't trip circuit breaker for metrics polling
         });
 
-        // Calculate disk I/O from the first disk (or sum of all if needed)
-        const diskIO =
-          systemMetrics.disks.length > 0
-            ? (systemMetrics.disks[0].readBytesPerSecond +
-                systemMetrics.disks[0].writeBytesPerSecond) /
-              (1024 * 1024) // Convert to MB/s
-            : 0;
-
-        setMetrics({
-          cpu: Math.max(0, Math.min(100, systemMetrics.cpu.overallUsagePercent)),
-          memory: Math.max(0, Math.min(100, systemMetrics.memory.usagePercent)),
-          gpu: systemMetrics.gpu
-            ? Math.max(0, Math.min(100, systemMetrics.gpu.usagePercent))
-            : null,
-          diskIO: Math.max(0, diskIO),
-        });
-      } catch (error) {
+        // Use defensive parsing to handle null/undefined fields
+        const parsedMetrics = parseMetricsResponse(systemMetrics);
+        setMetrics(parsedMetrics);
+      } catch (error: unknown) {
         // Silently handle errors - don't update metrics if request fails
         // This prevents UI flicker when backend is temporarily unavailable
-        if (error instanceof Error && error.name !== 'AbortError') {
-          console.warn('[ResourceMonitor] Failed to fetch metrics:', error.message);
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        if (errorObj.name !== 'AbortError') {
+          console.warn('[ResourceMonitor] Failed to fetch metrics:', errorObj.message);
         }
       }
     };

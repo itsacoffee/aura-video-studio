@@ -7,16 +7,19 @@
  * projectEventBus.
  */
 
+import { useToastController, Toast, ToastTitle } from '@fluentui/react-components';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import type { FC, ReactNode } from 'react';
-import { useToastController, Toast, ToastTitle } from '@fluentui/react-components';
+import { ConfirmationDialog } from '../components/Dialogs/ConfirmationDialog';
+import SaveProjectAsDialog from '../components/Dialogs/SaveProjectAsDialog';
+import { WORKSPACE_STATE_CHANGED_EVENT, WORKSPACE_RESTORE_EVENT } from '../hooks/useWorkspaceState';
+import { loggingService } from '../services/loggingService';
 import {
   registerSaveProjectHandler,
   registerSaveProjectAsHandler,
   registerHasProjectHandler,
   registerShowToastHandler,
 } from '../services/projectEventBus';
-import { loggingService } from '../services/loggingService';
 import {
   saveProject as saveProjectToBackend,
   saveToLocalStorage,
@@ -24,9 +27,6 @@ import {
   clearLocalStorage,
 } from '../services/projectService';
 import { ProjectFile, AutosaveStatus, createEmptyProject, WorkspaceState } from '../types/project';
-import SaveProjectAsDialog from '../components/Dialogs/SaveProjectAsDialog';
-import { ConfirmationDialog } from '../components/Dialogs/ConfirmationDialog';
-import { WORKSPACE_STATE_CHANGED_EVENT, WORKSPACE_RESTORE_EVENT } from '../hooks/useWorkspaceState';
 
 /**
  * Project context state interface

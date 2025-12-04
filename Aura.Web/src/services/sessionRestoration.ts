@@ -10,9 +10,9 @@
  * - Media library view state
  */
 
+import { WORKSPACE_RESTORE_EVENT } from '../hooks/useWorkspaceState';
 import { ProjectFile, WorkspaceState } from '../types/project';
 import { loggingService } from './loggingService';
-import { WORKSPACE_RESTORE_EVENT } from '../hooks/useWorkspaceState';
 
 /**
  * Result of a session restoration attempt

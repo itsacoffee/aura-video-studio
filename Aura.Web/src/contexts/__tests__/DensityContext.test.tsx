@@ -2,10 +2,10 @@
  * Tests for DensityContext
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { DensityProvider, useDensity } from '../DensityContext';
 import type { ReactNode } from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { DensityProvider, useDensity } from '../DensityContext';
 
 // Mock localStorage
 const mockLocalStorage = () => {

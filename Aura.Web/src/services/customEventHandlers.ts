@@ -6,8 +6,8 @@
  */
 
 import { loggingService } from './loggingService';
-import { warnIfNoHandler } from './routeRegistry';
 import { executeSaveProject, executeSaveProjectAs, showToast } from './projectEventBus';
+import { warnIfNoHandler } from './routeRegistry';
 
 // Store references to wrapped handlers for proper cleanup
 const registeredHandlers: Map<string, EventListener> = new Map();

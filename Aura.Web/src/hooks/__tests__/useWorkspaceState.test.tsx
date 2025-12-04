@@ -3,15 +3,15 @@
  */
 
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { DEFAULT_WORKSPACE_STATE } from '../../types/project';
 import {
   useWorkspaceState,
   WORKSPACE_STATE_CHANGED_EVENT,
   WORKSPACE_SAVE_EVENT,
 } from '../useWorkspaceState';
-import { DEFAULT_WORKSPACE_STATE } from '../../types/project';
 
 // Wrapper component for testing hooks with React Router
 function createWrapper(initialPath = '/') {

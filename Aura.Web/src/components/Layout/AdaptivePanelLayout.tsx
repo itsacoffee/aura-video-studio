@@ -5,8 +5,8 @@
  * showing/hiding panels and adjusting layout automatically.
  */
 
-import React, { useState, useCallback, useEffect, type ReactNode, type CSSProperties } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
+import React, { useState, useCallback, useEffect, type ReactNode, type CSSProperties } from 'react';
 import { useAdaptiveLayoutContext } from '../../contexts/AdaptiveLayoutContext';
 
 const useStyles = makeStyles({

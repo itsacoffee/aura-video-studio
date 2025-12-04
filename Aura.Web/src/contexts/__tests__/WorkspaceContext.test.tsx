@@ -2,12 +2,12 @@
  * Tests for WorkspaceContext
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { WorkspaceProvider, useWorkspace, useWorkspaceOptional } from '../WorkspaceContext';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DEFAULT_WORKSPACE_STATE } from '../../types/project';
+import { WorkspaceProvider, useWorkspace, useWorkspaceOptional } from '../WorkspaceContext';
 
 // Wrapper component for testing hooks with context and router
 function createWrapper(initialPath = '/') {

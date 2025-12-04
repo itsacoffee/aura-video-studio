@@ -73,7 +73,7 @@ export function useThrottle<T extends (...args: Parameters<T>) => ReturnType<T>>
     };
   }, []);
 
-  const throttledCallback = useCallback(
+  return useCallback(
     (...args: Parameters<T>) => {
       const now = Date.now();
       const timeSinceLastCall = now - lastCallRef.current;
@@ -95,8 +95,6 @@ export function useThrottle<T extends (...args: Parameters<T>) => ReturnType<T>>
     },
     [delay]
   ) as T;
-
-  return throttledCallback;
 }
 
 /**

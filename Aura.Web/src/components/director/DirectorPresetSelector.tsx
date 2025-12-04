@@ -3,9 +3,9 @@
  * Allows users to select professional cinematographic presets for video generation.
  */
 
-import React from 'react';
 import { Dropdown, Option, Label, Text, tokens, makeStyles } from '@fluentui/react-components';
 import type { DropdownProps } from '@fluentui/react-components';
+import React from 'react';
 
 export type DirectorPreset =
   | 'Documentary'

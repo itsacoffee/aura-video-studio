@@ -42,9 +42,9 @@ import {
 } from '@fluentui/react-icons';
 import { useRef, useState, useCallback, useMemo } from 'react';
 import type { FC, DragEvent, MouseEvent as ReactMouseEvent } from 'react';
-import { openCutTokens } from '../../styles/designTokens';
 import { useOpenCutMediaStore, type OpenCutMediaFile } from '../../stores/opencutMedia';
 import { useOpenCutTimelineStore } from '../../stores/opencutTimeline';
+import { openCutTokens } from '../../styles/designTokens';
 import { EmptyState } from './EmptyState';
 
 export interface MediaPanelProps {

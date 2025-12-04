@@ -11,9 +11,9 @@ import {
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FallbackModeNotification } from '../../components/common/FallbackModeNotification';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
 import { ConceptCard } from '../../components/ideation/ConceptCard';
-import { FallbackModeNotification } from '../../components/common/FallbackModeNotification';
 import { SkeletonCard, ErrorState } from '../../components/Loading';
 import {
   ideationService,

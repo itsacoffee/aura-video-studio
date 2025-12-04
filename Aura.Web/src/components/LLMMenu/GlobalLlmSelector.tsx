@@ -32,8 +32,8 @@ import {
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useGlobalLlmStore } from '../../state/globalLlmStore';
 import type { ModelValidationStatus } from '../../state/globalLlmStore';
-import type { LlmModelInfo } from '../ModelSelection/LlmModelSelector';
 import type { OllamaModel } from '../../types/api-v1';
+import type { LlmModelInfo } from '../ModelSelection/LlmModelSelector';
 
 const useStyles = makeStyles({
   container: {

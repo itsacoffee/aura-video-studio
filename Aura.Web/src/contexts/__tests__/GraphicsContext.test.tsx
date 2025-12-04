@@ -6,8 +6,8 @@
  * hooks/__tests__/useGraphicsSettings.test.ts
  */
 
-import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import { useGraphics } from '../GraphicsContext';
 
 describe('GraphicsContext', () => {

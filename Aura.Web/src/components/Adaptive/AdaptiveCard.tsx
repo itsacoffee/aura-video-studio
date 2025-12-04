@@ -18,9 +18,9 @@
  * ```
  */
 
-import { forwardRef } from 'react';
 import { Card, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import type { CardProps } from '@fluentui/react-components';
+import { forwardRef } from 'react';
 import { useDensity } from '../../contexts/DensityContext';
 
 export interface AdaptiveCardProps extends Omit<CardProps, 'size'> {

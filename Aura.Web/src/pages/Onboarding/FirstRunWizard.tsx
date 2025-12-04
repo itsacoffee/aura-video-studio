@@ -36,10 +36,12 @@ import { resetCircuitBreaker } from '../../services/api/apiClient';
 import { PersistentCircuitBreaker } from '../../services/api/circuitBreakerPersistence';
 import type { FFmpegStatus } from '../../services/api/ffmpegClient';
 import { ffmpegClient } from '../../services/api/ffmpegClient';
+import { listProviders } from '../../services/api/scriptApi';
 import type { WizardStatusResponse } from '../../services/api/setupApi';
 import { setupApi } from '../../services/api/setupApi';
 import { configurationStatusService } from '../../services/configurationStatusService';
 import { markFirstRunCompleted } from '../../services/firstRunService';
+import { useGlobalLlmStore } from '../../state/globalLlmStore';
 import {
   clearWizardStateFromStorage,
   completeWizardInBackend,
@@ -52,8 +54,6 @@ import {
   saveWizardStateToStorage,
   validateApiKeyThunk,
 } from '../../state/onboarding';
-import { useGlobalLlmStore } from '../../state/globalLlmStore';
-import { listProviders } from '../../services/api/scriptApi';
 import { pickFolder } from '../../utils/pathUtils';
 import { ApiKeySetupStep } from './ApiKeySetupStep';
 

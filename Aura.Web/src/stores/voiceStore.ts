@@ -39,13 +39,7 @@ export type DialogueType = 'Narration' | 'Dialogue' | 'Quote' | 'InternalThought
 /**
  * Emotion hints for TTS synthesis.
  */
-export type EmotionHint =
-  | 'Neutral'
-  | 'Excited'
-  | 'Sad'
-  | 'Angry'
-  | 'Curious'
-  | 'Calm';
+export type EmotionHint = 'Neutral' | 'Excited' | 'Sad' | 'Angry' | 'Curious' | 'Calm';
 
 /**
  * A line of dialogue with metadata.
@@ -256,8 +250,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       set({ cloningInProgress: false, cloningError: 'Failed to create voice' });
       return null;
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Voice cloning failed';
+      const errorMessage = error instanceof Error ? error.message : 'Voice cloning failed';
       set({ cloningInProgress: false, cloningError: errorMessage });
       return null;
     }
@@ -282,8 +275,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         throw new Error('Failed to fetch preview');
       }
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      return url;
+      return URL.createObjectURL(blob);
     } catch (error: unknown) {
       console.error('Failed to preview voice:', error);
       return null;
@@ -297,15 +289,13 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       const response = await apiGet<VoicesResponse>(`/api/tts/voices${params}`);
 
       if (response.success && response.voices) {
-        const voiceDescriptors: VoiceDescriptor[] = response.voices.map(
-          (name) => ({
-            id: `${provider || 'default'}_${name}`,
-            name,
-            provider: (provider as VoiceProvider) || 'Mock',
-            locale: 'en-US',
-            gender: 'Neutral' as const,
-          })
-        );
+        const voiceDescriptors: VoiceDescriptor[] = response.voices.map((name) => ({
+          id: `${provider || 'default'}_${name}`,
+          name,
+          provider: (provider as VoiceProvider) || 'Mock',
+          locale: 'en-US',
+          gender: 'Neutral' as const,
+        }));
 
         // Merge with cloned voices
         const { clonedVoices } = get();
@@ -332,10 +322,9 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
   analyzeDialogue: async (script: string) => {
     set({ isAnalyzing: true, analysisError: null });
     try {
-      const response = await apiPost<DialogueAnalysisResponse>(
-        '/api/voices/analyze-dialogue',
-        { script }
-      );
+      const response = await apiPost<DialogueAnalysisResponse>('/api/voices/analyze-dialogue', {
+        script,
+      });
 
       if (response.success && response.analysis) {
         set({
@@ -348,8 +337,7 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
       set({ isAnalyzing: false, analysisError: 'Analysis failed' });
       return null;
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Dialogue analysis failed';
+      const errorMessage = error instanceof Error ? error.message : 'Dialogue analysis failed';
       set({ isAnalyzing: false, analysisError: errorMessage });
       return null;
     }
@@ -392,19 +380,14 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
         }
       }
 
-      const response = await apiPost<VoiceAssignmentResponse>(
-        '/api/voices/assign-voices',
-        {
-          dialogueAnalysis,
-          settings: {
-            explicitAssignments:
-              Object.keys(explicitAssignments).length > 0
-                ? explicitAssignments
-                : null,
-            autoAssignFromPool: true,
-          },
-        }
-      );
+      const response = await apiPost<VoiceAssignmentResponse>('/api/voices/assign-voices', {
+        dialogueAnalysis,
+        settings: {
+          explicitAssignments:
+            Object.keys(explicitAssignments).length > 0 ? explicitAssignments : null,
+          autoAssignFromPool: true,
+        },
+      });
 
       if (response.success && response.assignment) {
         set({ voiceAssignment: response.assignment });
