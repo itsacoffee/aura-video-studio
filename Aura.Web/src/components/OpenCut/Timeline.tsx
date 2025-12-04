@@ -52,6 +52,7 @@ import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
 
 import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
 import { useOpenCutMarkersStore } from '../../stores/opencutMarkers';
+import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import {
@@ -63,6 +64,7 @@ import { openCutTokens } from '../../styles/designTokens';
 import type { MarkerType } from '../../types/opencut';
 
 import { MarkerTrack } from './Markers';
+import { ClipWaveform } from './Waveform';
 
 export interface TimelineProps {
   className?: string;
@@ -306,6 +308,15 @@ const useStyles = makeStyles({
     objectFit: 'cover',
     flexShrink: 0,
   },
+  clipWaveform: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.6,
+    pointerEvents: 'none',
+  },
   clipInfo: {
     flex: 1,
     padding: `0 ${tokens.spacingHorizontalXS}`,
@@ -314,6 +325,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     justifyContent: 'center',
     minWidth: 0,
+    zIndex: 1,
   },
   clipName: {
     fontSize: tokens.fontSizeBase100,
@@ -418,6 +430,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const timelineStore = useOpenCutTimelineStore();
   const keyframesStore = useOpenCutKeyframesStore();
   const markersStore = useOpenCutMarkersStore();
+  const mediaStore = useOpenCutMediaStore();
 
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -802,6 +815,14 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
       text: styles.clipText,
     }[clip.type];
 
+    // Get media file for waveform
+    const mediaFile = clip.mediaId ? mediaStore.getMediaById(clip.mediaId) : null;
+    const showWaveform = (clip.type === 'audio' || clip.type === 'video') && mediaFile?.url;
+    const waveformColor = clip.type === 'audio' ? '#22C55E' : '#3B82F6';
+
+    // Calculate samples based on clip width for appropriate detail
+    const waveformSamples = Math.max(50, Math.min(500, Math.floor(clipWidth / 2)));
+
     return (
       <motion.div
         key={clip.id}
@@ -820,6 +841,21 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
         aria-label={`${clip.name} clip`}
         aria-pressed={isSelected}
       >
+        {showWaveform && mediaFile?.url && (
+          <div className={styles.clipWaveform}>
+            <ClipWaveform
+              mediaId={clip.mediaId ?? clip.id}
+              audioUrl={mediaFile.url}
+              width={Math.max(clipWidth, 30)}
+              height={48}
+              color={waveformColor}
+              trimStart={clip.inPoint}
+              trimEnd={0}
+              clipDuration={clip.duration}
+              samples={waveformSamples}
+            />
+          </div>
+        )}
         {clip.thumbnailUrl && (
           <img src={clip.thumbnailUrl} alt="" className={styles.clipThumbnail} />
         )}
