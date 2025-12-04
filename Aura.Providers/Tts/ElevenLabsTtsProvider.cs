@@ -601,4 +601,99 @@ public class ElevenLabsTtsProvider : ITtsProvider
             "FFmpeg not found. Please install FFmpeg to concatenate audio files. " +
             "Download from: https://ffmpeg.org/download.html");
     }
+
+    /// <summary>
+    /// Synthesizes speech with emotion-aware voice settings.
+    /// Adjusts stability and style based on the emotional tone.
+    /// </summary>
+    /// <param name="text">Text to synthesize.</param>
+    /// <param name="voiceId">ElevenLabs voice ID.</param>
+    /// <param name="emotion">Optional emotion hint for voice modulation.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Path to the generated audio file.</returns>
+    public async Task<string> SynthesizeWithEmotionAsync(
+        string text,
+        string voiceId,
+        string? emotion,
+        CancellationToken ct = default)
+    {
+        if (_offlineOnly)
+        {
+            throw new InvalidOperationException("ElevenLabs is not available in offline mode");
+        }
+
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            throw new InvalidOperationException("ElevenLabs API key is required");
+        }
+
+        _logger.LogInformation(
+            "Synthesizing with emotion: {Emotion} for voice {VoiceId}",
+            emotion ?? "neutral",
+            voiceId);
+
+        var (stability, style) = GetEmotionSettings(emotion);
+
+        var requestBody = new
+        {
+            text,
+            model_id = "eleven_monolingual_v1",
+            voice_settings = new
+            {
+                stability,
+                similarity_boost = 0.75,
+                style,
+                use_speaker_boost = true
+            }
+        };
+
+        var content = new StringContent(
+            JsonSerializer.Serialize(requestBody),
+            Encoding.UTF8,
+            "application/json");
+
+        var response = await _httpClient.PostAsync(
+            $"{BaseUrl}/text-to-speech/{voiceId}",
+            content,
+            ct).ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            _logger.LogError(
+                "Emotion synthesis failed: {StatusCode} - {Error}",
+                response.StatusCode,
+                errorContent);
+            throw new InvalidOperationException($"Synthesis failed: {errorContent}");
+        }
+
+        var outputPath = Path.Combine(
+            _outputDirectory,
+            $"emotion_{emotion ?? "neutral"}_{DateTime.Now:yyyyMMddHHmmss}.mp3");
+
+        using (var fileStream = new FileStream(outputPath, FileMode.Create))
+        {
+            await response.Content.CopyToAsync(fileStream, ct).ConfigureAwait(false);
+        }
+
+        return outputPath;
+    }
+
+    /// <summary>
+    /// Gets stability and style values based on emotion.
+    /// Lower stability = more expressive, higher style = more emotional.
+    /// </summary>
+    private static (double stability, double style) GetEmotionSettings(string? emotion)
+    {
+        return emotion?.ToLowerInvariant() switch
+        {
+            "excited" => (0.3, 0.8),   // Less stable, high style for energy
+            "calm" => (0.85, 0.2),     // Very stable, low style for calm
+            "angry" => (0.4, 0.7),     // Moderate instability for intensity
+            "sad" => (0.6, 0.5),       // Moderate stability with some expression
+            "curious" => (0.5, 0.4),   // Balanced with slight questioning tone
+            "happy" => (0.4, 0.6),     // Expressive and upbeat
+            _ => (0.5, 0.0)            // Neutral default
+        };
+    }
 }
