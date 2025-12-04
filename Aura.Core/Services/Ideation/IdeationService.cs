@@ -357,14 +357,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
                     if (!orchestrationResult.IsSuccess)
                     {
-                        _logger.LogError(
-                            "Ideation LLM orchestration failed: {Error}, Provider: {Provider}",
-                            orchestrationResult.ErrorMessage,
-                            orchestrationResult.ProviderUsed);
-
-                        throw new InvalidOperationException(
-                            $"Ideation failed: {orchestrationResult.ErrorMessage ?? "Unknown error"}. " +
-                            $"Provider: {orchestrationResult.ProviderUsed ?? "Unknown"}");
+                        ThrowOrchestrationError(orchestrationResult);
                     }
 
                     jsonResponse = orchestrationResult.Data;
@@ -3594,14 +3587,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
             if (!orchestrationResult.IsSuccess)
             {
-                _logger.LogError(
-                    "Ideation LLM orchestration failed: {Error}, Provider: {Provider}",
-                    orchestrationResult.ErrorMessage,
-                    orchestrationResult.ProviderUsed);
-
-                throw new InvalidOperationException(
-                    $"Ideation failed: {orchestrationResult.ErrorMessage ?? "Unknown error"}. " +
-                    $"Provider: {orchestrationResult.ProviderUsed ?? "Unknown"}");
+                ThrowOrchestrationError(orchestrationResult);
             }
 
             response = orchestrationResult.Data ?? string.Empty;
@@ -4268,6 +4254,22 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         if (number >= 1_000)
             return $"{number / 1_000.0:F1}K";
         return number.ToString();
+    }
+
+    /// <summary>
+    /// Throws an InvalidOperationException with detailed error information from an orchestration result.
+    /// Logs the error before throwing for debugging purposes.
+    /// </summary>
+    private void ThrowOrchestrationError(Aura.Core.Orchestration.OrchestrationResult<string> orchestrationResult)
+    {
+        _logger.LogError(
+            "Ideation LLM orchestration failed: {Error}, Provider: {Provider}",
+            orchestrationResult.ErrorMessage,
+            orchestrationResult.ProviderUsed);
+
+        throw new InvalidOperationException(
+            $"Ideation failed: {orchestrationResult.ErrorMessage ?? "Unknown error"}. " +
+            $"Provider: {orchestrationResult.ProviderUsed ?? "Unknown"}");
     }
 
     /// <summary>
