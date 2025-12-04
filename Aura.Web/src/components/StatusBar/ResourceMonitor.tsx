@@ -117,7 +117,13 @@ interface SystemResourceMetrics {
 
 /**
  * Parses system metrics response with defensive handling for null/undefined fields.
- * Supports both expected camelCase format and potential alternative field names.
+ *
+ * @param response - The system metrics response from the API, which may be null, undefined, or have missing properties
+ * @returns ResourceMetrics object with the following fallback behavior:
+ *   - cpu: Falls back to 0 if cpu object or overallUsagePercent is missing. Clamped to 0-100.
+ *   - memory: Falls back to 0 if memory object or usagePercent is missing. Clamped to 0-100.
+ *   - gpu: Returns null if GPU is not available or usagePercent is not a number (displays as "N/A"). Otherwise clamped to 0-100.
+ *   - diskIO: Falls back to 0 if disks array is missing or empty. Calculated from first disk's read/write bytes per second.
  */
 function parseMetricsResponse(response: SystemResourceMetrics | null | undefined): ResourceMetrics {
   if (!response) {

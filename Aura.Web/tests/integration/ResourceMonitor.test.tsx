@@ -263,9 +263,17 @@ describe('ResourceMonitor', () => {
 
       render(<ResourceMonitor compact />);
 
-      // Wait a bit to ensure the error would have been logged if it was going to be
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Wait for the API call to complete and verify no warnings were logged
+      // The mock rejection happens immediately, so we just need to wait for the promise chain
+      await waitFor(
+        () => {
+          // Verify the mock was called (proving the fetch happened)
+          expect(mockGet).toHaveBeenCalled();
+        },
+        { timeout: 1000 }
+      );
 
+      // Abort errors should not trigger console.warn
       expect(consoleWarnSpy).not.toHaveBeenCalled();
 
       consoleWarnSpy.mockRestore();
