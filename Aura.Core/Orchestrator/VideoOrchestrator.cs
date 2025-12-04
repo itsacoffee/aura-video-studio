@@ -59,6 +59,9 @@ public class VideoOrchestrator
     private readonly Dependencies.FFmpegResolver? _ffmpegResolver;
     private readonly AssetTaggingService? _assetTaggingService;
     private readonly TopicAwareFallbackGenerator _fallbackGenerator;
+    private readonly Services.AudioIntelligence.IVoiceEnhancementService? _voiceEnhancementService;
+    private readonly Services.AudioIntelligence.IMusicMatchingService? _musicMatchingService;
+    private readonly Services.AudioIntelligence.IIntelligentDuckingService? _intelligentDuckingService;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -85,7 +88,10 @@ public class VideoOrchestrator
         Services.RAG.RagScriptEnhancer? ragScriptEnhancer = null,
         Dependencies.FFmpegResolver? ffmpegResolver = null,
         AssetTaggingService? assetTaggingService = null,
-        TopicAwareFallbackGenerator? fallbackGenerator = null)
+        TopicAwareFallbackGenerator? fallbackGenerator = null,
+        Services.AudioIntelligence.IVoiceEnhancementService? voiceEnhancementService = null,
+        Services.AudioIntelligence.IMusicMatchingService? musicMatchingService = null,
+        Services.AudioIntelligence.IIntelligentDuckingService? intelligentDuckingService = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -129,10 +135,18 @@ public class VideoOrchestrator
         _ffmpegResolver = ffmpegResolver;
         _assetTaggingService = assetTaggingService;
         _fallbackGenerator = fallbackGenerator ?? new TopicAwareFallbackGenerator();
+        _voiceEnhancementService = voiceEnhancementService;
+        _musicMatchingService = musicMatchingService;
+        _intelligentDuckingService = intelligentDuckingService;
 
         if (_assetTaggingService != null)
         {
             _logger.LogInformation("AssetTaggingService configured for intelligent asset selection");
+        }
+        
+        if (_voiceEnhancementService != null || _musicMatchingService != null || _intelligentDuckingService != null)
+        {
+            _logger.LogInformation("Audio Intelligence Suite configured for enhanced audio processing");
         }
     }
 
@@ -845,12 +859,55 @@ public class VideoOrchestrator
                 _telemetryCollector.Record(ttsTelemetry);
             }
 
+            // Audio Intelligence: Enhance narration if service is available
+            string enhancedNarrationPath = narrationPath;
+            if (_voiceEnhancementService != null)
+            {
+                try
+                {
+                    _logger.LogInformation("Applying voice enhancement to narration");
+                    progress?.Report("Enhancing voice audio...");
+                    
+                    var enhanceOptions = _voiceEnhancementService.GetPreset(
+                        Services.AudioIntelligence.VoiceEnhancementPreset.VideoNarration);
+                    var enhancedPath = Path.Combine(
+                        Path.GetDirectoryName(narrationPath) ?? Path.GetTempPath(),
+                        $"enhanced_{Path.GetFileName(narrationPath)}");
+                    
+                    var enhanceResult = await _voiceEnhancementService.EnhanceVoiceAsync(
+                        narrationPath,
+                        enhancedPath,
+                        enhanceOptions,
+                        ct
+                    ).ConfigureAwait(false);
+                    
+                    if (enhanceResult.Success)
+                    {
+                        enhancedNarrationPath = enhanceResult.OutputPath;
+                        _cleanupManager.RegisterTempFile(enhancedPath);
+                        _logger.LogInformation(
+                            "Voice enhancement applied. Before: {BeforeLUFS:F1} LUFS, After: {AfterLUFS:F1} LUFS",
+                            enhanceResult.BeforeAnalysis.IntegratedLoudness,
+                            enhanceResult.AfterAnalysis?.IntegratedLoudness ?? 0);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Voice enhancement failed: {Error}, using original narration", 
+                            enhanceResult.ErrorMessage);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Voice enhancement failed, using original narration");
+                }
+            }
+
             // Stage 4: Build timeline (placeholder for music/assets)
             progress?.Report("Stage 4/5: Building timeline...");
             var timeline = new Providers.Timeline(
                 Scenes: scenes,
                 SceneAssets: new Dictionary<int, IReadOnlyList<Asset>>(),
-                NarrationPath: narrationPath,
+                NarrationPath: enhancedNarrationPath,
                 MusicPath: string.Empty,
                 SubtitlesPath: null
             );
@@ -862,7 +919,7 @@ public class VideoOrchestrator
             _logger.LogInformation(
                 "[Stage Transition] Starting video render at 70%% mark. " +
                 "Scenes: {SceneCount}, NarrationPath: {NarrationPath}, JobId: {JobId}",
-                scenes.Count, narrationPath, jobId ?? "N/A");
+                scenes.Count, enhancedNarrationPath, jobId ?? "N/A");
             
             var renderBuilder = jobId != null && correlationId != null
                 ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Render)
