@@ -134,6 +134,7 @@ export interface AudioSettings {
 interface AudioSettingsPanelProps {
   settings: AudioSettings;
   onChange: (settings: AudioSettings) => void;
+  audioPath?: string;
   onAnalyzeAudio?: (audioPath: string) => Promise<void>;
   isAnalyzing?: boolean;
   analysisResult?: {
@@ -147,6 +148,7 @@ interface AudioSettingsPanelProps {
 export const AudioSettingsPanel: React.FC<AudioSettingsPanelProps> = ({
   settings,
   onChange,
+  audioPath,
   onAnalyzeAudio,
   isAnalyzing = false,
   analysisResult,
@@ -173,8 +175,8 @@ export const AudioSettingsPanel: React.FC<AudioSettingsPanelProps> = ({
   };
 
   const handleAnalyze = async () => {
-    if (onAnalyzeAudio) {
-      await onAnalyzeAudio('');
+    if (onAnalyzeAudio && audioPath) {
+      await onAnalyzeAudio(audioPath);
     }
   };
 
@@ -349,7 +351,7 @@ export const AudioSettingsPanel: React.FC<AudioSettingsPanelProps> = ({
                 appearance="secondary"
                 icon={isAnalyzing ? <Spinner size="tiny" /> : <Sparkle24Regular />}
                 onClick={handleAnalyze}
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || !audioPath}
               >
                 {isAnalyzing ? 'Analyzing...' : 'Analyze Audio'}
               </Button>

@@ -19,6 +19,17 @@ public class VoiceEnhancementService : IVoiceEnhancementService
     private readonly ILogger<VoiceEnhancementService> _logger;
     private readonly IFFmpegService _ffmpegService;
 
+    // Noise floor estimation thresholds based on silence detection count
+    // These values represent common dB levels for different recording environments:
+    // - Many silences (>5): likely a quiet recording environment (~-55 dB noise floor)
+    // - Few silences (3-5): moderate background noise (~-45 dB noise floor)
+    // - Rare silences (<3): significant background noise (~-35 dB noise floor)
+    private const int HighSilenceCountThreshold = 5;
+    private const int LowSilenceCountThreshold = 2;
+    private const double QuietNoiseFloorDb = -55;
+    private const double ModerateNoiseFloorDb = -45;
+    private const double NoisyNoiseFloorDb = -35;
+
     private static readonly Dictionary<VoiceEnhancementPreset, VoiceEnhancementOptions> Presets = new()
     {
         [VoiceEnhancementPreset.Light] = new VoiceEnhancementOptions(
@@ -445,6 +456,10 @@ public class VoiceEnhancementService : IVoiceEnhancementService
         var silenceCount = Regex.Matches(output, @"silence_start").Count;
 
         // Estimate based on silence count and audio properties
-        return silenceCount > 5 ? -55 : silenceCount > 2 ? -45 : -35;
+        if (silenceCount > HighSilenceCountThreshold)
+            return QuietNoiseFloorDb;
+        if (silenceCount > LowSilenceCountThreshold)
+            return ModerateNoiseFloorDb;
+        return NoisyNoiseFloorDb;
     }
 }

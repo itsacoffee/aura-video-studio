@@ -83,7 +83,7 @@ public class IntelligentDuckingService : IIntelligentDuckingService
         var loudnessInfo = await AnalyzeLoudnessAsync(narrationPath, ct).ConfigureAwait(false);
 
         // Derive speech segments from silence segments
-        var speechSegments = DeriveSpechSegments(silenceSegments, duration, loudnessInfo.averageLoudness);
+        var speechSegments = DeriveSpeechSegments(silenceSegments, duration, loudnessInfo.averageLoudness);
 
         var speechDuration = speechSegments.Sum(s => s.Duration.TotalSeconds);
         var silenceDuration = silenceSegments.Sum(s => s.Duration.TotalSeconds);
@@ -259,7 +259,7 @@ public class IntelligentDuckingService : IIntelligentDuckingService
         return (avgLoudness, noiseFloor, hasClipping);
     }
 
-    private List<SpeechSegment> DeriveSpechSegments(
+    private List<SpeechSegment> DeriveSpeechSegments(
         List<SilenceSegment> silenceSegments,
         TimeSpan totalDuration,
         double averageLoudness)

@@ -21,7 +21,11 @@ public class PixabayMusicProvider : IMusicProvider
     private readonly ILogger<PixabayMusicProvider> _logger;
     private readonly HttpClient _httpClient;
     private readonly string? _apiKey;
-    private const string BaseUrl = "https://pixabay.com/api/videos/";
+    
+    // Pixabay provides a music API that returns royalty-free audio tracks.
+    // The API endpoint is part of the Pixabay ecosystem.
+    // Documentation: https://pixabay.com/api/docs/
+    private const string BaseUrl = "https://pixabay.com/api/";
 
     public string Name => "Pixabay";
 
