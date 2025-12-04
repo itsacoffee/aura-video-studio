@@ -357,8 +357,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
                     if (!orchestrationResult.IsSuccess)
                     {
+                        _logger.LogError(
+                            "Ideation LLM orchestration failed: {Error}, Provider: {Provider}",
+                            orchestrationResult.ErrorMessage,
+                            orchestrationResult.ProviderUsed);
+
                         throw new InvalidOperationException(
-                            orchestrationResult.ErrorMessage ?? "LLM orchestration failed for ideation");
+                            $"Ideation failed: {orchestrationResult.ErrorMessage ?? "Unknown error"}. " +
+                            $"Provider: {orchestrationResult.ProviderUsed ?? "Unknown"}");
                     }
 
                     jsonResponse = orchestrationResult.Data;
@@ -3588,8 +3594,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
             if (!orchestrationResult.IsSuccess)
             {
+                _logger.LogError(
+                    "Ideation LLM orchestration failed: {Error}, Provider: {Provider}",
+                    orchestrationResult.ErrorMessage,
+                    orchestrationResult.ProviderUsed);
+
                 throw new InvalidOperationException(
-                    orchestrationResult.ErrorMessage ?? "LLM orchestration failed for ideation");
+                    $"Ideation failed: {orchestrationResult.ErrorMessage ?? "Unknown error"}. " +
+                    $"Provider: {orchestrationResult.ProviderUsed ?? "Unknown"}");
             }
 
             response = orchestrationResult.Data ?? string.Empty;
