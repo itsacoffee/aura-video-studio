@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1046,6 +1047,327 @@ public class AudioController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Analyze voice audio for quality characteristics
+    /// </summary>
+    [HttpPost("voice/analyze")]
+    public async Task<IActionResult> AnalyzeVoice(
+        [FromBody] AnalyzeVoiceRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.AudioPath))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Audio path is required",
+                    correlationId
+                });
+            }
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Analyzing voice audio: {Path}",
+                correlationId, request.AudioPath);
+
+            var voiceEnhancer = HttpContext.RequestServices.GetService<IVoiceEnhancementService>();
+            if (voiceEnhancer == null)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    error = "Voice enhancement service not available",
+                    correlationId
+                });
+            }
+
+            var analysis = await voiceEnhancer.AnalyzeVoiceAsync(request.AudioPath, ct).ConfigureAwait(false);
+
+            return Ok(new
+            {
+                success = true,
+                analysis = new
+                {
+                    durationSeconds = analysis.Duration.TotalSeconds,
+                    averageLoudness = analysis.AverageLoudness,
+                    integratedLoudness = analysis.IntegratedLoudness,
+                    truePeak = analysis.TruePeak,
+                    loudnessRange = analysis.LoudnessRange,
+                    noiseFloor = analysis.NoiseFloor,
+                    hasClipping = analysis.HasClipping,
+                    hasExcessiveNoise = analysis.HasExcessiveNoise,
+                    needsNormalization = analysis.NeedsNormalization,
+                    issues = analysis.Issues,
+                    recommendations = analysis.Recommendations
+                },
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error analyzing voice", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Enhance voice audio with professional processing
+    /// </summary>
+    [HttpPost("voice/enhance")]
+    public async Task<IActionResult> EnhanceVoice(
+        [FromBody] AudioEnhanceRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.AudioPath))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Audio path is required",
+                    correlationId
+                });
+            }
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Enhancing voice audio: {Path} with preset {Preset}",
+                correlationId, request.AudioPath, request.Preset ?? "Standard");
+
+            var voiceEnhancer = HttpContext.RequestServices.GetService<IVoiceEnhancementService>();
+            if (voiceEnhancer == null)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    error = "Voice enhancement service not available",
+                    correlationId
+                });
+            }
+
+            // Get options from preset or custom settings
+            VoiceEnhancementOptions options;
+            if (!string.IsNullOrEmpty(request.Preset) && 
+                Enum.TryParse<VoiceEnhancementPreset>(request.Preset, true, out var preset))
+            {
+                options = voiceEnhancer.GetPreset(preset);
+            }
+            else
+            {
+                options = voiceEnhancer.GetPreset(VoiceEnhancementPreset.Standard);
+            }
+
+            // Apply custom overrides if provided
+            if (request.Options != null)
+            {
+                options = options with
+                {
+                    EnableNoiseReduction = request.Options.EnableNoiseReduction ?? options.EnableNoiseReduction,
+                    NoiseReductionStrength = request.Options.NoiseReductionStrength ?? options.NoiseReductionStrength,
+                    EnableCompression = request.Options.EnableCompression ?? options.EnableCompression,
+                    EnableLoudnessNormalization = request.Options.EnableLoudnessNormalization ?? options.EnableLoudnessNormalization,
+                    TargetLUFS = request.Options.TargetLUFS ?? options.TargetLUFS
+                };
+            }
+
+            var outputPath = request.OutputPath ?? 
+                Path.Combine(Path.GetTempPath(), $"enhanced_{Guid.NewGuid()}.wav");
+
+            var result = await voiceEnhancer.EnhanceVoiceAsync(
+                request.AudioPath,
+                outputPath,
+                options,
+                ct
+            ).ConfigureAwait(false);
+
+            return Ok(new
+            {
+                success = result.Success,
+                outputPath = result.OutputPath,
+                appliedEnhancements = result.AppliedEnhancements,
+                processingTimeMs = result.ProcessingTime.TotalMilliseconds,
+                beforeLoudness = result.BeforeAnalysis.IntegratedLoudness,
+                afterLoudness = result.AfterAnalysis?.IntegratedLoudness,
+                error = result.ErrorMessage,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error enhancing voice", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Plan intelligent ducking for mixing narration and music
+    /// </summary>
+    [HttpPost("ducking/plan")]
+    public async Task<IActionResult> PlanDucking(
+        [FromBody] PlanDuckingRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.NarrationPath))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Narration path is required",
+                    correlationId
+                });
+            }
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Planning ducking for: {Path}",
+                correlationId, request.NarrationPath);
+
+            var duckingService = HttpContext.RequestServices.GetService<IIntelligentDuckingService>();
+            if (duckingService == null)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    error = "Intelligent ducking service not available",
+                    correlationId
+                });
+            }
+
+            var analysis = await duckingService.AnalyzeNarrationAsync(request.NarrationPath, ct).ConfigureAwait(false);
+            var plan = duckingService.PlanDucking(analysis, request.ContentType);
+
+            return Ok(new
+            {
+                success = true,
+                analysis = new
+                {
+                    totalDurationSeconds = analysis.TotalDuration.TotalSeconds,
+                    silenceSegmentCount = analysis.SilenceSegments.Count,
+                    speechSegmentCount = analysis.SpeechSegments.Count,
+                    averageLoudness = analysis.AverageLoudness,
+                    noiseFloor = analysis.NoiseFloor,
+                    hasClipping = analysis.HasClipping,
+                    speechToSilenceRatio = analysis.SpeechToSilenceRatio
+                },
+                plan = new
+                {
+                    profileType = plan.Profile.Type.ToString(),
+                    duckDepthDb = plan.Profile.DuckDepthDb,
+                    attackTimeMs = plan.Profile.AttackTime.TotalMilliseconds,
+                    releaseTimeMs = plan.Profile.ReleaseTime.TotalMilliseconds,
+                    musicBaseVolume = plan.Profile.MusicBaseVolume,
+                    segmentCount = plan.Segments.Count,
+                    ffmpegFilter = plan.FFmpegFilter,
+                    reasoning = plan.Reasoning
+                },
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error planning ducking", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Plan sound effects for script content
+    /// </summary>
+    [HttpPost("sfx/plan")]
+    public async Task<IActionResult> PlanSfx(
+        [FromBody] PlanSfxRequest request,
+        CancellationToken ct)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Script))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Script is required",
+                    correlationId
+                });
+            }
+
+            _logger.LogInformation(
+                "[{CorrelationId}] Planning SFX for script with {Intensity} intensity",
+                correlationId, request.Intensity ?? "medium");
+
+            var effects = await _soundEffectService.SuggestSoundEffectsAsync(
+                request.Script,
+                request.SceneDurations?.Select(d => TimeSpan.FromSeconds(d)).ToList(),
+                request.ContentType,
+                ct
+            ).ConfigureAwait(false);
+
+            // Optimize timing
+            var optimized = _soundEffectService.OptimizeTiming(effects);
+
+            // Filter by intensity if specified
+            var intensity = request.Intensity?.ToLowerInvariant() ?? "medium";
+            var filtered = intensity switch
+            {
+                "low" => optimized.Where(e => e.Type != SoundEffectType.Impact && e.Type != SoundEffectType.Action).ToList(),
+                "high" => optimized,
+                _ => optimized.Where(e => e.Type != SoundEffectType.Action).ToList() // Medium
+            };
+
+            return Ok(new
+            {
+                success = true,
+                soundEffects = filtered.Select(e => new
+                {
+                    effectId = e.EffectId,
+                    type = e.Type.ToString(),
+                    description = e.Description,
+                    timestampSeconds = e.Timestamp.TotalSeconds,
+                    durationSeconds = e.Duration.TotalSeconds,
+                    volume = e.Volume,
+                    purpose = e.Purpose,
+                    filePath = e.FilePath
+                }),
+                totalEffects = filtered.Count,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error planning SFX", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                error = ex.Message,
+                correlationId
+            });
+        }
+    }
 }
 
 // Request DTOs for Audio Controller
@@ -1110,3 +1432,29 @@ public record GenerateNarrationRequest(
     string? Model = null,
     bool? UseCache = true,
     bool Stream = false);
+
+// New request DTOs for Audio Intelligence Suite
+public record AnalyzeVoiceRequest(string AudioPath);
+
+public record AudioEnhanceRequest(
+    string AudioPath,
+    string? OutputPath = null,
+    string? Preset = null,
+    AudioEnhanceOptionsDto? Options = null);
+
+public record AudioEnhanceOptionsDto(
+    bool? EnableNoiseReduction = null,
+    double? NoiseReductionStrength = null,
+    bool? EnableCompression = null,
+    bool? EnableLoudnessNormalization = null,
+    double? TargetLUFS = null);
+
+public record PlanDuckingRequest(
+    string NarrationPath,
+    string? ContentType = null);
+
+public record PlanSfxRequest(
+    string Script,
+    List<double>? SceneDurations = null,
+    string? ContentType = null,
+    string? Intensity = null);
