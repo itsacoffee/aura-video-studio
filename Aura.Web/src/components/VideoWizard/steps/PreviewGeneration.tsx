@@ -52,9 +52,9 @@ import type {
 } from '../types';
 import type { BatchGenerateProgress, VisualProvider } from '@/api/visualsClient';
 import { VisualsClient, getVisualsClient } from '@/api/visualsClient';
+import { GenerationCostEstimate } from '@/components/CostTracking/GenerationCostEstimate';
 import apiClient from '@/services/api/apiClient';
 import { ttsService, type TtsProvider, type TtsVoice } from '@/services/ttsService';
-import { GenerationCostEstimate } from '@/components/CostTracking/GenerationCostEstimate';
 
 const useStyles = makeStyles({
   container: {

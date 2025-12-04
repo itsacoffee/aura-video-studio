@@ -5,8 +5,8 @@
  * based on available space and minimum item width.
  */
 
-import React, { useMemo, type ReactNode, type CSSProperties } from 'react';
 import { makeStyles, tokens } from '@fluentui/react-components';
+import React, { useMemo, type ReactNode, type CSSProperties } from 'react';
 import { useAdaptiveLayoutContext } from '../../contexts/AdaptiveLayoutContext';
 
 const useStyles = makeStyles({

@@ -10,8 +10,8 @@ import { ChevronDown20Regular } from '@fluentui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState, useCallback, useId } from 'react';
 import type { FC, ReactNode } from 'react';
-import { openCutTokens } from '../../../styles/designTokens';
 import { useReducedMotion } from '../../../hooks/useReducedMotion';
+import { openCutTokens } from '../../../styles/designTokens';
 
 export interface PanelSectionProps {
   /** Section title */

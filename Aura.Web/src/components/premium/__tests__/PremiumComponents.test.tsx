@@ -2,12 +2,12 @@
  * Tests for Premium Visual Effects Components
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AcrylicPanel } from '../AcrylicPanel';
 import { ElevatedCard } from '../ElevatedCard';
-import { MagneticButton } from '../MagneticButton';
 import { GlowBorder } from '../GlowBorder';
+import { MagneticButton } from '../MagneticButton';
 import { PulseRing } from '../PulseRing';
 import { ShimmerText } from '../ShimmerText';
 

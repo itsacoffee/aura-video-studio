@@ -18,10 +18,10 @@
  * ```
  */
 
-import { forwardRef } from 'react';
-import type { ReactNode, ForwardedRef } from 'react';
 import { Button, makeStyles, mergeClasses, tokens } from '@fluentui/react-components';
 import type { ButtonProps } from '@fluentui/react-components';
+import { forwardRef } from 'react';
+import type { ReactNode, ForwardedRef } from 'react';
 import { useDensity } from '../../contexts/DensityContext';
 
 export interface AdaptiveButtonProps extends Omit<ButtonProps, 'size' | 'ref'> {

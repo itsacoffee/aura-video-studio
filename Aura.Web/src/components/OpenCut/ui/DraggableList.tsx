@@ -10,8 +10,8 @@ import { ReOrderDotsVertical24Regular } from '@fluentui/react-icons';
 import { motion, Reorder } from 'framer-motion';
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
-import { openCutTokens } from '../../../styles/designTokens';
 import { useReducedMotion } from '../../../hooks/useReducedMotion';
+import { openCutTokens } from '../../../styles/designTokens';
 
 export interface DraggableListItem {
   /** Unique identifier for the item */

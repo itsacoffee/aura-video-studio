@@ -2,11 +2,11 @@
  * Tests for Stack, Cluster, and Region layout components
  */
 
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Stack } from '../Stack';
+import { describe, it, expect } from 'vitest';
 import { Cluster } from '../Cluster';
 import { Region } from '../Region';
+import { Stack } from '../Stack';
 
 describe('Stack component', () => {
   it('should render children with stack class', () => {

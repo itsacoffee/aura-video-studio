@@ -49,7 +49,6 @@ import {
 import { motion } from 'framer-motion';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
-
 import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
 import { useOpenCutMarkersStore } from '../../stores/opencutMarkers';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
@@ -61,7 +60,6 @@ import {
 } from '../../stores/opencutTimeline';
 import { openCutTokens } from '../../styles/designTokens';
 import type { MarkerType } from '../../types/opencut';
-
 import { MarkerTrack } from './Markers';
 
 export interface TimelineProps {

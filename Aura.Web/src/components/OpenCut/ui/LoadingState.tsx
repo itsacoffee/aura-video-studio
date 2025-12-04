@@ -7,8 +7,8 @@
 
 import { makeStyles, tokens, mergeClasses } from '@fluentui/react-components';
 import type { FC } from 'react';
-import { openCutTokens } from '../../../styles/designTokens';
 import { useReducedMotion } from '../../../hooks/useReducedMotion';
+import { openCutTokens } from '../../../styles/designTokens';
 
 export interface LoadingStateProps {
   /** Number of skeleton rows to show */

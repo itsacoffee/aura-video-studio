@@ -23,8 +23,8 @@ import {
   type EasingType,
   type Keyframe,
 } from '../../../stores/opencutKeyframes';
-import { KeyframeDiamond } from './KeyframeDiamond';
 import { EasingPresets } from './EasingPresets';
+import { KeyframeDiamond } from './KeyframeDiamond';
 
 export interface KeyframeTrackProps {
   /** The clip ID to show keyframes for */

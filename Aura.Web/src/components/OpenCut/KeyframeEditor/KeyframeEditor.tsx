@@ -31,8 +31,8 @@ import {
   type KeyframeTrack,
 } from '../../../stores/opencutKeyframes';
 import { useOpenCutPlaybackStore } from '../../../stores/opencutPlayback';
-import { KeyframeDiamond } from './KeyframeDiamond';
 import { EasingPresets } from './EasingPresets';
+import { KeyframeDiamond } from './KeyframeDiamond';
 
 export interface KeyframeEditorProps {
   /** The clip ID to edit keyframes for */

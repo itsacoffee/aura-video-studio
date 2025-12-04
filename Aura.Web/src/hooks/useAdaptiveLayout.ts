@@ -6,8 +6,8 @@
  */
 
 import { useMemo } from 'react';
-import { useDisplayEnvironment, type DisplayEnvironment } from './useDisplayEnvironment';
 import { useContentDensity } from './useContentDensity';
+import { useDisplayEnvironment, type DisplayEnvironment } from './useDisplayEnvironment';
 
 /**
  * Sidebar configuration
@@ -350,10 +350,8 @@ export function useAdaptiveLayout(): AdaptiveLayoutConfig {
   const display = useDisplayEnvironment();
   const { spacingMultiplier, fontSizeAdjustment } = useContentDensity();
 
-  const config = useMemo(
+  return useMemo(
     () => calculateLayoutConfig(display, spacingMultiplier, fontSizeAdjustment),
     [display, spacingMultiplier, fontSizeAdjustment]
   );
-
-  return config;
 }

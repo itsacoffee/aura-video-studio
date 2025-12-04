@@ -5,8 +5,8 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { VideoStatus } from '../services/api/videoApi';
 import type { DirectorPreset } from '../components/director';
+import type { VideoStatus } from '../services/api/videoApi';
 
 export interface VideoGenerationJob {
   jobId: string;

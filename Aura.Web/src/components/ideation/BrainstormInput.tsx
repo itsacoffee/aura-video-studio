@@ -21,8 +21,8 @@ import {
   InfoRegular,
 } from '@fluentui/react-icons';
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useGlobalLlmStore } from '../../state/globalLlmStore';
 import { ollamaClient } from '../../services/api/ollamaClient';
+import { useGlobalLlmStore } from '../../state/globalLlmStore';
 
 const useStyles = makeStyles({
   container: {

@@ -1,8 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as visualsClientModule from '../../../../api/visualsClient';
 import type { StyleData, BriefData } from '../../types';
 import { StyleSelection } from '../StyleSelection';
-import * as visualsClientModule from '../../../../api/visualsClient';
 
 // Mock the visualsClient
 vi.mock('../../../../api/visualsClient', () => ({

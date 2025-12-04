@@ -5,8 +5,8 @@
  * display environment while maintaining consistent padding.
  */
 
-import React, { type ReactNode, type CSSProperties, type ElementType } from 'react';
 import { makeStyles } from '@fluentui/react-components';
+import React, { type ReactNode, type CSSProperties, type ElementType } from 'react';
 import { useAdaptiveLayoutContext } from '../../contexts/AdaptiveLayoutContext';
 
 const useStyles = makeStyles({

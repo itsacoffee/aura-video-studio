@@ -2,11 +2,11 @@
  * Tests for useGraphicsSettings hook
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { useGraphicsSettings } from '../useGraphicsSettings';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { graphicsSettingsService } from '../../services/graphicsSettingsService';
 import type { GraphicsSettings } from '../../types/graphicsSettings';
+import { useGraphicsSettings } from '../useGraphicsSettings';
 
 // Mock the graphicsSettingsService
 vi.mock('../../services/graphicsSettingsService', () => ({

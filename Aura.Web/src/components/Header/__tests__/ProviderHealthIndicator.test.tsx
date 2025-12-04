@@ -2,10 +2,10 @@
  * Tests for ProviderHealthIndicator component
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ProviderHealthIndicator } from '../ProviderHealthIndicator';
 
 // Mock the useProviderStatus hook
