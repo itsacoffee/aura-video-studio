@@ -607,6 +607,18 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services
 builder.Services.AddSingleton<Aura.Api.HostedServices.OllamaHealthCheckService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Api.HostedServices.OllamaHealthCheckService>());
 
+// Register Core OllamaHealthCheckService for comprehensive health checks with retry support
+builder.Services.AddSingleton<Aura.Core.Services.Providers.OllamaHealthCheckService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.OllamaHealthCheckService>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("OllamaClient");
+    var cache = sp.GetRequiredService<IMemoryCache>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var baseUrl = providerSettings.GetOllamaUrl();
+    return new Aura.Core.Services.Providers.OllamaHealthCheckService(logger, httpClient, cache, baseUrl);
+});
+
 // Configure Circuit Breaker options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
     builder.Configuration.GetSection("CircuitBreaker"));
@@ -6084,6 +6096,49 @@ appLifetime.ApplicationStarted.Register(() =>
     var addresses = app.Urls.Count > 0 ? string.Join(", ", app.Urls) : "configured URLs";
     logger.LogInformation("Application started. Press Ctrl+C to shut down. Listening on: {Addresses}", addresses);
 });
+
+// Check Ollama availability at startup (non-blocking, runs in background)
+_ = Task.Run(async () =>
+{
+    try
+    {
+        var ollamaHealth = app.Services.GetService<Aura.Core.Services.Providers.OllamaHealthCheckService>();
+        if (ollamaHealth == null)
+        {
+            Log.Warning("Ollama health service not available for startup check");
+            return;
+        }
+
+        Log.Information("Checking Ollama availability...");
+        using var startupCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        var ollamaReady = await ollamaHealth.WaitForOllamaAsync(
+            maxRetries: 5,
+            retryDelayMs: 2000,
+            ct: startupCts.Token).ConfigureAwait(false);
+
+        if (!ollamaReady)
+        {
+            Log.Warning(
+                "Ollama is not available at startup. Video generation will fail until Ollama is running. Start Ollama with: ollama serve");
+        }
+        else
+        {
+            var status = await ollamaHealth.CheckHealthAsync(startupCts.Token).ConfigureAwait(false);
+            Log.Information(
+                "Ollama is ready. Version: {Version}, Models: {ModelCount}",
+                status.Version, status.AvailableModels?.Count ?? 0);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        Log.Warning("Ollama startup check timed out after 30 seconds");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Ollama startup check failed");
+    }
+}, appLifetime.ApplicationStopping);
 
 // Run dependency scan on startup (non-blocking, runs in background)
 // This scans for dependencies on first launch and every program startup

@@ -313,6 +313,44 @@ public class OllamaHealthCheckService
         _cache.Remove(HealthCacheKey);
     }
 
+    /// <summary>
+    /// Wait for Ollama to become available with retry logic
+    /// </summary>
+    /// <param name="maxRetries">Maximum number of retry attempts</param>
+    /// <param name="retryDelayMs">Delay between retries in milliseconds</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>True if Ollama became available, false if all retries exhausted</returns>
+    public async Task<bool> WaitForOllamaAsync(
+        int maxRetries = 10,
+        int retryDelayMs = 2000,
+        CancellationToken ct = default)
+    {
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            var status = await PerformHealthCheckAsync(ct).ConfigureAwait(false);
+
+            if (status.IsHealthy)
+            {
+                _logger.LogInformation(
+                    "Ollama is ready after {Attempt} attempt(s). Version: {Version}",
+                    attempt, status.Version);
+                return true;
+            }
+
+            if (attempt < maxRetries)
+            {
+                _logger.LogDebug(
+                    "Ollama not ready (attempt {Attempt}/{MaxRetries}), retrying in {Delay}ms",
+                    attempt, maxRetries, retryDelayMs);
+                await Task.Delay(retryDelayMs, ct).ConfigureAwait(false);
+            }
+        }
+
+        _logger.LogWarning(
+            "Ollama did not become available after {MaxRetries} attempts", maxRetries);
+        return false;
+    }
+
     private record VersionCheckResult(
         bool Success,
         string? Version,
