@@ -585,6 +585,9 @@ builder.Services.AddSingleton<Aura.Core.Services.Settings.IGraphicsSettingsServi
 // Register media library services
 builder.Services.AddMediaServices(builder.Configuration);
 
+// Register AI repurposing services
+builder.Services.AddRepurposingServices();
+
 // Register Ollama service for process control
 builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
 {
