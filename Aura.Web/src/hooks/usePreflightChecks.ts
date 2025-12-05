@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiUrl } from '@/config/api';
 import { loggingService } from '@/services/loggingService';
 
@@ -45,20 +45,20 @@ export interface UsePreflightChecksResult {
 
 /**
  * Hook for running preflight validation checks before video generation.
- * 
+ *
  * @param autoRun - If true, run the checks automatically on mount (default: false)
  * @returns Object containing report, loading state, error, and runChecks function
- * 
+ *
  * @example
  * ```tsx
  * const { report, isLoading, error, runChecks } = usePreflightChecks(true);
- * 
+ *
  * if (isLoading) return <Spinner />;
  * if (error) return <ErrorMessage error={error} />;
  * if (!report?.ok) {
  *   return (
- *     <PreflightErrors 
- *       errors={report?.errors} 
+ *     <PreflightErrors
+ *       errors={report?.errors}
  *       warnings={report?.warnings}
  *       ffmpeg={report?.ffmpeg}
  *       ollama={report?.ollama}
@@ -87,11 +87,13 @@ export function usePreflightChecks(autoRun: boolean = false): UsePreflightChecks
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
-        throw new Error(`Preflight check failed: ${response.status} ${response.statusText}. ${errorText}`);
+        throw new Error(
+          `Preflight check failed: ${response.status} ${response.statusText}. ${errorText}`
+        );
       }
 
       const data = await response.json();
-      
+
       // Map the backend response to our interface
       // Backend uses PascalCase, we use camelCase
       const preflightReport: PreflightReport = {
@@ -112,10 +114,10 @@ export function usePreflightChecks(autoRun: boolean = false): UsePreflightChecks
         `Preflight checks completed: ${preflightReport.ok ? 'passed' : 'failed'}`,
         'usePreflightChecks',
         'runChecks',
-        { 
-          ok: preflightReport.ok, 
+        {
+          ok: preflightReport.ok,
           errorCount: preflightReport.errors.length,
-          durationMs: preflightReport.durationMs 
+          durationMs: preflightReport.durationMs,
         }
       );
 
@@ -130,11 +132,14 @@ export function usePreflightChecks(autoRun: boolean = false): UsePreflightChecks
     }
   }, []);
 
-  // Auto-run on mount if requested
-  if (autoRun && report === null && !isLoading && error === null) {
-    // Trigger the check (useEffect would be cleaner but this avoids an extra render)
-    runChecks();
-  }
+  // Auto-run on mount if requested using proper useEffect
+  useEffect(() => {
+    if (autoRun) {
+      runChecks();
+    }
+    // Only run on mount, not on every runChecks change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun]);
 
   return {
     report,

@@ -855,7 +855,15 @@ public class PreGenerationValidator
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
                 // Timeout - kill the process
-                try { process.Kill(); } catch { /* ignore */ }
+                try 
+                { 
+                    process.Kill(); 
+                } 
+                catch (Exception killEx) 
+                { 
+                    // Process may have already exited or we may not have permission to kill it
+                    _logger.LogDebug(killEx, "Failed to kill timed-out process - it may have already exited");
+                }
                 return (false, "Process timed out");
             }
 
