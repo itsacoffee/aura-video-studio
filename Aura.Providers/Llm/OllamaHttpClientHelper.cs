@@ -62,7 +62,12 @@ internal static class OllamaHttpClientHelper
         }
         catch (InvalidOperationException)
         {
-            // HttpClient is already in use (e.g., shared instance), create a new one
+            // HttpClient is already in use (e.g., shared instance or request started).
+            // Creating a new instance is intentional here to avoid thread-safety issues
+            // with shared HttpClient instances. The new instance will be stored in the
+            // provider's _httpClient field and managed by the provider's lifecycle.
+            // This is preferable to throwing an exception which would prevent the
+            // provider from working at all.
             logger.LogWarning(
                 "HttpClient already in use, creating new instance with timeout {Timeout}s",
                 requiredTimeout.TotalSeconds);

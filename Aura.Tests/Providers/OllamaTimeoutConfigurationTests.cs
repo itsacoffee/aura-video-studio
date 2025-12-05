@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using Aura.Providers.Llm;
 using Microsoft.Extensions.Logging;
@@ -11,13 +12,35 @@ namespace Aura.Tests.Providers;
 /// Tests for Ollama provider HTTP client timeout configuration.
 /// Verifies that timeout is always properly synchronized between provider and HttpClient.
 /// </summary>
-public class OllamaTimeoutConfigurationTests
+public class OllamaTimeoutConfigurationTests : IDisposable
 {
+    private readonly List<HttpClient> _httpClients = new();
+
+    private HttpClient CreateHttpClient(TimeSpan? timeout = null)
+    {
+        var httpClient = new HttpClient();
+        if (timeout.HasValue)
+        {
+            httpClient.Timeout = timeout.Value;
+        }
+        _httpClients.Add(httpClient);
+        return httpClient;
+    }
+
+    public void Dispose()
+    {
+        foreach (var httpClient in _httpClients)
+        {
+            httpClient.Dispose();
+        }
+        _httpClients.Clear();
+    }
+
     [Fact]
     public void OllamaLlmProvider_WithShortHttpClientTimeout_IncreasesTimeout()
     {
         // Arrange
-        var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(100) };
+        var httpClient = CreateHttpClient(TimeSpan.FromSeconds(100));
         var logger = NullLogger<OllamaLlmProvider>.Instance;
 
         // Act
@@ -34,7 +57,7 @@ public class OllamaTimeoutConfigurationTests
     public void OllamaLlmProvider_WithInfiniteTimeout_DoesNotModify()
     {
         // Arrange
-        var httpClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        var httpClient = CreateHttpClient(Timeout.InfiniteTimeSpan);
         var logger = NullLogger<OllamaLlmProvider>.Instance;
 
         // Act
@@ -49,7 +72,7 @@ public class OllamaTimeoutConfigurationTests
     {
         // Arrange
         var sufficientTimeout = TimeSpan.FromSeconds(900 + 300 + 100); // More than required
-        var httpClient = new HttpClient { Timeout = sufficientTimeout };
+        var httpClient = CreateHttpClient(sufficientTimeout);
         var logger = NullLogger<OllamaLlmProvider>.Instance;
 
         // Act
@@ -63,7 +86,7 @@ public class OllamaTimeoutConfigurationTests
     public void OllamaScriptProvider_WithShortHttpClientTimeout_IncreasesTimeout()
     {
         // Arrange
-        var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(100) };
+        var httpClient = CreateHttpClient(TimeSpan.FromSeconds(100));
         var logger = NullLogger<OllamaScriptProvider>.Instance;
 
         // Act
@@ -80,7 +103,7 @@ public class OllamaTimeoutConfigurationTests
     public void OllamaScriptProvider_WithInfiniteTimeout_DoesNotModify()
     {
         // Arrange
-        var httpClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        var httpClient = CreateHttpClient(Timeout.InfiniteTimeSpan);
         var logger = NullLogger<OllamaScriptProvider>.Instance;
 
         // Act
@@ -95,7 +118,7 @@ public class OllamaTimeoutConfigurationTests
     {
         // Arrange
         var sufficientTimeout = TimeSpan.FromSeconds(900 + 300 + 100); // More than required
-        var httpClient = new HttpClient { Timeout = sufficientTimeout };
+        var httpClient = CreateHttpClient(sufficientTimeout);
         var logger = NullLogger<OllamaScriptProvider>.Instance;
 
         // Act
@@ -109,7 +132,7 @@ public class OllamaTimeoutConfigurationTests
     public void OllamaLlmProvider_TimeoutBuffer_IsConsistentWith300Seconds()
     {
         // Arrange
-        var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(50) };
+        var httpClient = CreateHttpClient(TimeSpan.FromSeconds(50));
         var logger = NullLogger<OllamaLlmProvider>.Instance;
         var providerTimeout = 600; // 10 minutes
 
@@ -124,7 +147,7 @@ public class OllamaTimeoutConfigurationTests
     public void OllamaScriptProvider_TimeoutBuffer_IsConsistentWith300Seconds()
     {
         // Arrange
-        var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(50) };
+        var httpClient = CreateHttpClient(TimeSpan.FromSeconds(50));
         var logger = NullLogger<OllamaScriptProvider>.Instance;
         var providerTimeout = 600; // 10 minutes
 
@@ -139,7 +162,7 @@ public class OllamaTimeoutConfigurationTests
     public void OllamaLlmProvider_WithDefaultTimeout_IncreasesToProviderTimeout()
     {
         // Arrange - default HttpClient timeout is 100 seconds
-        var httpClient = new HttpClient(); // Default timeout
+        var httpClient = CreateHttpClient();
         var logger = NullLogger<OllamaLlmProvider>.Instance;
 
         // Act
@@ -156,7 +179,7 @@ public class OllamaTimeoutConfigurationTests
     public void OllamaScriptProvider_WithDefaultTimeout_IncreasesToProviderTimeout()
     {
         // Arrange - default HttpClient timeout is 100 seconds
-        var httpClient = new HttpClient(); // Default timeout
+        var httpClient = CreateHttpClient();
         var logger = NullLogger<OllamaScriptProvider>.Instance;
 
         // Act
