@@ -132,14 +132,13 @@ export function usePreflightChecks(autoRun: boolean = false): UsePreflightChecks
     }
   }, []);
 
-  // Auto-run on mount if requested using proper useEffect
+  // Auto-run on mount if autoRun is true
+  // Note: runChecks is stable (empty deps in useCallback) so only autoRun triggers re-run
   useEffect(() => {
     if (autoRun) {
       runChecks();
     }
-    // Only run on mount, not on every runChecks change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRun]);
+  }, [autoRun, runChecks]);
 
   return {
     report,

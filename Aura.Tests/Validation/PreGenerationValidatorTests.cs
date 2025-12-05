@@ -253,9 +253,9 @@ public class PreGenerationValidatorTests
     public async Task ValidateAsync_AllChecksPass_ReturnsOk()
     {
         // Arrange
-        SetupSuccessfulValidation();
-        SetupTtsProviderSuccess();
-        SetupImageProviderSuccess();
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
         var validator = CreateValidator();
         var systemProfile = CreateTestSystemProfile();
 
@@ -281,9 +281,7 @@ public class PreGenerationValidatorTests
             .ReturnsAsync(new FfmpegResolutionResult { Found = false, IsValid = false, Error = "FFmpeg not found" });
         
         SetupHardwareSuccess();
-        SetupProviderSuccess();
-        SetupTtsProviderSuccess();
-        SetupImageProviderSuccess();
+        SetupAllProvidersSuccess();
         var validator = CreateValidator();
         var systemProfile = CreateTestSystemProfile();
 
@@ -341,9 +339,8 @@ public class PreGenerationValidatorTests
         // Arrange
         SetupFfmpegSuccess();
         SetupHardwareSuccess();
-        SetupTtsProviderSuccess();
         
-        // Setup provider readiness without image provider
+        // Setup provider readiness with LLM and TTS ready but image provider missing
         var llmStatus = new ProviderCategoryStatus("LLM", true, "Ollama", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
         var ttsStatus = new ProviderCategoryStatus("TTS", true, "WindowsTTS", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
         var imageStatus = new ProviderCategoryStatus("Images", false, null, "NotConfigured", "No image providers configured", new List<string> { "Configure an image provider" }, new List<ProviderCandidateStatus>());
@@ -377,9 +374,7 @@ public class PreGenerationValidatorTests
         // Arrange
         SetupFfmpegSuccess();
         SetupHardwareSuccess();
-        SetupProviderSuccess();
-        SetupTtsProviderSuccess();
-        SetupImageProviderSuccess();
+        SetupAllProvidersSuccess();
         var validator = CreateValidator();
         var systemProfile = CreateTestSystemProfile();
 
@@ -397,9 +392,9 @@ public class PreGenerationValidatorTests
     public async Task ValidateAsync_ReturnsTimingInformation()
     {
         // Arrange
-        SetupSuccessfulValidation();
-        SetupTtsProviderSuccess();
-        SetupImageProviderSuccess();
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
         var validator = CreateValidator();
         var systemProfile = CreateTestSystemProfile();
 
@@ -421,9 +416,7 @@ public class PreGenerationValidatorTests
             .ReturnsAsync(new FfmpegResolutionResult { Found = false, IsValid = false, Error = "FFmpeg not found" });
         
         SetupHardwareSuccess();
-        SetupProviderSuccess();
-        SetupTtsProviderSuccess();
-        SetupImageProviderSuccess();
+        SetupAllProvidersSuccess();
         var validator = CreateValidator();
         var systemProfile = CreateTestSystemProfile();
 
@@ -440,9 +433,9 @@ public class PreGenerationValidatorTests
     public async Task ValidateAsync_WithNullSystemProfile_StillWorks()
     {
         // Arrange
-        SetupSuccessfulValidation();
-        SetupTtsProviderSuccess();
-        SetupImageProviderSuccess();
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
         var validator = CreateValidator();
 
         // Act
@@ -452,24 +445,20 @@ public class PreGenerationValidatorTests
         Assert.NotNull(report);
     }
 
-    private void SetupTtsProviderSuccess()
+    private void SetupAllProvidersSuccess()
     {
-        // Add TTS category to existing provider success setup
-        var existingResult = new ProviderReadinessResult();
+        // Setup all provider categories as successful
+        var result = new ProviderReadinessResult();
         var llmStatus = new ProviderCategoryStatus("LLM", true, "Ollama", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
         var ttsStatus = new ProviderCategoryStatus("TTS", true, "WindowsTTS", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
-        existingResult.CategoryStatuses.Add(llmStatus);
-        existingResult.CategoryStatuses.Add(ttsStatus);
+        var imageStatus = new ProviderCategoryStatus("Images", true, "Pexels", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
+        result.CategoryStatuses.Add(llmStatus);
+        result.CategoryStatuses.Add(ttsStatus);
+        result.CategoryStatuses.Add(imageStatus);
         
         _mockProviderReadiness
             .Setup(r => r.ValidateRequiredProvidersAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(existingResult);
-    }
-
-    private void SetupImageProviderSuccess()
-    {
-        // This is handled by the TtsProviderSuccess setup - adding Images category
-        // We need to update the mock to include all categories
+            .ReturnsAsync(result);
     }
 
     private SystemProfile CreateTestSystemProfile()

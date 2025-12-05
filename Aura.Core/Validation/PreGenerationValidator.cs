@@ -854,10 +854,10 @@ public class PreGenerationValidator
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                // Timeout - kill the process
+                // Timeout - kill the process and its entire process tree
                 try 
                 { 
-                    process.Kill(); 
+                    process.Kill(entireProcessTree: true); 
                 } 
                 catch (Exception killEx) 
                 { 
