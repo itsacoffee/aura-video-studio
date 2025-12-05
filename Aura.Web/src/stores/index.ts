@@ -56,3 +56,16 @@ export type {
   EasingType,
   BezierHandles,
 } from './opencutKeyframes';
+
+export { useOpenCutCaptionsStore, DEFAULT_CAPTION_STYLE } from './opencutCaptions';
+export type {
+  OpenCutCaptionsStore,
+  Caption,
+  CaptionTrack,
+  CaptionStyle,
+  CaptionAlignment,
+  CaptionPosition,
+} from './opencutCaptions';
+
+export { useTranscriptionStore } from './opencutTranscription';
+export type { TranscriptionStore } from './opencutTranscription';

@@ -4,7 +4,6 @@
 
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-
 import { WaveformDisplay } from '../WaveformDisplay';
 
 describe('WaveformDisplay', () => {

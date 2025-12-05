@@ -1,10 +1,10 @@
-import React from 'react';
 import { Badge, Button, Spinner, Tooltip, makeStyles, tokens } from '@fluentui/react-components';
 import {
   CheckmarkCircle24Regular,
   ErrorCircle24Regular,
   ArrowClockwise24Regular,
 } from '@fluentui/react-icons';
+import React from 'react';
 import { useOllamaHealth } from '../hooks/useOllamaHealth';
 
 const useStyles = makeStyles({

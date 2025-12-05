@@ -39,8 +39,8 @@ import { TemplateGallery, TemplateConfigurator } from '../components/VideoTempla
 import { apiUrl } from '../config/api';
 import { useDisableWhenOffline } from '../hooks/useDisableWhenOffline';
 import { useFormValidation } from '../hooks/useFormValidation';
-import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { generateVideo } from '../services/api/videoApi';
+import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { useActivity } from '../state/activityContext';
 import type { PreflightReport } from '../state/providers';
 import { container, spacing, gaps, formLayout } from '../themes/layout';
