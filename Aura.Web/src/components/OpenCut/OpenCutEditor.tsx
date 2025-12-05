@@ -80,13 +80,22 @@ const useStyles = makeStyles({
 
 type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates';
 
+// Calculate responsive panel size based on viewport width
+function getResponsivePanelSize(): number {
+  if (typeof window === 'undefined') return 280;
+  const viewportWidth = window.innerWidth;
+  // Use ~15% of viewport width, clamped between min and max
+  const percentageSize = Math.round(viewportWidth * 0.15);
+  return Math.max(240, Math.min(percentageSize, 400));
+}
+
 export function OpenCutEditor() {
   const styles = useStyles();
   const projectStore = useOpenCutProjectStore();
 
-  // Panel sizes state
-  const [leftPanelSize, setLeftPanelSize] = useState(320);
-  const [rightPanelSize, setRightPanelSize] = useState(320);
+  // Panel sizes state - responsive initial size based on viewport
+  const [leftPanelSize, setLeftPanelSize] = useState(() => getResponsivePanelSize());
+  const [rightPanelSize, setRightPanelSize] = useState(() => getResponsivePanelSize());
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('media');
 
   // Initialize keyboard shortcuts handler
@@ -135,8 +144,8 @@ export function OpenCutEditor() {
         <ResizablePanel
           direction="right"
           defaultSize={leftPanelSize}
-          minSize={260}
-          maxSize={480}
+          minSize={200}
+          maxSize={600}
           className={styles.leftPanel}
           onResize={handleLeftPanelResize}
         >
@@ -164,8 +173,8 @@ export function OpenCutEditor() {
         <ResizablePanel
           direction="left"
           defaultSize={rightPanelSize}
-          minSize={260}
-          maxSize={480}
+          minSize={200}
+          maxSize={600}
           className={styles.rightPanel}
           onResize={handleRightPanelResize}
         >

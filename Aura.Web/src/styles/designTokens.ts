@@ -12,28 +12,28 @@
  */
 export const openCutTokens = {
   /**
-   * Spacing scale with generous whitespace for a premium feel.
-   * Based on 4px base unit with logical progression.
+   * Spacing scale with tighter whitespace for professional NLE feel.
+   * Based on 4px base unit with compact progression.
    */
   spacing: {
-    /** 4px - Extra extra small */
-    xxs: '4px',
-    /** 8px - Extra small */
-    xs: '8px',
-    /** 12px - Small */
-    sm: '12px',
-    /** 16px - Medium (base) */
-    md: '16px',
-    /** 24px - Large */
-    lg: '24px',
-    /** 32px - Extra large */
-    xl: '32px',
-    /** 48px - Extra extra large */
-    xxl: '48px',
-    /** 20px - Standard panel padding */
-    panelPadding: '20px',
-    /** 24px - Gap between sections */
-    sectionGap: '24px',
+    /** 2px - Extra extra small */
+    xxs: '0.125rem',
+    /** 4px - Extra small */
+    xs: '0.25rem',
+    /** 8px - Small */
+    sm: '0.5rem',
+    /** 12px - Medium (base) */
+    md: '0.75rem',
+    /** 16px - Large */
+    lg: '1rem',
+    /** 24px - Extra large */
+    xl: '1.5rem',
+    /** 32px - Extra extra large */
+    xxl: '2rem',
+    /** 12px - Compact panel padding for professional NLE */
+    panelPadding: '0.75rem',
+    /** 16px - Tighter gap between sections */
+    sectionGap: '1rem',
   },
 
   /**
@@ -50,20 +50,20 @@ export const openCutTokens = {
       mono: '"SF Mono", ui-monospace, "Cascadia Code", monospace',
     },
     fontSize: {
-      /** 10px - Extra small for labels and badges */
-      xs: '10px',
-      /** 11px - Small for secondary info */
-      sm: '11px',
-      /** 13px - Base size for body text */
-      base: '13px',
-      /** 15px - Medium for emphasis */
-      md: '15px',
-      /** 17px - Large for section headers */
-      lg: '17px',
-      /** 20px - Extra large for panel headers */
-      xl: '20px',
-      /** 24px - Extra extra large for titles */
-      xxl: '24px',
+      /** 0.625rem (10px at 16px base) - Extra small for labels and badges */
+      xs: '0.625rem',
+      /** 0.6875rem (11px) - Small for secondary info */
+      sm: '0.6875rem',
+      /** 0.75rem (12px) - Base size for body text (compact for NLE) */
+      base: '0.75rem',
+      /** 0.8125rem (13px) - Medium for emphasis */
+      md: '0.8125rem',
+      /** 0.875rem (14px) - Large for section headers */
+      lg: '0.875rem',
+      /** 1rem (16px) - Extra large for panel headers */
+      xl: '1rem',
+      /** 1.25rem (20px) - Extra extra large for titles */
+      xxl: '1.25rem',
     },
     fontWeight: {
       /** 400 - Regular weight */
