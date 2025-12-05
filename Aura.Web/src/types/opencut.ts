@@ -359,6 +359,8 @@ export interface CaptionAnimation {
 export interface Caption {
   /** Unique caption identifier */
   id: string;
+  /** Parent track identifier */
+  trackId: string;
   /** Start time in seconds */
   startTime: number;
   /** End time in seconds */
@@ -397,6 +399,8 @@ export interface CaptionTrack {
   visible: boolean;
   /** Whether track is locked */
   locked: boolean;
+  /** Whether this is the default track */
+  isDefault: boolean;
 }
 
 // ============================================================================

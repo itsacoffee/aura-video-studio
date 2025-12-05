@@ -38,6 +38,7 @@ import { motion } from 'framer-motion';
 import { useCallback, useRef, useState } from 'react';
 import type { FC } from 'react';
 import { openCutTokens } from '../../styles/designTokens';
+import { CaptionPreview } from './Captions';
 import { ExportDialog } from './Export';
 import { PlaybackControls } from './PlaybackControls';
 
@@ -513,6 +514,9 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
 
             {/* Quality Badge */}
             {quality !== 'full' && <div className={styles.qualityBadge}>{getQualityLabel()}</div>}
+
+            {/* Caption Preview Overlay */}
+            <CaptionPreview />
 
             <div className={styles.aspectRatioLabel}>16:9</div>
           </motion.div>
