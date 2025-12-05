@@ -25,6 +25,13 @@ import type { FC, ChangeEvent } from 'react';
 import { openCutTokens } from '../../../styles/designTokens';
 import { EmptyState } from '../EmptyState';
 
+/**
+ * Generate a unique ID for LUT elements
+ */
+function generateLutId(): string {
+  return `lut-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
 export interface LUTDefinition {
   id: string;
   name: string;
@@ -310,9 +317,9 @@ export const LUTSelector: FC<LUTSelectorProps> = ({
       const file = e.target.files?.[0];
       if (file && onUploadLut) {
         onUploadLut(file);
-        // Add to custom LUTs
+        // Add to custom LUTs with unique ID
         const newLut: LUTDefinition = {
-          id: `custom-${Date.now()}`,
+          id: generateLutId(),
           name: file.name.replace(/\.(cube|3dl)$/i, ''),
           description: 'Custom uploaded LUT',
           category: 'custom',

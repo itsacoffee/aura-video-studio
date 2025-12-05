@@ -111,18 +111,27 @@ export const EffectControls: FC<EffectControlsProps> = ({ effect, className }) =
     effectsStore.resetEffectParameters(effect.id);
   }, [effectsStore, effect.id]);
 
+  /**
+   * Build a consistent property key for effect parameters
+   * Used for keyframe tracking
+   */
+  const getEffectPropertyKey = useCallback(
+    (paramId: string): string => `effect-${effect.id}-${paramId}`,
+    [effect.id]
+  );
+
   const hasKeyframeAt = useCallback(
     (paramId: string): boolean => {
-      const propertyKey = `effect-${effect.id}-${paramId}`;
+      const propertyKey = getEffectPropertyKey(paramId);
       const kf = keyframesStore.getKeyframeAtTime(effect.clipId, propertyKey, currentTime);
       return !!kf;
     },
-    [effect.id, effect.clipId, keyframesStore, currentTime]
+    [getEffectPropertyKey, effect.clipId, keyframesStore, currentTime]
   );
 
   const handleKeyframeToggle = useCallback(
     (paramId: string, value: number) => {
-      const propertyKey = `effect-${effect.id}-${paramId}`;
+      const propertyKey = getEffectPropertyKey(paramId);
       const existingKf = keyframesStore.getKeyframeAtTime(effect.clipId, propertyKey, currentTime);
       if (existingKf) {
         keyframesStore.removeKeyframe(existingKf.id);

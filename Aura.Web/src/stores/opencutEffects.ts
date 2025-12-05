@@ -4,6 +4,11 @@
  * Manages video effects including a library of built-in effects,
  * applied effects on clips, and effect parameters. Provides color
  * correction, blur, stylize effects and more.
+ *
+ * Note: This store defines its own interfaces that extend the base types
+ * in types/opencut.ts to include additional store-specific properties
+ * (clipId, order for AppliedEffect; supportsKeyframes for EffectDefinition).
+ * The base types in opencut.ts serve as the API contract for serialization.
  */
 
 import { create } from 'zustand';
@@ -14,7 +19,8 @@ function generateId(): string {
 }
 
 /**
- * Extended effect definition with keyframe support.
+ * Effect definition for the effects store.
+ * Extends the base EffectDefinition from opencut.ts with keyframe support.
  */
 export interface EffectDefinition {
   /** Unique effect identifier */
@@ -38,7 +44,9 @@ export interface EffectDefinition {
 }
 
 /**
- * Applied effect on a clip with ordering.
+ * Applied effect instance on a clip.
+ * Extends the base AppliedEffect from opencut.ts with clipId and order
+ * for managing the effect stack in the store.
  */
 export interface AppliedEffect {
   /** Unique instance identifier */
