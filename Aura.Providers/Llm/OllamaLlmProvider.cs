@@ -99,7 +99,10 @@ public class OllamaLlmProvider : ILlmProvider
     {
         _logger = logger;
         _circuitBreaker = circuitBreaker;
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _httpClient = OllamaHttpClientHelper.EnsureProperTimeout(
+            httpClient ?? throw new ArgumentNullException(nameof(httpClient)),
+            timeoutSeconds,
+            logger);
         _baseUrl = ValidateBaseUrl(baseUrl);
         _model = model;
         _maxRetries = maxRetries;
@@ -109,24 +112,6 @@ public class OllamaLlmProvider : ILlmProvider
         _gpuEnabled = gpuEnabled;
         _numGpu = gpuEnabled ? numGpu : 0; // Force CPU mode if GPU disabled
         _numCtx = numCtx;
-
-        // CRITICAL: Ensure HttpClient timeout is longer than provider timeout
-        // HttpClient has a default 100-second timeout that would kill connections
-        // before our 15-minute provider timeout is reached
-        if (_httpClient.Timeout < TimeSpan.FromSeconds(timeoutSeconds + 300))
-        {
-            _logger.LogWarning(
-                "HttpClient timeout ({HttpClientTimeout}s) is shorter than provider timeout ({ProviderTimeout}s). " +
-                "Increasing HttpClient timeout to prevent premature cancellation. " +
-                "This should be configured in DI registration instead.",
-                _httpClient.Timeout.TotalSeconds, timeoutSeconds);
-
-            _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds + 300); // Add 5-minute buffer
-
-            _logger.LogInformation(
-                "HttpClient timeout increased to {NewTimeout}s to accommodate slow Ollama generation",
-                _httpClient.Timeout.TotalSeconds);
-        }
 
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)

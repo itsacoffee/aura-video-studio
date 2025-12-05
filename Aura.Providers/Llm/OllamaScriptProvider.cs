@@ -48,23 +48,14 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         int timeoutSeconds = 900) // 15 minutes - very lenient for slow systems and large models
         : base(logger, maxRetries, baseRetryDelayMs: 1000)
     {
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _httpClient = OllamaHttpClientHelper.EnsureProperTimeout(
+            httpClient ?? throw new ArgumentNullException(nameof(httpClient)),
+            timeoutSeconds,
+            logger);
         _ragContextBuilder = ragContextBuilder;
         _baseUrl = ValidateBaseUrl(baseUrl);
         _model = model;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
-
-        // CRITICAL: Ensure HttpClient timeout is longer than provider timeout
-        // HttpClient has a default 100-second timeout that would kill connections
-        // before our 15-minute provider timeout is reached
-        if (_httpClient.Timeout < TimeSpan.FromSeconds(timeoutSeconds + 60))
-        {
-            _logger.LogWarning(
-                "HttpClient timeout ({HttpClientTimeout}s) is shorter than provider timeout ({ProviderTimeout}s). " +
-                "Increasing HttpClient timeout to prevent premature cancellation.",
-                _httpClient.Timeout.TotalSeconds, timeoutSeconds);
-            _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds + 300); // Add 5-minute buffer
-        }
 
         _logger.LogInformation("OllamaScriptProvider initialized with baseUrl={BaseUrl}, model={Model}, timeout={Timeout}s (lenient for slow systems), httpClientTimeout={HttpClientTimeout}s, ragEnabled={RagEnabled}",
             _baseUrl, _model, timeoutSeconds, _httpClient.Timeout.TotalSeconds, _ragContextBuilder != null);
