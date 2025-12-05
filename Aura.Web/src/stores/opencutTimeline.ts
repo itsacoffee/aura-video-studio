@@ -103,6 +103,12 @@ interface TimelineSnapshot {
   description: string;
 }
 
+/** Gap in timeline */
+export interface TimelineGap {
+  start: number;
+  end: number;
+}
+
 /** Timeline state */
 export interface OpenCutTimelineState {
   tracks: TimelineTrack[];
@@ -116,6 +122,10 @@ export interface OpenCutTimelineState {
   undoStack: TimelineSnapshot[];
   redoStack: TimelineSnapshot[];
   maxHistorySize: number;
+  // Magnetic timeline state
+  magneticTimelineEnabled: boolean;
+  snapToClips: boolean;
+  snapTolerance: number; // pixels
 }
 
 /** Timeline actions */
@@ -168,6 +178,30 @@ export interface OpenCutTimelineActions {
   // Snap and ripple
   setSnapEnabled: (enabled: boolean) => void;
   setRippleEnabled: (enabled: boolean) => void;
+
+  // Magnetic timeline
+  setMagneticTimeline: (enabled: boolean) => void;
+  setSnapToClips: (enabled: boolean) => void;
+  setSnapTolerance: (pixels: number) => void;
+
+  // Gap management
+  closeGap: (trackId: string, gapStart: number, gapEnd: number) => void;
+  closeAllGaps: (trackId?: string) => void;
+  findGaps: (trackId: string) => TimelineGap[];
+
+  // Ripple operations
+  rippleDelete: (clipId: string) => void;
+  rippleInsert: (trackId: string, time: number, duration: number) => void;
+  rippleTrimStart: (clipId: string, newStartTime: number) => void;
+  rippleTrimEnd: (clipId: string, newEndTime: number) => void;
+
+  // Snapping
+  getSnapPoints: (excludeClipId?: string) => number[];
+  findNearestSnapPoint: (time: number, excludeClipId?: string) => number | null;
+
+  // Insertion
+  insertClipWithRipple: (clip: Omit<TimelineClip, 'id'>, insertTime: number) => string;
+  overwriteClip: (clip: Omit<TimelineClip, 'id'>) => string;
 
   // Undo/Redo
   saveSnapshot: (description: string) => void;
@@ -272,6 +306,10 @@ export const useOpenCutTimelineStore = create<OpenCutTimelineStore>((set, get) =
   undoStack: [],
   redoStack: [],
   maxHistorySize: 50,
+  // Magnetic timeline state
+  magneticTimelineEnabled: true,
+  snapToClips: true,
+  snapTolerance: 10,
 
   // Track operations
   addTrack: (type, name) => {
@@ -551,6 +589,301 @@ export const useOpenCutTimelineStore = create<OpenCutTimelineStore>((set, get) =
   // Snap and ripple
   setSnapEnabled: (enabled) => set({ snapEnabled: enabled }),
   setRippleEnabled: (enabled) => set({ rippleEnabled: enabled }),
+
+  // Magnetic timeline
+  setMagneticTimeline: (enabled) => set({ magneticTimelineEnabled: enabled }),
+  setSnapToClips: (enabled) => set({ snapToClips: enabled }),
+  setSnapTolerance: (pixels) => set({ snapTolerance: Math.max(1, Math.min(50, pixels)) }),
+
+  // Gap management
+  findGaps: (trackId) => {
+    const { clips } = get();
+    const trackClips = clips
+      .filter((c) => c.trackId === trackId)
+      .sort((a, b) => a.startTime - b.startTime);
+
+    const gaps: { start: number; end: number }[] = [];
+
+    for (let i = 0; i < trackClips.length - 1; i++) {
+      const clipEnd = trackClips[i].startTime + trackClips[i].duration;
+      const nextClipStart = trackClips[i + 1].startTime;
+
+      if (nextClipStart > clipEnd + 0.001) {
+        gaps.push({ start: clipEnd, end: nextClipStart });
+      }
+    }
+
+    return gaps;
+  },
+
+  closeGap: (trackId, gapStart, gapEnd) => {
+    const { saveSnapshot } = get();
+    const gapDuration = gapEnd - gapStart;
+
+    saveSnapshot('Close gap');
+
+    set((state) => ({
+      clips: state.clips.map((clip) => {
+        if (clip.trackId === trackId && clip.startTime >= gapEnd) {
+          return { ...clip, startTime: clip.startTime - gapDuration };
+        }
+        return clip;
+      }),
+    }));
+  },
+
+  closeAllGaps: (trackId) => {
+    const { tracks, findGaps, closeGap, saveSnapshot } = get();
+    const tracksToProcess = trackId ? [trackId] : tracks.map((t) => t.id);
+
+    saveSnapshot('Close all gaps');
+
+    tracksToProcess.forEach((tid) => {
+      let gaps = findGaps(tid);
+      while (gaps.length > 0) {
+        // Close from end to start to maintain positions
+        const gap = gaps[gaps.length - 1];
+        // Use inline close gap logic to avoid multiple snapshots
+        set((state) => ({
+          clips: state.clips.map((clip) => {
+            if (clip.trackId === tid && clip.startTime >= gap.end) {
+              return { ...clip, startTime: clip.startTime - (gap.end - gap.start) };
+            }
+            return clip;
+          }),
+        }));
+        gaps = findGaps(tid);
+      }
+    });
+  },
+
+  // Ripple operations
+  rippleDelete: (clipId) => {
+    const { clips, saveSnapshot } = get();
+    const clip = clips.find((c) => c.id === clipId);
+    if (!clip) return;
+
+    saveSnapshot('Ripple delete');
+
+    const clipDuration = clip.duration;
+    const clipEnd = clip.startTime + clipDuration;
+
+    set((state) => ({
+      clips: state.clips
+        .filter((c) => c.id !== clipId)
+        .map((c) => {
+          if (c.trackId === clip.trackId && c.startTime >= clipEnd) {
+            return { ...c, startTime: c.startTime - clipDuration };
+          }
+          return c;
+        }),
+      selectedClipIds: state.selectedClipIds.filter((id) => id !== clipId),
+    }));
+  },
+
+  rippleInsert: (trackId, time, duration) => {
+    const { saveSnapshot } = get();
+    saveSnapshot('Ripple insert');
+
+    set((state) => ({
+      clips: state.clips.map((c) => {
+        if (c.trackId === trackId && c.startTime >= time) {
+          return { ...c, startTime: c.startTime + duration };
+        }
+        return c;
+      }),
+    }));
+  },
+
+  rippleTrimStart: (clipId, newStartTime) => {
+    const { clips, saveSnapshot } = get();
+    const clip = clips.find((c) => c.id === clipId);
+    if (!clip) return;
+
+    const timeDelta = newStartTime - clip.startTime;
+    if (Math.abs(timeDelta) < 0.001) return;
+
+    saveSnapshot('Ripple trim start');
+
+    set((state) => ({
+      clips: state.clips.map((c) => {
+        if (c.id === clipId) {
+          // Adjust the clip being trimmed
+          const newInPoint = c.inPoint + timeDelta;
+          const newDuration = c.duration - timeDelta;
+          if (newDuration > 0 && newInPoint >= 0) {
+            return {
+              ...c,
+              startTime: newStartTime,
+              inPoint: newInPoint,
+              duration: newDuration,
+            };
+          }
+        } else if (c.trackId === clip.trackId && c.startTime >= clip.startTime + clip.duration) {
+          // Shift subsequent clips
+          return { ...c, startTime: c.startTime - timeDelta };
+        }
+        return c;
+      }),
+    }));
+  },
+
+  rippleTrimEnd: (clipId, newEndTime) => {
+    const { clips, saveSnapshot } = get();
+    const clip = clips.find((c) => c.id === clipId);
+    if (!clip) return;
+
+    const currentEnd = clip.startTime + clip.duration;
+    const timeDelta = newEndTime - currentEnd;
+    if (Math.abs(timeDelta) < 0.001) return;
+
+    saveSnapshot('Ripple trim end');
+
+    const newDuration = clip.duration + timeDelta;
+    if (newDuration <= 0) return;
+
+    set((state) => ({
+      clips: state.clips.map((c) => {
+        if (c.id === clipId) {
+          // Adjust the clip being trimmed
+          return { ...c, duration: newDuration };
+        } else if (c.trackId === clip.trackId && c.startTime >= currentEnd) {
+          // Shift subsequent clips
+          return { ...c, startTime: c.startTime + timeDelta };
+        }
+        return c;
+      }),
+    }));
+  },
+
+  // Snapping
+  getSnapPoints: (excludeClipId) => {
+    const { clips } = get();
+    const snapPoints: number[] = [0]; // Always include timeline start
+
+    clips.forEach((clip) => {
+      if (clip.id !== excludeClipId) {
+        // Clip start
+        snapPoints.push(clip.startTime);
+        // Clip end
+        snapPoints.push(clip.startTime + clip.duration);
+      }
+    });
+
+    // Remove duplicates and sort
+    return [...new Set(snapPoints)].sort((a, b) => a - b);
+  },
+
+  findNearestSnapPoint: (time, excludeClipId) => {
+    const { getSnapPoints, snapTolerance, zoom, snapToClips } = get();
+    if (!snapToClips) return null;
+
+    const snapPoints = getSnapPoints(excludeClipId);
+    // Convert pixel tolerance to time tolerance based on zoom
+    const pixelsPerSecond = 100 * zoom;
+    const timeTolerance = snapTolerance / pixelsPerSecond;
+
+    let nearestPoint: number | null = null;
+    let nearestDistance = Infinity;
+
+    for (const point of snapPoints) {
+      const distance = Math.abs(time - point);
+      if (distance < timeTolerance && distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestPoint = point;
+      }
+    }
+
+    return nearestPoint;
+  },
+
+  // Insertion
+  insertClipWithRipple: (clipData, insertTime) => {
+    const { saveSnapshot, rippleInsert, addClip } = get();
+    saveSnapshot('Insert clip with ripple');
+
+    // First, ripple existing clips to make room
+    rippleInsert(clipData.trackId, insertTime, clipData.duration);
+
+    // Then add the new clip at the insert position
+    const newClip = { ...clipData, startTime: insertTime };
+    return addClip(newClip);
+  },
+
+  overwriteClip: (clipData) => {
+    const { clips, saveSnapshot } = get();
+    saveSnapshot('Overwrite clip');
+
+    const newClipStart = clipData.startTime;
+    const newClipEnd = clipData.startTime + clipData.duration;
+
+    // Find clips that overlap and will be affected
+    const affectedClips = clips.filter(
+      (c) =>
+        c.trackId === clipData.trackId &&
+        c.startTime < newClipEnd &&
+        c.startTime + c.duration > newClipStart
+    );
+
+    // Process overlapping clips
+    const updatedClips = clips.flatMap((c) => {
+      if (!affectedClips.includes(c)) return [c];
+
+      const clipStart = c.startTime;
+      const clipEnd = c.startTime + c.duration;
+
+      // Completely covered - remove
+      if (clipStart >= newClipStart && clipEnd <= newClipEnd) {
+        return [];
+      }
+
+      // Overlaps start only - trim start
+      if (clipStart < newClipStart && clipEnd > newClipStart && clipEnd <= newClipEnd) {
+        return [{ ...c, duration: newClipStart - clipStart }];
+      }
+
+      // Overlaps end only - trim end
+      if (clipStart >= newClipStart && clipStart < newClipEnd && clipEnd > newClipEnd) {
+        const newDuration = clipEnd - newClipEnd;
+        const newInPoint = c.inPoint + (newClipEnd - clipStart);
+        return [{ ...c, startTime: newClipEnd, duration: newDuration, inPoint: newInPoint }];
+      }
+
+      // Clip is split by new clip - create two clips
+      if (clipStart < newClipStart && clipEnd > newClipEnd) {
+        const firstPart = { ...c, duration: newClipStart - clipStart };
+        const secondPart = {
+          ...c,
+          id: `clip-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          startTime: newClipEnd,
+          duration: clipEnd - newClipEnd,
+          inPoint: c.inPoint + (newClipEnd - clipStart),
+        };
+        return [firstPart, secondPart];
+      }
+
+      return [c];
+    });
+
+    // Add the new clip
+    const newClipId = `clip-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const newClip: TimelineClip = {
+      ...clipData,
+      id: newClipId,
+      transform: clipData.transform || { ...defaultTransform },
+      blendMode: clipData.blendMode || 'normal',
+      audio:
+        clipData.type === 'audio' || clipData.type === 'video'
+          ? { ...defaultAudio, ...clipData.audio }
+          : undefined,
+      text: clipData.type === 'text' ? { ...defaultText, ...clipData.text } : undefined,
+      speed: clipData.speed || 1,
+      locked: clipData.locked || false,
+    };
+
+    set({ clips: [...updatedClips, newClip] });
+    return newClipId;
+  },
 
   // Undo/Redo
   saveSnapshot: (description) => {
