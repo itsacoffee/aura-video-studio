@@ -858,7 +858,9 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     [closeGap]
   );
 
-  // Snapping handler for clip drag operations (available for integration with clip drag logic)
+  // Snapping handler for clip drag operations. These handlers are prepared for future clip
+  // drag implementation. The underscore prefix follows TypeScript convention for intentionally
+  // unused variables to satisfy linting rules while keeping the implementation ready.
   const _handleClipDragSnap = useCallback(
     (clipId: string, proposedTime: number) => {
       if (!snapToClips) {
@@ -878,7 +880,6 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     [snapToClips, findNearestSnapPoint]
   );
 
-  // Clear snap point when drag ends (available for integration with clip drag logic)
   const _handleClipDragEnd = useCallback(() => {
     setActiveSnapPoint(null);
   }, []);
@@ -1295,11 +1296,11 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                       transition={{ type: 'tween', duration: 0.05 }}
                     />
 
-                    {/* Snap indicator */}
-                    {snapEnabled && snapToClips && (
+                    {/* Snap indicator - shows visual feedback during clip snapping */}
+                    {snapEnabled && snapToClips && activeSnapPoint !== null && (
                       <SnapIndicator
-                        position={activeSnapPoint !== null ? activeSnapPoint * pixelsPerSecond : 0}
-                        visible={activeSnapPoint !== null}
+                        position={activeSnapPoint * pixelsPerSecond}
+                        visible={true}
                         snapType="clip-edge"
                       />
                     )}
