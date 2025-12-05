@@ -879,11 +879,11 @@ public partial class JobRunner
         _activeJobs[job.Id] = updated;
         _artifactManager.SaveJob(updated);
 
-        // Log job state changes for debugging (include OutputPath for completed jobs)
+        // Log job state changes for debugging (include OutputPath for terminal states)
         if (IsTerminalStatus(updated.Status))
         {
             _logger.LogInformation(
-                "[Job {JobId}] Completed: Status={Status}, Stage={Stage}, Percent={Percent}%, OutputPath={OutputPath}, Artifacts={ArtifactCount}",
+                "[Job {JobId}] Terminal state: Status={Status}, Stage={Stage}, Percent={Percent}%, OutputPath={OutputPath}, Artifacts={ArtifactCount}",
                 updated.Id, updated.Status, updated.Stage, updated.Percent, 
                 updated.OutputPath ?? "NULL", updated.Artifacts?.Count ?? 0);
         }
