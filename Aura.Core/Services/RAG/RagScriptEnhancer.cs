@@ -123,15 +123,19 @@ public class RagScriptEnhancer
             var ragContext = new Aura.Core.Models.RAG.RagContext
             {
                 Query = BuildRagQuery(brief),
+                Status = updatedChunks.Count > 0 ? RagContextStatus.Success : RagContextStatus.NoRelevantChunks,
                 Chunks = updatedChunks,
                 Citations = allCitations.Values.OrderBy(c => c.Number).ToList(),
                 FormattedContext = formattedContext,
                 TotalTokens = totalTokens
             };
 
-            if (ragContext.Chunks.Count == 0)
+            // Check if meaningful context was retrieved
+            if (!ragContext.HasMeaningfulContext)
             {
-                _logger.LogWarning("No relevant RAG context found for query: {Query}", ragContext.Query);
+                _logger.LogInformation(
+                    "RAG enhancement skipped: Status={Status}. Brief will be used without RAG.",
+                    ragContext.Status);
                 return (brief, ragContext);
             }
 
@@ -145,7 +149,7 @@ public class RagScriptEnhancer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to enhance brief with RAG context, continuing without RAG");
+            _logger.LogWarning(ex, "Failed to enhance brief with RAG, using original brief");
             return (brief, null);
         }
     }

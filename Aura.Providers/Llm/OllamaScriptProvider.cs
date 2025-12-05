@@ -795,21 +795,22 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                 ragConfig,
                 cancellationToken).ConfigureAwait(false);
 
-            if (ragResult.Chunks.Count > 0)
+            // Only use RAG context if it contains meaningful information
+            if (!ragResult.HasMeaningfulContext)
             {
-                _logger.LogInformation("RAG context retrieved: {ChunkCount} chunks, {TokenCount} tokens",
-                    ragResult.Chunks.Count, ragResult.TotalTokens);
-                return ragResult.FormattedContext;
-            }
-            else
-            {
-                _logger.LogInformation("No relevant RAG context found for topic: {Topic}", request.Brief.Topic);
+                _logger.LogInformation(
+                    "RAG context not used: Status={Status}, ChunkCount={ChunkCount}",
+                    ragResult.Status, ragResult.Chunks?.Count ?? 0);
                 return string.Empty;
             }
+
+            _logger.LogInformation("RAG context retrieved: {ChunkCount} chunks, {TokenCount} tokens",
+                ragResult.Chunks.Count, ragResult.TotalTokens);
+            return ragResult.FormattedContext;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to retrieve RAG context, continuing without it");
+            _logger.LogWarning(ex, "RAG context retrieval failed, continuing without RAG");
             return string.Empty;
         }
     }
