@@ -21,19 +21,22 @@ public class OllamaController : ControllerBase
     private readonly HttpClient _httpClient;
     private readonly OllamaDetectionService? _detectionService;
     private readonly IGpuDetectionService? _gpuDetectionService;
+    private readonly OllamaHealthCheckService? _ollamaHealthService;
 
     public OllamaController(
         OllamaService ollamaService,
         ProviderSettings settings,
         IHttpClientFactory httpClientFactory,
         OllamaDetectionService? detectionService = null,
-        IGpuDetectionService? gpuDetectionService = null)
+        IGpuDetectionService? gpuDetectionService = null,
+        OllamaHealthCheckService? ollamaHealthService = null)
     {
         _ollamaService = ollamaService;
         _settings = settings;
         _httpClient = httpClientFactory.CreateClient();
         _detectionService = detectionService;
         _gpuDetectionService = gpuDetectionService;
+        _ollamaHealthService = ollamaHealthService;
     }
 
     /// <summary>
@@ -86,6 +89,117 @@ public class OllamaController : ControllerBase
             Log.Error(ex, "Error checking Ollama status, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
             return Problem(
                 title: "Error checking Ollama status",
+                detail: ex.Message,
+                statusCode: 500,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+    }
+
+    /// <summary>
+    /// Perform a comprehensive health check on Ollama service
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Detailed health status including version and available models</returns>
+    [HttpGet("health")]
+    [ProducesResponseType(typeof(OllamaHealthStatus), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> CheckHealth(CancellationToken ct = default)
+    {
+        if (_ollamaHealthService == null)
+        {
+            return Problem(
+                title: "Health service not available",
+                detail: "Ollama health check service is not configured",
+                statusCode: 503,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+
+        try
+        {
+            var status = await _ollamaHealthService.CheckHealthAsync(ct).ConfigureAwait(false);
+            
+            Log.Information(
+                "Ollama health check: IsHealthy={IsHealthy}, Version={Version}, Models={ModelCount}, CorrelationId={CorrelationId}",
+                status.IsHealthy, status.Version, status.AvailableModels.Count, HttpContext.TraceIdentifier);
+
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error performing Ollama health check, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Error performing health check",
+                detail: ex.Message,
+                statusCode: 500,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+    }
+
+    /// <summary>
+    /// Wait for Ollama to become available with configurable retry logic
+    /// </summary>
+    /// <param name="maxRetries">Maximum number of retry attempts (default: 10)</param>
+    /// <param name="retryDelayMs">Delay between retries in milliseconds (default: 2000)</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Health status if available, or 503 if Ollama did not become available</returns>
+    [HttpPost("wait")]
+    [ProducesResponseType(typeof(OllamaHealthStatus), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OllamaHealthStatus), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> WaitForOllama(
+        [FromQuery] int maxRetries = 10,
+        [FromQuery] int retryDelayMs = 2000,
+        CancellationToken ct = default)
+    {
+        if (_ollamaHealthService == null)
+        {
+            return Problem(
+                title: "Health service not available",
+                detail: "Ollama health check service is not configured",
+                statusCode: 503,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+
+        try
+        {
+            Log.Information(
+                "Waiting for Ollama with maxRetries={MaxRetries}, retryDelayMs={RetryDelayMs}, CorrelationId={CorrelationId}",
+                maxRetries, retryDelayMs, HttpContext.TraceIdentifier);
+
+            var available = await _ollamaHealthService.WaitForOllamaAsync(maxRetries, retryDelayMs, ct).ConfigureAwait(false);
+            var status = await _ollamaHealthService.CheckHealthAsync(ct).ConfigureAwait(false);
+
+            if (available)
+            {
+                Log.Information(
+                    "Ollama is now available: Version={Version}, Models={ModelCount}, CorrelationId={CorrelationId}",
+                    status.Version, status.AvailableModels.Count, HttpContext.TraceIdentifier);
+                return Ok(status);
+            }
+
+            Log.Warning(
+                "Ollama did not become available after {MaxRetries} attempts, CorrelationId={CorrelationId}",
+                maxRetries, HttpContext.TraceIdentifier);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, status);
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Warning("Wait for Ollama was cancelled, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Operation cancelled",
+                detail: "Wait for Ollama was cancelled",
+                statusCode: 499,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error waiting for Ollama, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Error waiting for Ollama",
                 detail: ex.Message,
                 statusCode: 500,
                 instance: HttpContext.TraceIdentifier
