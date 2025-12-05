@@ -15,6 +15,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useOpenCutKeyboardHandler } from '../../hooks/useOpenCutKeyboardHandler';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import { openCutTokens } from '../../styles/designTokens';
+import { CaptionsPanel } from './Captions';
 import { EffectsPanel } from './Effects';
 import { MediaPanel } from './MediaPanel';
 import { PreviewPanel } from './PreviewPanel';
@@ -78,7 +79,7 @@ const useStyles = makeStyles({
   },
 });
 
-type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates';
+type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates' | 'captions';
 
 export function OpenCutEditor() {
   const styles = useStyles();
@@ -122,6 +123,8 @@ export function OpenCutEditor() {
         return <TransitionsPanel />;
       case 'templates':
         return <TemplatesPanel />;
+      case 'captions':
+        return <CaptionsPanel />;
       default:
         return <MediaPanel />;
     }
@@ -150,6 +153,7 @@ export function OpenCutEditor() {
               <Tab value="effects">Effects</Tab>
               <Tab value="transitions">Transitions</Tab>
               <Tab value="templates">Templates</Tab>
+              <Tab value="captions">Captions</Tab>
             </TabList>
           </div>
           <div className={styles.leftPanelContent}>{renderLeftPanelContent()}</div>
