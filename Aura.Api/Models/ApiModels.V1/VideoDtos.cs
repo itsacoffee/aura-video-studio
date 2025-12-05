@@ -102,6 +102,31 @@ public record PipelineValidationResponse(
     string CorrelationId);
 
 /// <summary>
+/// Comprehensive preflight validation report with detailed status for each component.
+/// </summary>
+public record PipelinePreflightReportDto(
+    bool Ok,
+    DateTime Timestamp,
+    int DurationMs,
+    PipelineCheckResultDto FFmpeg,
+    PipelineCheckResultDto Ollama,
+    PipelineCheckResultDto TTS,
+    PipelineCheckResultDto DiskSpace,
+    PipelineCheckResultDto ImageProvider,
+    List<string> Errors,
+    List<string> Warnings);
+
+/// <summary>
+/// Result of an individual pipeline preflight check.
+/// </summary>
+public record PipelineCheckResultDto(
+    bool Passed,
+    bool Skipped,
+    string Status,
+    string? Details,
+    string? SuggestedAction);
+
+/// <summary>
 /// AI Director preset styles for video aesthetics
 /// </summary>
 public enum DirectorPresetDto

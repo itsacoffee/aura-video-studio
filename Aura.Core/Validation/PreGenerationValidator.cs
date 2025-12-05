@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -380,5 +381,492 @@ public class PreGenerationValidator
         }
 
         return validationResult;
+    }
+
+    // Constants for disk space validation
+    private const long MinimumDiskSpaceBytes = 1L * 1024 * 1024 * 1024; // 1 GB
+
+    /// <summary>
+    /// Performs comprehensive preflight validation with detailed status for each component.
+    /// This method validates FFmpeg, Ollama, TTS, disk space, and image providers with
+    /// actionable error messages and suggested fixes.
+    /// </summary>
+    /// <param name="systemProfile">System hardware profile (optional, will be detected if null)</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Detailed preflight report with individual check results</returns>
+    public virtual async Task<PreflightReport> ValidateAsync(SystemProfile? systemProfile, CancellationToken ct = default)
+    {
+        var report = new PreflightReport();
+        var stopwatch = Stopwatch.StartNew();
+
+        _logger.LogInformation("Starting comprehensive preflight validation");
+
+        // Run all checks in parallel for better performance
+        var ffmpegTask = ValidateFFmpegAsync(ct);
+        var ollamaTask = ValidateOllamaAsync(ct);
+        var diskSpaceTask = ValidateDiskSpaceAsync(ct);
+        var ttsTask = ValidateTTSAsync(ct);
+        var imageProviderTask = ValidateImageProviderAsync(ct);
+
+        try
+        {
+            await Task.WhenAll(ffmpegTask, ollamaTask, diskSpaceTask, ttsTask, imageProviderTask).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "One or more preflight checks failed during parallel execution");
+        }
+
+        // Collect results
+        report.FFmpeg = await ffmpegTask.ConfigureAwait(false);
+        if (!report.FFmpeg.Passed && !report.FFmpeg.Skipped)
+        {
+            report.AddError("FFmpeg", report.FFmpeg.Details ?? report.FFmpeg.Status);
+        }
+
+        report.Ollama = await ollamaTask.ConfigureAwait(false);
+        if (!report.Ollama.Passed && !report.Ollama.Skipped)
+        {
+            report.AddError("Ollama", report.Ollama.Details ?? report.Ollama.Status);
+        }
+
+        report.DiskSpace = await diskSpaceTask.ConfigureAwait(false);
+        if (!report.DiskSpace.Passed && !report.DiskSpace.Skipped)
+        {
+            report.AddError("DiskSpace", report.DiskSpace.Details ?? report.DiskSpace.Status);
+        }
+
+        report.TTS = await ttsTask.ConfigureAwait(false);
+        if (!report.TTS.Passed && !report.TTS.Skipped)
+        {
+            report.AddError("TTS", report.TTS.Details ?? report.TTS.Status);
+        }
+
+        // Image provider is optional - missing is a warning, not an error
+        report.ImageProvider = await imageProviderTask.ConfigureAwait(false);
+        if (!report.ImageProvider.Passed && !report.ImageProvider.Skipped)
+        {
+            report.AddWarning("ImageProvider", report.ImageProvider.Details ?? report.ImageProvider.Status);
+        }
+
+        stopwatch.Stop();
+        report.DurationMs = (int)stopwatch.ElapsedMilliseconds;
+
+        if (report.Ok)
+        {
+            _logger.LogInformation("Preflight validation passed in {DurationMs}ms", report.DurationMs);
+        }
+        else
+        {
+            _logger.LogWarning("Preflight validation failed with {ErrorCount} errors and {WarningCount} warnings in {DurationMs}ms",
+                report.Errors.Count, report.Warnings.Count, report.DurationMs);
+        }
+
+        return report;
+    }
+
+    /// <summary>
+    /// Backward-compatible method signature that returns the legacy format.
+    /// </summary>
+    /// <param name="systemProfile">System hardware profile</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <param name="legacyFormat">Must be true to use this overload</param>
+    /// <returns>Tuple of (IsValid, Errors)</returns>
+    public async Task<(bool IsValid, List<string> Errors)> ValidateAsync(SystemProfile? systemProfile, CancellationToken ct, bool legacyFormat)
+    {
+        var report = await ValidateAsync(systemProfile, ct).ConfigureAwait(false);
+        return (report.Ok, report.Errors);
+    }
+
+    /// <summary>
+    /// Validates that FFmpeg is installed and actually works by running ffmpeg -version.
+    /// </summary>
+    private async Task<PreflightCheckResult> ValidateFFmpegAsync(CancellationToken ct)
+    {
+        var result = new PreflightCheckResult();
+
+        try
+        {
+            var ffmpegTimeout = TimeSpan.FromSeconds(_timeoutSettings.FfmpegCheckTimeoutSeconds);
+            var (resolutionResult, timedOut) = await ExecuteWithTimeoutAsync(
+                _ffmpegResolver.ResolveAsync(null, forceRefresh: false, ct),
+                ffmpegTimeout,
+                "FFmpeg resolution",
+                ct).ConfigureAwait(false);
+
+            if (timedOut)
+            {
+                result.Status = "Timeout";
+                result.Details = $"FFmpeg validation timed out after {_timeoutSettings.FfmpegCheckTimeoutSeconds} seconds.";
+                result.SuggestedAction = "Ensure FFmpeg is properly installed and not blocked by antivirus software.";
+                return result;
+            }
+
+            if (resolutionResult == null || !resolutionResult.Found)
+            {
+                result.Status = "Not found";
+                result.Details = "FFmpeg executable not found on this system.";
+                result.SuggestedAction = "Install FFmpeg from https://ffmpeg.org/download.html or use the Download Center in Settings.";
+                return result;
+            }
+
+            if (!resolutionResult.IsValid)
+            {
+                result.Status = "Invalid";
+                result.Details = $"FFmpeg found but not valid: {resolutionResult.Error}";
+                result.SuggestedAction = "Reinstall FFmpeg or update to a newer version from https://ffmpeg.org/download.html";
+                return result;
+            }
+
+            // Actually run ffmpeg -version to verify it works
+            var (success, output) = await RunProcessAsync("ffmpeg", "-version", 5000, ct).ConfigureAwait(false);
+
+            if (!success)
+            {
+                result.Status = "Not working";
+                result.Details = "FFmpeg found but failed to execute. It may be corrupted or missing dependencies.";
+                result.SuggestedAction = "Reinstall FFmpeg from https://ffmpeg.org/download.html or check if all dependencies are installed.";
+                return result;
+            }
+
+            // Extract version from output
+            var versionLine = output?.Split('\n').FirstOrDefault(l => l.Contains("ffmpeg version"));
+            var version = versionLine ?? resolutionResult.Version ?? "Unknown";
+
+            result.Passed = true;
+            result.Status = "Available";
+            result.Details = $"FFmpeg is installed and working. Path: {resolutionResult.Path}. Version: {version}";
+            _logger.LogInformation("FFmpeg validation passed: {Path} ({Version})", resolutionResult.Path, version);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error validating FFmpeg");
+            result.Status = "Error";
+            result.Details = $"Error checking FFmpeg: {ex.Message}";
+            result.SuggestedAction = "Check FFmpeg installation and ensure it's accessible.";
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Validates that Ollama is running and has at least one model installed.
+    /// </summary>
+    private async Task<PreflightCheckResult> ValidateOllamaAsync(CancellationToken ct)
+    {
+        var result = new PreflightCheckResult();
+
+        try
+        {
+            // Check if Ollama is running by calling ollama list
+            var (listSuccess, listOutput) = await RunProcessAsync("ollama", "list", 5000, ct).ConfigureAwait(false);
+
+            if (!listSuccess)
+            {
+                // Try to check if ollama exists but isn't running
+                var (versionSuccess, _) = await RunProcessAsync("ollama", "--version", 3000, ct).ConfigureAwait(false);
+
+                if (versionSuccess)
+                {
+                    result.Status = "Not running";
+                    result.Details = "Ollama is installed but not running.";
+                    result.SuggestedAction = "Start Ollama by running: ollama serve";
+                }
+                else
+                {
+                    result.Status = "Not installed";
+                    result.Details = "Ollama is not installed or not in PATH.";
+                    result.SuggestedAction = "Install Ollama from https://ollama.com/download";
+                }
+                return result;
+            }
+
+            // Parse the output to check if any models are installed
+            var lines = listOutput?.Split('\n', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
+            // Skip the header line if present
+            var modelLines = lines.Where(l => !l.StartsWith("NAME") && !string.IsNullOrWhiteSpace(l)).ToList();
+
+            if (modelLines.Count == 0)
+            {
+                result.Status = "No models";
+                result.Details = "Ollama is running but no models are installed.";
+                result.SuggestedAction = "Install a model by running: ollama pull llama3.1:8b";
+                return result;
+            }
+
+            result.Passed = true;
+            result.Status = "Available";
+            result.Details = $"Ollama is running with {modelLines.Count} model(s) available.";
+            _logger.LogInformation("Ollama validation passed: {ModelCount} models available", modelLines.Count);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error validating Ollama");
+            result.Status = "Error";
+            result.Details = $"Error checking Ollama: {ex.Message}";
+            result.SuggestedAction = "Check if Ollama is installed and accessible.";
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Validates that at least 1GB of disk space is available on the temp drive.
+    /// </summary>
+    private Task<PreflightCheckResult> ValidateDiskSpaceAsync(CancellationToken ct)
+    {
+        var result = new PreflightCheckResult();
+
+        try
+        {
+            var tempPath = Path.GetTempPath();
+            var rootPath = Path.GetPathRoot(tempPath);
+
+            if (string.IsNullOrEmpty(rootPath))
+            {
+                result.Status = "Unknown";
+                result.Details = "Could not determine the root path for the temp directory.";
+                result.Skipped = true;
+                return Task.FromResult(result);
+            }
+
+            var driveInfo = new DriveInfo(rootPath);
+
+            if (!driveInfo.IsReady)
+            {
+                result.Status = "Not ready";
+                result.Details = $"Drive {rootPath} is not ready.";
+                result.SuggestedAction = "Ensure the drive is accessible and not in use by another application.";
+                return Task.FromResult(result);
+            }
+
+            var availableBytes = driveInfo.AvailableFreeSpace;
+            var availableGB = availableBytes / (1024.0 * 1024.0 * 1024.0);
+
+            if (availableBytes < MinimumDiskSpaceBytes)
+            {
+                result.Status = "Insufficient";
+                result.Details = $"Only {availableGB:F2}GB free on {rootPath}. Need at least 1GB for video generation.";
+                result.SuggestedAction = "Free up disk space by deleting temporary files or moving data to another drive.";
+                return Task.FromResult(result);
+            }
+
+            result.Passed = true;
+            result.Status = "Sufficient";
+            result.Details = $"{availableGB:F2}GB available on {rootPath}.";
+            _logger.LogInformation("Disk space validation passed: {FreeSpace:F2}GB available on {Drive}", availableGB, rootPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error validating disk space");
+            result.Status = "Error";
+            result.Details = $"Error checking disk space: {ex.Message}";
+            result.Skipped = true;
+        }
+
+        return Task.FromResult(result);
+    }
+
+    /// <summary>
+    /// Validates that TTS providers are configured and have voices available.
+    /// </summary>
+    private async Task<PreflightCheckResult> ValidateTTSAsync(CancellationToken ct)
+    {
+        var result = new PreflightCheckResult();
+
+        try
+        {
+            var providerTimeout = TimeSpan.FromSeconds(_timeoutSettings.ProviderCheckTimeoutSeconds);
+            var (readiness, timedOut) = await ExecuteWithTimeoutAsync(
+                _providerReadiness.ValidateRequiredProvidersAsync(ct),
+                providerTimeout,
+                "TTS validation",
+                ct).ConfigureAwait(false);
+
+            if (timedOut)
+            {
+                result.Status = "Timeout";
+                result.Details = "TTS validation timed out.";
+                result.SuggestedAction = "Check your TTS provider configuration and network connectivity.";
+                return result;
+            }
+
+            if (readiness == null)
+            {
+                result.Status = "Error";
+                result.Details = "Could not validate TTS providers.";
+                result.SuggestedAction = "Check your TTS provider configuration in Settings.";
+                return result;
+            }
+
+            var ttsStatus = readiness.CategoryStatuses.FirstOrDefault(s =>
+                string.Equals(s.Category, "TTS", StringComparison.OrdinalIgnoreCase));
+
+            if (ttsStatus == null)
+            {
+                result.Status = "Not configured";
+                result.Details = "No TTS providers are configured.";
+                result.SuggestedAction = "Configure a TTS provider (ElevenLabs, Piper, Windows TTS) in Settings.";
+                return result;
+            }
+
+            if (!ttsStatus.Ready)
+            {
+                result.Status = "Not available";
+                result.Details = ttsStatus.Message ?? "No TTS provider is available.";
+                result.SuggestedAction = ttsStatus.Suggestions.FirstOrDefault() ?? "Configure a working TTS provider in Settings.";
+                return result;
+            }
+
+            result.Passed = true;
+            result.Status = "Available";
+            result.Details = $"TTS provider '{ttsStatus.Provider}' is ready.";
+            _logger.LogInformation("TTS validation passed: {Provider}", ttsStatus.Provider);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error validating TTS");
+            result.Status = "Error";
+            result.Details = $"Error checking TTS: {ex.Message}";
+            result.SuggestedAction = "Check your TTS provider configuration.";
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Validates that an image provider is available (optional - missing is a warning only).
+    /// </summary>
+    private async Task<PreflightCheckResult> ValidateImageProviderAsync(CancellationToken ct)
+    {
+        var result = new PreflightCheckResult();
+
+        try
+        {
+            var providerTimeout = TimeSpan.FromSeconds(_timeoutSettings.ProviderCheckTimeoutSeconds);
+            var (readiness, timedOut) = await ExecuteWithTimeoutAsync(
+                _providerReadiness.ValidateRequiredProvidersAsync(ct),
+                providerTimeout,
+                "Image provider validation",
+                ct).ConfigureAwait(false);
+
+            if (timedOut)
+            {
+                result.Status = "Timeout";
+                result.Details = "Image provider validation timed out.";
+                result.SuggestedAction = "Check your image provider configuration and network connectivity.";
+                result.Skipped = true;
+                return result;
+            }
+
+            if (readiness == null)
+            {
+                result.Status = "Unknown";
+                result.Details = "Could not validate image providers.";
+                result.Skipped = true;
+                return result;
+            }
+
+            var imageStatus = readiness.CategoryStatuses.FirstOrDefault(s =>
+                string.Equals(s.Category, "Images", StringComparison.OrdinalIgnoreCase));
+
+            if (imageStatus == null)
+            {
+                result.Status = "Not configured";
+                result.Details = "No image providers are configured. Videos will use placeholder visuals.";
+                result.SuggestedAction = "Configure an image provider (Stable Diffusion, Pexels, etc.) for better visuals.";
+                return result;
+            }
+
+            if (!imageStatus.Ready)
+            {
+                result.Status = "Not available";
+                result.Details = imageStatus.Message ?? "No image provider is available. Videos will use placeholder visuals.";
+                result.SuggestedAction = imageStatus.Suggestions.FirstOrDefault() ?? "Configure a working image provider in Settings.";
+                return result;
+            }
+
+            result.Passed = true;
+            result.Status = "Available";
+            result.Details = $"Image provider '{imageStatus.Provider}' is ready.";
+            _logger.LogInformation("Image provider validation passed: {Provider}", imageStatus.Provider);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error validating image provider");
+            result.Status = "Error";
+            result.Details = $"Error checking image provider: {ex.Message}";
+            result.Skipped = true;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Runs a process with the specified arguments and timeout, returning success status and output.
+    /// </summary>
+    private async Task<(bool Success, string Output)> RunProcessAsync(
+        string fileName,
+        string arguments,
+        int timeoutMs,
+        CancellationToken ct)
+    {
+        try
+        {
+            using var process = new Process();
+            process.StartInfo = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            process.Start();
+
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(timeoutMs);
+
+            try
+            {
+                await process.WaitForExitAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // Timeout - kill the process
+                try { process.Kill(); } catch { /* ignore */ }
+                return (false, "Process timed out");
+            }
+
+            var output = await outputTask.ConfigureAwait(false);
+            var error = await errorTask.ConfigureAwait(false);
+
+            return (process.ExitCode == 0, string.IsNullOrEmpty(output) ? error : output);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
     }
 }
