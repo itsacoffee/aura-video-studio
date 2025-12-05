@@ -16,10 +16,10 @@ export const openCutTokens = {
    * Based on 4px base unit with compact progression.
    */
   spacing: {
-    /** 2px - Extra extra small */
-    xxs: '0.125rem',
-    /** 4px - Extra small */
-    xs: '0.25rem',
+    /** 4px - Extra extra small */
+    xxs: '0.25rem',
+    /** 6px - Extra small */
+    xs: '0.375rem',
     /** 8px - Small */
     sm: '0.5rem',
     /** 12px - Medium (base) */
@@ -54,12 +54,12 @@ export const openCutTokens = {
       xs: '0.625rem',
       /** 0.6875rem (11px) - Small for secondary info */
       sm: '0.6875rem',
-      /** 0.75rem (12px) - Base size for body text (compact for NLE) */
-      base: '0.75rem',
-      /** 0.8125rem (13px) - Medium for emphasis */
-      md: '0.8125rem',
-      /** 0.875rem (14px) - Large for section headers */
-      lg: '0.875rem',
+      /** 0.8125rem (13px) - Base size for body text (compact but accessible) */
+      base: '0.8125rem',
+      /** 0.875rem (14px) - Medium for emphasis */
+      md: '0.875rem',
+      /** 0.9375rem (15px) - Large for section headers */
+      lg: '0.9375rem',
       /** 1rem (16px) - Extra large for panel headers */
       xl: '1rem',
       /** 1.25rem (20px) - Extra extra large for titles */
