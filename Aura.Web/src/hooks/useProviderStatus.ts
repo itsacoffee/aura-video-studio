@@ -162,7 +162,16 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
   const [failureCount, setFailureCount] = useState(0);
 
   // Track if component is mounted to prevent state updates after unmount
-  const isMountedRef = useRef(true);
+  // Starts as false and is set to true in useEffect
+  const isMountedRef = useRef(false);
+
+  // Use a ref to track if we have any status data without causing re-renders
+  const hasStatusRef = useRef(false);
+
+  // Update the ref whenever status changes
+  useEffect(() => {
+    hasStatusRef.current = status !== null;
+  }, [status]);
 
   /**
    * Fetch with retry logic and exponential backoff
@@ -201,8 +210,8 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
   );
 
   const fetchStatus = useCallback(async () => {
-    // Only set loading to true if we don't have any data yet
-    if (!status) {
+    // Only set loading to true if we don't have any data yet (use ref to avoid dependency)
+    if (!hasStatusRef.current) {
       setIsLoading(true);
     }
 
@@ -223,15 +232,15 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
       setHasFetchError(false);
       setFailureCount(0);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
+      const fetchError = err instanceof Error ? err : new Error(String(err));
 
       // Only update error state if mounted
       if (!isMountedRef.current) {
         return;
       }
 
-      console.error('Error fetching provider status after retries:', error);
-      setError(error);
+      console.error('Error fetching provider status after retries:', fetchError);
+      setError(fetchError);
       setHasFetchError(true);
       setFailureCount((prev) => prev + 1);
 
@@ -242,7 +251,7 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
         setIsLoading(false);
       }
     }
-  }, [status, fetchWithRetry]);
+  }, [fetchWithRetry]);
 
   useEffect(() => {
     // Mark as mounted
