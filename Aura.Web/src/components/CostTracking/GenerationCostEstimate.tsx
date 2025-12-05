@@ -229,12 +229,12 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
       setEstimate(response.data);
       onCostEstimated?.(response.data);
     } catch (err: unknown) {
-      // Don't show error for cost estimation failures - show fallback free generation estimate
-      // This handles 428 Precondition Required and other API errors gracefully
+      // When cost estimation API fails (e.g., 428 Precondition Required, network errors),
+      // create a zero-cost fallback estimate to allow the user to continue with local/free providers
       const errorMessage = err instanceof Error ? err.message : 'Failed to estimate costs';
       console.warn('Cost estimation unavailable:', errorMessage);
 
-      // Provide a fallback estimate indicating cost estimation is unavailable
+      // Fallback to zero-cost estimate - assumes user will proceed with local/free providers
       const fallbackEstimate: GenerationCostEstimateResponse = {
         llmCost: 0,
         ttsCost: 0,
@@ -243,7 +243,7 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
         currency: 'USD',
         breakdown: [],
         isFreeGeneration: true,
-        confidence: 'low',
+        confidence: 'low', // Low confidence since we couldn't get actual estimate
       };
       setEstimate(fallbackEstimate);
       onCostEstimated?.(fallbackEstimate);
@@ -316,6 +316,9 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
   if (!estimate) {
     return null;
   }
+
+  // Show success card only for confirmed free generation (not when estimation failed)
+  const shouldShowFreeGenerationSuccess = estimate.isFreeGeneration && !isUnavailable;
 
   return (
     <Card className={styles.container}>
@@ -392,7 +395,7 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
           </div>
         )}
 
-      {estimate.isFreeGeneration && !isUnavailable && (
+      {shouldShowFreeGenerationSuccess && (
         <div className={styles.successCard}>
           <CheckmarkCircle16Regular className={styles.successIcon} />
           <Text className={styles.successText}>All providers are local/free - no API costs</Text>
