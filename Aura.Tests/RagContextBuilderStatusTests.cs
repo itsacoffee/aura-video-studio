@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,7 +36,7 @@ public class RagContextBuilderStatusTests
         // Arrange
         var vectorIndexMock = new Mock<VectorIndex>(
             Mock.Of<ILogger<VectorIndex>>(),
-            "/tmp/test-index.json");
+            Path.Combine(Path.GetTempPath(), "test-index.json"));
 
         // Create a builder with a real VectorIndex that is empty
         var loggerMock = new Mock<ILogger<RagContextBuilder>>();
@@ -46,7 +47,7 @@ public class RagContextBuilderStatusTests
         var embeddingConfig = new EmbeddingConfig { Provider = EmbeddingProvider.Local };
         var embeddingService = new EmbeddingService(embeddingLoggerMock.Object, httpClientFactoryMock.Object, embeddingConfig);
 
-        var indexPath = $"/tmp/test-empty-index-{Guid.NewGuid()}.json";
+        var indexPath = Path.Combine(Path.GetTempPath(), $"test-empty-index-{Guid.NewGuid()}.json");
         var vectorIndex = new VectorIndex(Mock.Of<ILogger<VectorIndex>>(), indexPath);
 
         var builder = new RagContextBuilder(loggerMock.Object, vectorIndex, embeddingService);
@@ -60,8 +61,18 @@ public class RagContextBuilderStatusTests
         Assert.False(result.HasMeaningfulContext);
         Assert.Empty(result.Chunks);
 
-        // Cleanup
-        try { System.IO.File.Delete(indexPath); } catch { }
+        // Cleanup - attempt to delete test file if it was created
+        try
+        {
+            if (File.Exists(indexPath))
+            {
+                File.Delete(indexPath);
+            }
+        }
+        catch (IOException)
+        {
+            // File may be in use or locked, ignore cleanup errors in tests
+        }
     }
 
     [Fact]
@@ -214,7 +225,7 @@ public class RagContextBuilderStatusTests
         var embeddingConfig = new EmbeddingConfig { Provider = EmbeddingProvider.Local };
         var embeddingService = new EmbeddingService(embeddingLoggerMock.Object, httpClientFactoryMock.Object, embeddingConfig);
 
-        var indexPath = $"/tmp/test-index-{Guid.NewGuid()}.json";
+        var indexPath = Path.Combine(Path.GetTempPath(), $"test-index-{Guid.NewGuid()}.json");
         var vectorIndex = new VectorIndex(vectorIndexLoggerMock.Object, indexPath);
 
         return new RagContextBuilder(loggerMock.Object, vectorIndex, embeddingService);

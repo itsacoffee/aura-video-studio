@@ -49,7 +49,7 @@ public class RagContextBuilder
         }
 
         // Include config hash in cache key to avoid stale results
-        var configHash = config.TopK.GetHashCode() ^ config.MinimumScore.GetHashCode();
+        var configHash = HashCode.Combine(config.TopK, config.MinimumScore);
         var cacheKey = $"{query}_{config.TopK}_{config.MinimumScore}_{configHash}";
         if (_contextCache.TryGetValue(cacheKey, out var cached) && 
             DateTime.UtcNow - cached.Timestamp < _cacheTtl)
