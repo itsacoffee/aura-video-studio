@@ -461,6 +461,25 @@ describe('OpenCutTemplatesStore', () => {
       expect(result).toBeNull();
     });
 
+    it('should return null for JSON missing required fields', () => {
+      // Missing name field
+      const invalidJson = JSON.stringify({ description: 'test', aspectRatio: '16:9' });
+      const result = useTemplatesStore.getState().importTemplate(invalidJson);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for JSON with invalid data structure', () => {
+      // Missing tracks array in data
+      const invalidJson = JSON.stringify({
+        name: 'Test',
+        description: 'Test',
+        aspectRatio: '16:9',
+        data: { clips: [], effects: [], transitions: [], markers: [] },
+      });
+      const result = useTemplatesStore.getState().importTemplate(invalidJson);
+      expect(result).toBeNull();
+    });
+
     it('should update timestamps on import', () => {
       const { exportTemplate } = useTemplatesStore.getState();
       const json = exportTemplate('social-vertical');

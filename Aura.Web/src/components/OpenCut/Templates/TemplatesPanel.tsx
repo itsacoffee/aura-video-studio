@@ -42,6 +42,7 @@ import {
   useTemplatesStore,
   type Template,
   type TemplateData,
+  type TemplateTrackType,
 } from '../../../stores/opencutTemplates';
 import { useOpenCutTimelineStore } from '../../../stores/opencutTimeline';
 import { openCutTokens } from '../../../styles/designTokens';
@@ -251,10 +252,17 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ className, onTemplateA
 
   const getCurrentProjectData = useCallback((): TemplateData => {
     const { tracks, clips } = timelineStore;
+
+    // Helper to validate and convert track type
+    const toTemplateTrackType = (type: string): TemplateTrackType => {
+      const validTypes: TemplateTrackType[] = ['video', 'audio', 'image', 'text'];
+      return validTypes.includes(type as TemplateTrackType) ? (type as TemplateTrackType) : 'video'; // Default fallback
+    };
+
     return {
       tracks: tracks.map((t) => ({
         id: t.id,
-        type: t.type,
+        type: toTemplateTrackType(t.type),
         name: t.name,
         order: t.order,
         height: t.height,
@@ -266,7 +274,7 @@ export const TemplatesPanel: FC<TemplatesPanelProps> = ({ className, onTemplateA
       clips: clips.map((c) => ({
         id: c.id,
         trackId: c.trackId,
-        type: c.type,
+        type: toTemplateTrackType(c.type),
         name: c.name,
         startTime: c.startTime,
         duration: c.duration,

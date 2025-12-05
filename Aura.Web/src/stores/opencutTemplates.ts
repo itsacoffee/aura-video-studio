@@ -484,6 +484,11 @@ export const useTemplatesStore = create<OpenCutTemplatesStore>()(
       createTemplate: (name, description, data, aspectRatio, category = 'Custom', tags = []) => {
         const id = generateId();
         const now = new Date().toISOString();
+
+        // Calculate duration from clips (max end time)
+        const duration =
+          data.clips.length > 0 ? Math.max(...data.clips.map((c) => c.startTime + c.duration)) : 0;
+
         const template: Template = {
           id,
           name,
@@ -492,7 +497,7 @@ export const useTemplatesStore = create<OpenCutTemplatesStore>()(
           category,
           tags,
           aspectRatio,
-          duration: 0,
+          duration,
           data,
           createdAt: now,
           updatedAt: now,
@@ -573,7 +578,35 @@ export const useTemplatesStore = create<OpenCutTemplatesStore>()(
 
       importTemplate: (jsonString) => {
         try {
-          const template = JSON.parse(jsonString) as Template;
+          const parsed = JSON.parse(jsonString) as unknown;
+
+          // Validate required fields exist and have correct types
+          if (
+            typeof parsed !== 'object' ||
+            parsed === null ||
+            typeof (parsed as Record<string, unknown>).name !== 'string' ||
+            typeof (parsed as Record<string, unknown>).description !== 'string' ||
+            typeof (parsed as Record<string, unknown>).aspectRatio !== 'string' ||
+            typeof (parsed as Record<string, unknown>).data !== 'object' ||
+            (parsed as Record<string, unknown>).data === null
+          ) {
+            return null;
+          }
+
+          const templateData = (parsed as Record<string, unknown>).data as Record<string, unknown>;
+
+          // Validate data structure
+          if (
+            !Array.isArray(templateData.tracks) ||
+            !Array.isArray(templateData.clips) ||
+            !Array.isArray(templateData.effects) ||
+            !Array.isArray(templateData.transitions) ||
+            !Array.isArray(templateData.markers)
+          ) {
+            return null;
+          }
+
+          const template = parsed as Template;
           const id = generateId();
           const now = new Date().toISOString();
           const imported: Template = {
