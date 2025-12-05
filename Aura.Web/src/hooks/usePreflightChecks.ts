@@ -95,14 +95,14 @@ export function usePreflightChecks(autoRun: boolean = false): UsePreflightChecks
       const data = await response.json();
 
       // Map the backend response to our interface
-      // Backend uses PascalCase, we use camelCase
+      // Backend uses camelCase (configured in ASP.NET Core JSON options)
       const preflightReport: PreflightReport = {
         ok: data.ok,
         timestamp: data.timestamp,
         durationMs: data.durationMs,
-        ffmpeg: mapCheckResult(data.ffmpeg || data.fFmpeg),
+        ffmpeg: mapCheckResult(data.ffmpeg),
         ollama: mapCheckResult(data.ollama),
-        tts: mapCheckResult(data.tts || data.tTS),
+        tts: mapCheckResult(data.tts),
         diskSpace: mapCheckResult(data.diskSpace),
         imageProvider: mapCheckResult(data.imageProvider),
         errors: data.errors || [],
