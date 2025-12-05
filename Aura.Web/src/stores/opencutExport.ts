@@ -142,14 +142,18 @@ export const BUILTIN_PRESETS: ExportPreset[] = [
   {
     id: 'gif-small',
     name: 'Animated GIF',
-    description: 'Animated GIF for web sharing',
+    description: 'Animated GIF for web sharing (no audio)',
     platform: 'Web',
     settings: {
       format: 'gif',
+      // GIF uses palettegen/paletteuse filters, not traditional video codecs
+      // h264 is a placeholder; FFmpeg handles GIF conversion differently
       videoCodec: 'h264',
       resolution: { width: 480, height: 480 },
       frameRate: 15,
+      // GIF quality is controlled by palette generation, not bitrate
       videoBitrate: 0,
+      // GIF format does not support audio
       audioCodec: 'aac',
       audioBitrate: 0,
       qualityPreset: 'medium',
@@ -162,14 +166,17 @@ export const BUILTIN_PRESETS: ExportPreset[] = [
   {
     id: 'prores-master',
     name: 'ProRes Master',
-    description: 'Lossless master copy for archiving and further editing',
+    description: 'High-quality master copy for archiving and further editing',
     platform: 'Archive',
     settings: {
       format: 'mov',
       videoCodec: 'prores',
       resolution: { width: 1920, height: 1080 },
       frameRate: 30,
+      // ProRes uses quality-based encoding; bitrate is determined by profile
+      // Setting to 0 indicates quality-based rather than bitrate-based encoding
       videoBitrate: 0,
+      // PCM audio is uncompressed; bitrate depends on sample rate/bit depth
       audioCodec: 'pcm',
       audioBitrate: 0,
       audioSampleRate: 48000,
@@ -349,12 +356,13 @@ export const useExportStore = create<OpenCutExportStore>()(
         const settings = get().currentSettings;
         if (!settings) return 0;
         // Calculate estimated file size in MB
-        // Formula: (video_bitrate + audio_bitrate) * duration / 8 / 1024
+        // Formula: (video_bitrate + audio_bitrate) * duration / 8192
+        // where 8192 = 8 bits/byte * 1024 bytes/KB
         const videoBitrate = settings.videoBitrate || 0;
         const audioBitrate = settings.audioBitrate || 0;
         const totalBitrateKbps = videoBitrate + audioBitrate;
-        // Convert kbps to MB: (kbps * seconds) / 8 / 1024
-        return (totalBitrateKbps * durationSeconds) / 8 / 1024;
+        // Convert kbps to MB: (kbps * seconds) / 8192
+        return (totalBitrateKbps * durationSeconds) / 8192;
       },
 
       clearExportError: () => set({ exportError: null }),

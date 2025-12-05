@@ -20,6 +20,8 @@ import {
   DialogTrigger,
   Divider,
   mergeClasses,
+  Input,
+  Label,
 } from '@fluentui/react-components';
 import { ArrowExportLtr24Regular, Dismiss24Regular } from '@fluentui/react-icons';
 import { useState, useCallback, useMemo } from 'react';
@@ -325,21 +327,13 @@ export const ExportDialog: FC<ExportDialogProps> = ({ className, trigger }) => {
           <DialogTitle>Save Custom Preset</DialogTitle>
           <DialogBody>
             <DialogContent>
-              <Text>Enter a name for your custom preset:</Text>
-              <input
-                type="text"
+              <Label htmlFor="preset-name-input">Enter a name for your custom preset:</Label>
+              <Input
+                id="preset-name-input"
                 value={newPresetName}
-                onChange={(e) => setNewPresetName(e.target.value)}
+                onChange={(_, data) => setNewPresetName(data.value)}
                 placeholder="My Custom Preset"
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  marginTop: '8px',
-                  borderRadius: '4px',
-                  border: `1px solid ${tokens.colorNeutralStroke1}`,
-                  backgroundColor: tokens.colorNeutralBackground1,
-                  color: tokens.colorNeutralForeground1,
-                }}
+                style={{ marginTop: tokens.spacingVerticalS }}
               />
             </DialogContent>
             <DialogActions>
