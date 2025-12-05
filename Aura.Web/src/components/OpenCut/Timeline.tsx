@@ -66,7 +66,14 @@ import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
 import { openCutTokens } from '../../styles/designTokens';
 import type { MarkerType } from '../../types/opencut';
 import { MarkerTrack } from './Markers';
-import { GapIndicator, SnapIndicator, TimelineToolbar } from './Timeline/index';
+import {
+  GapIndicator,
+  RipplePreview,
+  SnapIndicator,
+  TimelineToolbar,
+  type RippleClipPreview,
+  type RippleDirection,
+} from './Timeline/index';
 import { TransitionHandle } from './Transitions';
 import { ClipWaveform } from './Waveform';
 
@@ -457,6 +464,12 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
 
   const [isResizing, setIsResizing] = useState(false);
   const [activeSnapPoint, setActiveSnapPoint] = useState<number | null>(null);
+  // Clip drag state
+  const [isDraggingClip, setIsDraggingClip] = useState(false);
+  const [dragClipId, setDragClipId] = useState<string | null>(null);
+  const [dragStartTime, setDragStartTime] = useState<number>(0);
+  const [dragCurrentTime, setDragCurrentTime] = useState<number>(0);
+  const dragStartXRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
   const startHeightRef = useRef(0);
@@ -858,10 +871,27 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     [closeGap]
   );
 
-  // Snapping handler for clip drag operations. These handlers are prepared for future clip
-  // drag implementation. The underscore prefix follows TypeScript convention for intentionally
-  // unused variables to satisfy linting rules while keeping the implementation ready.
-  const _handleClipDragSnap = useCallback(
+  // Clip drag handlers
+  const handleClipDragStart = useCallback(
+    (clipId: string, e: ReactMouseEvent) => {
+      e.stopPropagation();
+      const clip = clips.find((c) => c.id === clipId);
+      if (!clip || clip.locked) return;
+
+      // Get parent track element to calculate relative position
+      const trackContent = e.currentTarget.parentElement;
+      if (!trackContent) return;
+
+      setIsDraggingClip(true);
+      setDragClipId(clipId);
+      setDragStartTime(clip.startTime);
+      setDragCurrentTime(clip.startTime);
+      dragStartXRef.current = e.clientX;
+    },
+    [clips]
+  );
+
+  const handleClipDragSnap = useCallback(
     (clipId: string, proposedTime: number) => {
       if (!snapToClips) {
         setActiveSnapPoint(null);
@@ -880,9 +910,113 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     [snapToClips, findNearestSnapPoint]
   );
 
-  const _handleClipDragEnd = useCallback(() => {
+  const handleClipDragEnd = useCallback(() => {
+    if (!isDraggingClip || !dragClipId) {
+      setActiveSnapPoint(null);
+      return;
+    }
+
+    // Apply the final position if it changed
+    const clip = clips.find((c) => c.id === dragClipId);
+    if (clip && dragCurrentTime !== clip.startTime) {
+      timelineStore.moveClip(dragClipId, clip.trackId, Math.max(0, dragCurrentTime));
+    }
+
+    // Reset drag state
+    setIsDraggingClip(false);
+    setDragClipId(null);
+    setDragStartTime(0);
+    setDragCurrentTime(0);
     setActiveSnapPoint(null);
-  }, []);
+  }, [isDraggingClip, dragClipId, clips, dragCurrentTime, timelineStore]);
+
+  // Global mouse move/up handlers for clip dragging
+  useEffect(() => {
+    if (!isDraggingClip || !dragClipId) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - dragStartXRef.current;
+      const deltaTime = deltaX / pixelsPerSecond;
+      const newTime = Math.max(0, dragStartTime + deltaTime);
+
+      // Apply snapping
+      const snappedTime = handleClipDragSnap(dragClipId, newTime);
+      setDragCurrentTime(snappedTime);
+    };
+
+    const handleMouseUp = () => {
+      handleClipDragEnd();
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [
+    isDraggingClip,
+    dragClipId,
+    dragStartTime,
+    pixelsPerSecond,
+    handleClipDragSnap,
+    handleClipDragEnd,
+  ]);
+
+  // Calculate ripple preview data during drag
+  const ripplePreviewData = useMemo((): {
+    visible: boolean;
+    direction: RippleDirection;
+    timeShift: number;
+    affectedClips: RippleClipPreview[];
+  } => {
+    if (!isDraggingClip || !dragClipId || !magneticTimelineEnabled) {
+      return { visible: false, direction: 'right', timeShift: 0, affectedClips: [] };
+    }
+
+    const draggedClip = clips.find((c) => c.id === dragClipId);
+    if (!draggedClip) {
+      return { visible: false, direction: 'right', timeShift: 0, affectedClips: [] };
+    }
+
+    const timeShift = dragCurrentTime - dragStartTime;
+    if (Math.abs(timeShift) < 0.01) {
+      return { visible: false, direction: 'right', timeShift: 0, affectedClips: [] };
+    }
+
+    const direction: RippleDirection = timeShift > 0 ? 'right' : 'left';
+
+    // Find clips that would be affected by ripple
+    const affectedClips: RippleClipPreview[] = clips
+      .filter((c) => {
+        // Only clips on the same track, after the dragged clip's original position
+        if (c.id === dragClipId || c.trackId !== draggedClip.trackId) return false;
+        return c.startTime >= dragStartTime + draggedClip.duration;
+      })
+      .map((c) => ({
+        clipId: c.id,
+        currentPosition: c.startTime * pixelsPerSecond,
+        newPosition: (c.startTime + timeShift) * pixelsPerSecond,
+        width: c.duration * pixelsPerSecond,
+        name: c.name,
+      }));
+
+    return {
+      visible: affectedClips.length > 0,
+      direction,
+      timeShift: Math.abs(timeShift),
+      affectedClips,
+    };
+  }, [
+    isDraggingClip,
+    dragClipId,
+    dragCurrentTime,
+    dragStartTime,
+    clips,
+    pixelsPerSecond,
+    magneticTimelineEnabled,
+  ]);
 
   // Compute gaps for each track when magnetic timeline is enabled
   const trackGaps = useMemo(() => {
@@ -899,7 +1033,10 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
 
   const renderClip = (clip: TimelineClip) => {
     const isSelected = selectedClipIds.includes(clip.id);
-    const clipLeft = clip.startTime * pixelsPerSecond;
+    const isBeingDragged = isDraggingClip && dragClipId === clip.id;
+    // Use drag position during drag, otherwise use clip's actual position
+    const displayTime = isBeingDragged ? dragCurrentTime : clip.startTime;
+    const clipLeft = displayTime * pixelsPerSecond;
     const clipWidth = clip.duration * pixelsPerSecond;
 
     const clipTypeClass = {
@@ -927,10 +1064,13 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
         style={{
           left: clipLeft,
           width: Math.max(clipWidth, 30),
+          cursor: clip.locked ? 'not-allowed' : 'grab',
+          opacity: isBeingDragged ? 0.8 : 1,
         }}
         onClick={(e) => handleClipClick(clip.id, e)}
+        onMouseDown={(e) => handleClipDragStart(clip.id, e)}
         initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
+        animate={{ opacity: isBeingDragged ? 0.8 : 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.15 }}
         role="button"
@@ -1304,6 +1444,18 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                         snapType="clip-edge"
                       />
                     )}
+
+                    {/* Ripple preview - shows affected clips during drag with magnetic timeline */}
+                    {isDraggingClip &&
+                      dragClipId &&
+                      clips.find((c) => c.id === dragClipId)?.trackId === track.id && (
+                        <RipplePreview
+                          visible={ripplePreviewData.visible}
+                          direction={ripplePreviewData.direction}
+                          timeShift={ripplePreviewData.timeShift}
+                          affectedClips={ripplePreviewData.affectedClips}
+                        />
+                      )}
                   </div>
                 </div>
               </div>
