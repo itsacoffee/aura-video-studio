@@ -66,3 +66,6 @@ export type {
   TextAnimationPreset,
   AppliedTextAnimation,
 } from './opencutTextAnimations';
+
+export { useOpenCutCaptionsStore, DEFAULT_CAPTION_STYLE } from './opencutCaptions';
+export type { OpenCutCaptionsStore } from './opencutCaptions';
