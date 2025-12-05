@@ -10,15 +10,17 @@
  * typography, and elegant animations.
  */
 
-import { makeStyles, tokens } from '@fluentui/react-components';
+import { makeStyles, tokens, TabList, Tab } from '@fluentui/react-components';
 import { useEffect, useState, useCallback } from 'react';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import { openCutTokens } from '../../styles/designTokens';
+import { EffectsPanel } from './Effects';
 import { MediaPanel } from './MediaPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { PropertiesPanel } from './PropertiesPanel';
 import { ResizablePanel } from './ResizablePanel';
 import { Timeline } from './Timeline';
+import { TransitionsPanel } from './Transitions';
 
 const useStyles = makeStyles({
   root: {
@@ -46,6 +48,16 @@ const useStyles = makeStyles({
     boxShadow: openCutTokens.shadows.sm,
     zIndex: openCutTokens.zIndex.dropdown,
   },
+  leftPanelTabs: {
+    borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
+    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+  },
+  leftPanelContent: {
+    flex: 1,
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+  },
   centerPanel: {
     flex: 1,
     display: 'flex',
@@ -64,6 +76,8 @@ const useStyles = makeStyles({
   },
 });
 
+type LeftPanelTab = 'media' | 'effects' | 'transitions';
+
 export function OpenCutEditor() {
   const styles = useStyles();
   const projectStore = useOpenCutProjectStore();
@@ -71,6 +85,7 @@ export function OpenCutEditor() {
   // Panel sizes state
   const [leftPanelSize, setLeftPanelSize] = useState(320);
   const [rightPanelSize, setRightPanelSize] = useState(320);
+  const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('media');
 
   // Initialize project on mount
   useEffect(() => {
@@ -87,11 +102,28 @@ export function OpenCutEditor() {
     setRightPanelSize(size);
   }, []);
 
+  const handleLeftPanelTabChange = useCallback((_: unknown, data: { value: unknown }) => {
+    setLeftPanelTab(data.value as LeftPanelTab);
+  }, []);
+
+  const renderLeftPanelContent = () => {
+    switch (leftPanelTab) {
+      case 'media':
+        return <MediaPanel />;
+      case 'effects':
+        return <EffectsPanel />;
+      case 'transitions':
+        return <TransitionsPanel />;
+      default:
+        return <MediaPanel />;
+    }
+  };
+
   return (
     <div className={styles.root}>
       {/* Main Content Area */}
       <div className={styles.mainContent}>
-        {/* Left Panel - Media Library (Resizable) */}
+        {/* Left Panel - Media/Effects/Transitions (Resizable) */}
         <ResizablePanel
           direction="right"
           defaultSize={leftPanelSize}
@@ -100,7 +132,18 @@ export function OpenCutEditor() {
           className={styles.leftPanel}
           onResize={handleLeftPanelResize}
         >
-          <MediaPanel />
+          <div className={styles.leftPanelTabs}>
+            <TabList
+              selectedValue={leftPanelTab}
+              onTabSelect={handleLeftPanelTabChange}
+              size="small"
+            >
+              <Tab value="media">Media</Tab>
+              <Tab value="effects">Effects</Tab>
+              <Tab value="transitions">Transitions</Tab>
+            </TabList>
+          </div>
+          <div className={styles.leftPanelContent}>{renderLeftPanelContent()}</div>
         </ResizablePanel>
 
         {/* Center Panel - Preview */}
