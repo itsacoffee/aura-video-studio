@@ -14,11 +14,30 @@ import type {
   VerticalPosition,
 } from '../types/opencut';
 
+/**
+ * Time threshold in seconds for navigation tolerance
+ */
+const NAVIGATION_TIME_THRESHOLD = 0.01;
+
+/**
+ * Generate a unique ID for captions
+ */
 function generateId(): string {
+  // Use crypto.randomUUID if available, fallback to timestamp + random string
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `caption-${crypto.randomUUID()}`;
+  }
   return `caption-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
+/**
+ * Generate a unique ID for tracks
+ */
 function generateTrackId(): string {
+  // Use crypto.randomUUID if available, fallback to timestamp + random string
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return `track-${crypto.randomUUID()}`;
+  }
   return `track-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
@@ -387,7 +406,10 @@ export const useOpenCutCaptionsStore = create<OpenCutCaptionsStore>((set, get) =
 
     for (const track of visibleTracks) {
       for (const caption of track.captions) {
-        if (caption.startTime > currentTime + 0.01 && caption.startTime < nextTime) {
+        if (
+          caption.startTime > currentTime + NAVIGATION_TIME_THRESHOLD &&
+          caption.startTime < nextTime
+        ) {
           nextTime = caption.startTime;
           nextCaption = caption;
         }
@@ -407,7 +429,10 @@ export const useOpenCutCaptionsStore = create<OpenCutCaptionsStore>((set, get) =
 
     for (const track of visibleTracks) {
       for (const caption of track.captions) {
-        if (caption.startTime < currentTime - 0.01 && caption.startTime > prevTime) {
+        if (
+          caption.startTime < currentTime - NAVIGATION_TIME_THRESHOLD &&
+          caption.startTime > prevTime
+        ) {
           prevTime = caption.startTime;
           prevCaption = caption;
         }

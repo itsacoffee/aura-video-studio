@@ -436,14 +436,21 @@ export const CaptionsPanel: FC<CaptionsPanelProps> = ({ className }) => {
   const handleImportFile = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
+
+      // Reset file input immediately to allow selecting the same file again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
       if (!file) return;
 
-      const trackId = captionsStore.selectedTrackId;
+      let trackId = captionsStore.selectedTrackId;
       if (!trackId) {
         // Create a new track if none selected
         const newTrackId = captionsStore.addTrack(file.name.replace(/\.(srt|vtt)$/i, ''));
         if (!newTrackId) return;
         captionsStore.selectTrack(newTrackId);
+        trackId = newTrackId;
       }
 
       const reader = new FileReader();
@@ -459,11 +466,6 @@ export const CaptionsPanel: FC<CaptionsPanelProps> = ({ className }) => {
         }
       };
       reader.readAsText(file);
-
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
     },
     [captionsStore]
   );
