@@ -32,11 +32,13 @@ import {
   Grid24Regular,
   Timer24Regular,
   ArrowRepeatAll24Regular,
+  ArrowExportLtr24Regular,
 } from '@fluentui/react-icons';
 import { motion } from 'framer-motion';
 import { useCallback, useRef, useState } from 'react';
 import type { FC } from 'react';
 import { openCutTokens } from '../../styles/designTokens';
+import { ExportDialog } from './Export';
 import { PlaybackControls } from './PlaybackControls';
 
 export interface PreviewPanelProps {
@@ -433,6 +435,17 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
               </MenuList>
             </MenuPopover>
           </Menu>
+
+          {/* Export Button */}
+          <ExportDialog
+            trigger={
+              <Tooltip content="Export video" relationship="label">
+                <Button appearance="primary" size="small" icon={<ArrowExportLtr24Regular />}>
+                  Export
+                </Button>
+              </Tooltip>
+            }
+          />
         </div>
       </div>
 

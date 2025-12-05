@@ -66,3 +66,12 @@ export type {
   TextAnimationPreset,
   AppliedTextAnimation,
 } from './opencutTextAnimations';
+
+export { useExportStore, BUILTIN_PRESETS } from './opencutExport';
+export type {
+  OpenCutExportStore,
+  ExportState,
+  ExportActions,
+  ExportSettings,
+  ExportPreset,
+} from './opencutExport';

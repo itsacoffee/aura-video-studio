@@ -12,3 +12,4 @@ export * from './Transitions';
 export * from './Effects';
 export * from './Settings';
 export * from './TextAnimations';
+export * from './Export';
