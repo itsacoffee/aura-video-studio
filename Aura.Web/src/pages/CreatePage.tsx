@@ -340,7 +340,7 @@ export function CreatePage() {
     const activityId = addActivity({
       type: 'video-generation',
       title: 'Generating Video',
-      message: 'Creating video about "' + brief.topic + '"',
+      message: `Creating video about "${brief.topic}"`,
       canCancel: true,
       canRetry: true,
       metadata: { topic: brief.topic },
@@ -406,13 +406,13 @@ export function CreatePage() {
       updateActivity(activityId, {
         status: 'completed',
         progress: 100,
-        message: 'Video generation job created: ' + response.jobId,
+        message: `Video generation job created: ${response.jobId}`,
         metadata: { jobId: response.jobId },
       });
 
       showSuccessToast({
         title: 'Video Generation Started',
-        message: 'Job ID: ' + response.jobId + '. You can track progress in the jobs panel.',
+        message: `Job ID: ${response.jobId}. You can track progress in the jobs panel.`,
       });
 
       navigate('/jobs');

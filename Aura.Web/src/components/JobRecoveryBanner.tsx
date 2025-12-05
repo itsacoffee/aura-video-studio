@@ -39,7 +39,7 @@ export function JobRecoveryBanner() {
 
   const handleViewJob = () => {
     if (lastJob) {
-      navigate('/jobs/' + lastJob.id);
+      navigate(`/jobs/${lastJob.id}`);
       handleDismiss();
     }
   };
