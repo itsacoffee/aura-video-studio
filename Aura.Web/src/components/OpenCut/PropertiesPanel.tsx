@@ -30,6 +30,7 @@ import {
   Speaker224Regular,
   TextFont24Regular,
   Blur24Regular,
+  Sparkle24Regular,
 } from '@fluentui/react-icons';
 import { useState, useCallback } from 'react';
 import type { FC } from 'react';
@@ -38,12 +39,14 @@ import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutTimelineStore, type BlendMode } from '../../stores/opencutTimeline';
 import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
+import { useTextAnimationsStore } from '../../stores/opencutTextAnimations';
 import { openCutTokens } from '../../styles/designTokens';
 import { EffectStack } from './Effects';
 import { EmptyState } from './EmptyState';
 import { KeyframeDiamond } from './KeyframeEditor';
 import { SpeedControls } from './Speed/SpeedControls';
 import { TransitionEditor } from './Transitions';
+import { AnimationPresetPicker, AnimationEditor } from './TextAnimations';
 
 export interface PropertiesPanelProps {
   className?: string;
@@ -267,6 +270,7 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
   const keyframesStore = useOpenCutKeyframesStore();
   const playbackStore = useOpenCutPlaybackStore();
   const transitionsStore = useOpenCutTransitionsStore();
+  const textAnimationsStore = useTextAnimationsStore();
 
   const [aspectLocked, setAspectLocked] = useState(true);
 
@@ -971,6 +975,64 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
     return <EffectStack clipId={selectedClip.id} className={styles.propertyGroup} />;
   };
 
+  const renderTextAnimationsSection = () => {
+    // Only show for text clips (clips with text property)
+    if (!selectedClip?.text) return null;
+
+    // Get animations for this clip
+    const animations = textAnimationsStore.getAnimationsForTarget(selectedClip.id);
+    const inAnimation = animations.find((a) => a.position === 'in');
+    const outAnimation = animations.find((a) => a.position === 'out');
+    const continuousAnimation = animations.find((a) => a.position === 'continuous');
+
+    return (
+      <div className={styles.propertyGroup}>
+        <div className={styles.propertyGroupHeader}>
+          <div className={styles.propertyGroupTitle}>
+            <Sparkle24Regular className={styles.propertyGroupIcon} />
+            <Text weight="semibold" size={200}>
+              Text Animations
+            </Text>
+          </div>
+        </div>
+
+        {/* Entry Animation */}
+        {inAnimation ? (
+          <AnimationEditor
+            animation={inAnimation}
+            onRemove={() => textAnimationsStore.removeAnimation(inAnimation.id)}
+          />
+        ) : (
+          <AnimationPresetPicker targetId={selectedClip.id} targetType="clip" position="in" />
+        )}
+
+        {/* Exit Animation */}
+        {outAnimation ? (
+          <AnimationEditor
+            animation={outAnimation}
+            onRemove={() => textAnimationsStore.removeAnimation(outAnimation.id)}
+          />
+        ) : (
+          <AnimationPresetPicker targetId={selectedClip.id} targetType="clip" position="out" />
+        )}
+
+        {/* Continuous Animation */}
+        {continuousAnimation ? (
+          <AnimationEditor
+            animation={continuousAnimation}
+            onRemove={() => textAnimationsStore.removeAnimation(continuousAnimation.id)}
+          />
+        ) : (
+          <AnimationPresetPicker
+            targetId={selectedClip.id}
+            targetType="clip"
+            position="continuous"
+          />
+        )}
+      </div>
+    );
+  };
+
   const hasSelection = selectedMedia || selectedClip || selectedTransition;
 
   return (
@@ -999,6 +1061,7 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
             {renderSpeedSection()}
             {renderAudioSection()}
             {renderTextSection()}
+            {renderTextAnimationsSection()}
             {renderEffectsSection()}
             {renderTransitionSection()}
           </div>

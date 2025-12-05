@@ -57,15 +57,12 @@ export type {
   BezierHandles,
 } from './opencutKeyframes';
 
-export { useTemplatesStore, BUILTIN_TEMPLATES } from './opencutTemplates';
+export { useTextAnimationsStore, BUILTIN_TEXT_ANIMATION_PRESETS } from './opencutTextAnimations';
 export type {
-  OpenCutTemplatesStore,
-  Template,
-  TemplateData,
-  TemplateTrack,
-  TemplateClip,
-  TemplateEffect,
-  TemplateTransition,
-  TemplateMarker,
-  TemplateTrackType,
-} from './opencutTemplates';
+  TextAnimationsStore,
+  TextAnimationType,
+  TextAnimationCategory,
+  TextAnimationPosition,
+  TextAnimationPreset,
+  AppliedTextAnimation,
+} from './opencutTextAnimations';
