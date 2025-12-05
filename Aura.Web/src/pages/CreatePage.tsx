@@ -375,7 +375,7 @@ export function CreatePage() {
           style: normalizedPlanSpec.style || 'Standard',
         },
         voiceSpec: {
-          voiceName: 'en-US-Standard-A',
+          voiceName: 'default',
           rate: 1.0,
           pitch: 0.0,
           pause: 'Medium',
@@ -390,6 +390,7 @@ export function CreatePage() {
           qualityLevel: '75',
           enableSceneCut: true,
         },
+        imageProvider: selectedImageProvider,
       };
 
       updateActivity(activityId, { progress: 10, message: 'Sending request to server...' });
