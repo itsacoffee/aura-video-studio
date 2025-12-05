@@ -879,9 +879,19 @@ public partial class JobRunner
         _activeJobs[job.Id] = updated;
         _artifactManager.SaveJob(updated);
 
-        // Log job state changes for debugging
-        _logger.LogInformation("[Job {JobId}] Updated: Status={Status}, Stage={Stage}, Percent={Percent}%",
-            updated.Id, updated.Status, updated.Stage, updated.Percent);
+        // Log job state changes for debugging (include OutputPath for terminal states)
+        if (IsTerminalStatus(updated.Status))
+        {
+            _logger.LogInformation(
+                "[Job {JobId}] Terminal state: Status={Status}, Stage={Stage}, Percent={Percent}%, OutputPath={OutputPath}, Artifacts={ArtifactCount}",
+                updated.Id, updated.Status, updated.Stage, updated.Percent, 
+                updated.OutputPath ?? "NULL", updated.Artifacts?.Count ?? 0);
+        }
+        else
+        {
+            _logger.LogInformation("[Job {JobId}] Updated: Status={Status}, Stage={Stage}, Percent={Percent}%",
+                updated.Id, updated.Status, updated.Stage, updated.Percent);
+        }
 
         // Raise progress event with detailed information
         var eventArgs = new JobProgressEventArgs(

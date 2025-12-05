@@ -934,14 +934,12 @@ export const FinalExport: FC<FinalExportProps> = ({
 
           // If still no output path, try to construct from job directory
           if (!outputPath) {
-            console.warn(
-              '[FinalExport] No output path in job data, attempting to construct from job ID'
-            );
-            // The backend should set outputPath, but if it doesn't, we can't proceed
+            console.error('[FinalExport] Job data:', JSON.stringify(finalJobData, null, 2));
             throw new Error(
-              'No output path returned from video generation. ' +
-                'The video file may not have been created. ' +
-                'Please check the job logs for errors.'
+              'Video generation completed but output path not returned. ' +
+                'Check backend logs for the actual file location. ' +
+                'Job ID: ' +
+                jobId
             );
           }
 

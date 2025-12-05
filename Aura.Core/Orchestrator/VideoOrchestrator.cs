@@ -439,7 +439,20 @@ public class VideoOrchestrator
             var outputPath = compositionTask.Result as string
                 ?? throw new InvalidOperationException("Composition result is not a valid path");
 
-            _logger.LogInformation("Smart orchestration completed. Video at: {Path}", outputPath);
+            // Validate output file exists before returning (critical for job completion)
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                throw new InvalidOperationException(
+                    $"Video render failed: output path is empty. Expected a valid file path from composition task.");
+            }
+
+            if (!File.Exists(outputPath))
+            {
+                throw new InvalidOperationException(
+                    $"Video render failed: output file not created. Expected path: {outputPath}");
+            }
+
+            _logger.LogInformation("Smart orchestration completed. Video at: {Path} (verified exists)", outputPath);
 
             var providerTimeline = executorContext.Timeline;
             if (providerTimeline == null)
