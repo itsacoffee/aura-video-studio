@@ -207,11 +207,11 @@ export const AnimationEditor: FC<AnimationEditorProps> = ({
         <Dropdown
           className={styles.dropdown}
           value={paramValue ? 'Yes' : 'No'}
-          onOptionSelect={(_, data) => handleParameterChange(paramId, data.optionValue === 'true')}
+          onOptionSelect={(_, data) => handleParameterChange(paramId, data.optionValue === 'Yes')}
           size="small"
         >
-          <Option value="true">Yes</Option>
-          <Option value="false">No</Option>
+          <Option value="Yes">Yes</Option>
+          <Option value="No">No</Option>
         </Dropdown>
       );
     }

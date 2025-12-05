@@ -62,6 +62,12 @@ const useStyles = makeStyles({
 });
 
 // CSS keyframes for animations (injected once)
+/**
+ * Injects CSS keyframes for text animations.
+ * This approach is used for client-side only rendering (no SSR support needed)
+ * and provides a single point of keyframe definition that all components can use.
+ * The keyframes are only injected once per page load.
+ */
 const injectKeyframes = () => {
   const styleId = 'animated-text-keyframes';
   if (document.getElementById(styleId)) return;
@@ -359,15 +365,23 @@ export const AnimatedTextRenderer: FC<AnimatedTextRendererProps> = ({
     const words = text.split(/(\s+)/);
     const progress = getAnimationProgress(highlightAnim, currentTime, duration);
     const highlightColor = (highlightAnim.parameters.highlightColor as string) || '#FFFF00';
-    const activeWordIndex = Math.floor(progress * words.filter((w) => w.trim()).length);
+    const wordOnlyCount = words.filter((w) => w.trim()).length;
+    const activeWordIndex = Math.floor(progress * wordOnlyCount);
 
-    let wordCount = 0;
+    // Pre-calculate word indices for each token
+    const wordIndices = words.reduce<number[]>((acc, word) => {
+      const prevIndex = acc.length > 0 ? acc[acc.length - 1] : -1;
+      const isWord = word.trim().length > 0;
+      acc.push(isWord ? prevIndex + 1 : prevIndex);
+      return acc;
+    }, []);
+
     return (
       <span className={mergeClasses(styles.container, className)} style={style}>
         {words.map((word, index) => {
           const isWord = word.trim().length > 0;
-          const isHighlighted = isWord && wordCount === activeWordIndex;
-          if (isWord) wordCount++;
+          const wordIndex = wordIndices[index];
+          const isHighlighted = isWord && wordIndex === activeWordIndex;
           return (
             <span
               key={index}
