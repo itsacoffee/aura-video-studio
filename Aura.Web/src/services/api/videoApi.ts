@@ -41,6 +41,7 @@ export interface VideoGenerationRequest {
     qualityLevel: string;
     enableSceneCut: boolean;
   };
+  imageProvider?: string | null;
 }
 
 /**

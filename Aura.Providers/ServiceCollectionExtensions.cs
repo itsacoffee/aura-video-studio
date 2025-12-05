@@ -449,7 +449,8 @@ public static class ServiceCollectionExtensions
         // Pexels provider - using consolidated PexelsProvider (requires API key)
         // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
         // KeyStore may have keys stored as "Pexels" (from UI) or "pexels" (from legacy code)
-        services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
+        // Register as both IEnhancedStockProvider and IStockProvider for adapter compatibility
+        services.AddSingleton<Images.PexelsProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.PexelsProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
@@ -477,6 +478,10 @@ public static class ServiceCollectionExtensions
             logger.LogInformation("Pexels provider registered with API key from settings");
             return new Images.PexelsProvider(logger, httpClient, apiKey);
         });
+        // Register Pexels as IEnhancedStockProvider (forward to singleton)
+        services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp => sp.GetService<Images.PexelsProvider>()!);
+        // Register Pexels as IStockProvider for StockToImageProviderAdapter compatibility
+        services.AddSingleton<IStockProvider>(sp => sp.GetService<Images.PexelsProvider>()!);
 
         // Pixabay provider (requires API key)
         // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
@@ -539,12 +544,22 @@ public static class ServiceCollectionExtensions
 
         // Register StockToImageProviderAdapter as IImageProvider to bridge stock providers to VisualsStage
         // This enables stock image providers (Pexels, Unsplash, Pixabay) to be used for visual generation
+        // Priority: Configured stock providers (Pexels, etc.) > Placeholder fallback
         services.AddSingleton<IImageProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.StockToImageProviderAdapter>>();
-            var stockProvider = sp.GetService<IStockProvider>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
             var settings = sp.GetRequiredService<ProviderSettings>();
+
+            // Try to get a configured stock provider first (Pexels implements both interfaces)
+            // Pexels is preferred since it's the primary free stock provider
+            IStockProvider? stockProvider = sp.GetService<Images.PexelsProvider>();
+            
+            if (stockProvider == null)
+            {
+                // Fall back to any other registered IStockProvider (like PlaceholderImageProvider)
+                stockProvider = sp.GetService<IStockProvider>();
+            }
 
             // Only register if we have a valid stock provider
             if (stockProvider == null)

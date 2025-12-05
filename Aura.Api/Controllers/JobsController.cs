@@ -1660,5 +1660,6 @@ public record CreateJobRequest(
     BriefDto Brief,
     PlanSpec PlanSpec,
     VoiceSpec VoiceSpec,
-    RenderSpec RenderSpec
+    RenderSpec RenderSpec,
+    string? ImageProvider = null
 );
