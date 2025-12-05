@@ -66,7 +66,7 @@ import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
 import { openCutTokens } from '../../styles/designTokens';
 import type { MarkerType } from '../../types/opencut';
 import { MarkerTrack } from './Markers';
-import { GapIndicator, TimelineToolbar } from './Timeline/index';
+import { GapIndicator, SnapIndicator, TimelineToolbar } from './Timeline/index';
 import { TransitionHandle } from './Transitions';
 import { ClipWaveform } from './Waveform';
 
@@ -456,6 +456,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const transitionsStore = useOpenCutTransitionsStore();
 
   const [isResizing, setIsResizing] = useState(false);
+  const [activeSnapPoint, setActiveSnapPoint] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
   const startHeightRef = useRef(0);
@@ -468,8 +469,10 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     zoom,
     snapEnabled,
     magneticTimelineEnabled,
+    snapToClips,
     findGaps,
     closeGap,
+    findNearestSnapPoint,
   } = timelineStore;
   const { selectedMarkerId, getFilteredMarkers } = markersStore;
   const { selectedTransitionId } = transitionsStore;
@@ -854,6 +857,31 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     },
     [closeGap]
   );
+
+  // Snapping handler for clip drag operations (available for integration with clip drag logic)
+  const _handleClipDragSnap = useCallback(
+    (clipId: string, proposedTime: number) => {
+      if (!snapToClips) {
+        setActiveSnapPoint(null);
+        return proposedTime;
+      }
+
+      const nearestSnapPoint = findNearestSnapPoint(proposedTime, clipId);
+      if (nearestSnapPoint !== null) {
+        setActiveSnapPoint(nearestSnapPoint);
+        return nearestSnapPoint;
+      }
+
+      setActiveSnapPoint(null);
+      return proposedTime;
+    },
+    [snapToClips, findNearestSnapPoint]
+  );
+
+  // Clear snap point when drag ends (available for integration with clip drag logic)
+  const _handleClipDragEnd = useCallback(() => {
+    setActiveSnapPoint(null);
+  }, []);
 
   // Compute gaps for each track when magnetic timeline is enabled
   const trackGaps = useMemo(() => {
@@ -1268,13 +1296,11 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                     />
 
                     {/* Snap indicator */}
-                    {snapEnabled && (
-                      <div
-                        className={styles.snapIndicator}
-                        style={{
-                          left: playheadPosition,
-                          display: 'none', // Show when snapping
-                        }}
+                    {snapEnabled && snapToClips && (
+                      <SnapIndicator
+                        position={activeSnapPoint !== null ? activeSnapPoint * pixelsPerSecond : 0}
+                        visible={activeSnapPoint !== null}
+                        snapType="clip-edge"
                       />
                     )}
                   </div>
