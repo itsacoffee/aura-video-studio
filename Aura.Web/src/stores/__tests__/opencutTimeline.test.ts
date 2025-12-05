@@ -117,6 +117,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -141,6 +143,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -175,6 +179,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -199,6 +205,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -232,6 +240,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -256,6 +266,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -292,6 +304,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -316,6 +330,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -340,6 +356,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -379,6 +397,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -403,6 +423,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -445,6 +467,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -469,6 +493,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -506,6 +532,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -530,6 +558,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -572,6 +602,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -607,6 +639,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -641,6 +675,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -674,6 +710,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -698,6 +736,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -724,6 +764,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
           },
           blendMode: 'normal',
           speed: 1,
+          reversed: false,
+          timeRemapEnabled: false,
           locked: false,
         },
         2
@@ -767,6 +809,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -792,6 +836,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -832,6 +878,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -856,6 +904,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         },
         blendMode: 'normal',
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -882,6 +932,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         blendMode: 'normal',
         audio: { volume: 100, pan: 0, fadeInDuration: 0, fadeOutDuration: 0, muted: false },
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 
@@ -907,6 +959,8 @@ describe('OpenCutTimelineStore - Magnetic Timeline', () => {
         blendMode: 'normal',
         audio: { volume: 100, pan: 0, fadeInDuration: 0, fadeOutDuration: 0, muted: false },
         speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
         locked: false,
       });
 

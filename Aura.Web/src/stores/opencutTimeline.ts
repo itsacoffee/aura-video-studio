@@ -79,7 +79,14 @@ export interface TimelineClip {
   blendMode: BlendMode;
   audio?: ClipAudio;
   text?: ClipText;
+  /** Base speed multiplier (1 = normal) */
   speed: number;
+  /** Play in reverse */
+  reversed: boolean;
+  /** Use keyframe-based time remapping */
+  timeRemapEnabled: boolean;
+  /** If set, freeze at this source time */
+  freezeFrameTime?: number;
   locked: boolean;
 }
 
@@ -154,6 +161,13 @@ export interface OpenCutTimelineActions {
   updateClipBlendMode: (clipId: string, blendMode: BlendMode) => void;
   updateClipAudio: (clipId: string, audio: Partial<ClipAudio>) => void;
   updateClipText: (clipId: string, text: Partial<ClipText>) => void;
+
+  // Speed operations
+  setClipSpeed: (clipId: string, speed: number) => void;
+  toggleClipReverse: (clipId: string) => void;
+  setFreezeFrame: (clipId: string, sourceTime: number | undefined) => void;
+  enableTimeRemap: (clipId: string, enabled: boolean) => void;
+  fitToFill: (clipId: string, targetDuration: number) => void;
 
   // Selection
   selectClip: (clipId: string, addToSelection?: boolean) => void;
@@ -380,6 +394,9 @@ export const useOpenCutTimelineStore = create<OpenCutTimelineStore>((set, get) =
           : undefined,
       text: clipData.type === 'text' ? { ...defaultText, ...clipData.text } : undefined,
       speed: clipData.speed || 1,
+      reversed: clipData.reversed || false,
+      timeRemapEnabled: clipData.timeRemapEnabled || false,
+      freezeFrameTime: clipData.freezeFrameTime,
       locked: clipData.locked || false,
     };
     set((state) => ({ clips: [...state.clips, clip] }));
@@ -500,6 +517,45 @@ export const useOpenCutTimelineStore = create<OpenCutTimelineStore>((set, get) =
     if (!clip?.text) return;
     get().updateClip(clipId, {
       text: { ...clip.text, ...text },
+    });
+  },
+
+  // Speed operations
+  setClipSpeed: (clipId, speed) => {
+    const clampedSpeed = Math.max(0.1, Math.min(16, speed));
+    get().updateClip(clipId, { speed: clampedSpeed });
+  },
+
+  toggleClipReverse: (clipId) => {
+    const { clips } = get();
+    const clip = clips.find((c) => c.id === clipId);
+    if (!clip) return;
+    get().updateClip(clipId, { reversed: !clip.reversed });
+  },
+
+  setFreezeFrame: (clipId, sourceTime) => {
+    get().updateClip(clipId, { freezeFrameTime: sourceTime });
+  },
+
+  enableTimeRemap: (clipId, enabled) => {
+    get().updateClip(clipId, { timeRemapEnabled: enabled });
+  },
+
+  fitToFill: (clipId, targetDuration) => {
+    const { clips, saveSnapshot } = get();
+    const clip = clips.find((c) => c.id === clipId);
+    if (!clip || targetDuration <= 0) return;
+
+    saveSnapshot('Fit to fill');
+
+    // Calculate the speed needed to fit the clip to the target duration
+    const sourceDuration = clip.outPoint - clip.inPoint;
+    const newSpeed = sourceDuration / targetDuration;
+    const clampedSpeed = Math.max(0.1, Math.min(16, newSpeed));
+
+    get().updateClip(clipId, {
+      speed: clampedSpeed,
+      duration: targetDuration,
     });
   },
 
@@ -878,6 +934,9 @@ export const useOpenCutTimelineStore = create<OpenCutTimelineStore>((set, get) =
           : undefined,
       text: clipData.type === 'text' ? { ...defaultText, ...clipData.text } : undefined,
       speed: clipData.speed || 1,
+      reversed: clipData.reversed || false,
+      timeRemapEnabled: clipData.timeRemapEnabled || false,
+      freezeFrameTime: clipData.freezeFrameTime,
       locked: clipData.locked || false,
     };
 
