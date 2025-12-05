@@ -288,6 +288,8 @@ class WindowManager {
       show: false, // Don't show until ready-to-show event
       backgroundColor: backgroundColor,
       transparent: transparent,
+      resizable: true, // Explicitly enable resizing even with Mica/transparency
+      maximizable: true, // Explicitly enable maximizing even with Mica/transparency
       icon: this._getAppIcon(),
       webPreferences: {
         preload: preloadPath,

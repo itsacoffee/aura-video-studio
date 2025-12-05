@@ -81,13 +81,27 @@ const useStyles = makeStyles({
 
 type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates' | 'captions';
 
+// Panel sizing constraints - shared between helper function and components
+const PANEL_MIN_SIZE = 200;
+const PANEL_MAX_SIZE = 600;
+const PANEL_VIEWPORT_PERCENTAGE = 0.15;
+
+// Calculate responsive panel size based on viewport width
+function getResponsivePanelSize(): number {
+  if (typeof window === 'undefined') return PANEL_MIN_SIZE;
+  const viewportWidth = window.innerWidth;
+  // Use ~15% of viewport width, clamped between min and max
+  const percentageSize = Math.round(viewportWidth * PANEL_VIEWPORT_PERCENTAGE);
+  return Math.max(PANEL_MIN_SIZE, Math.min(percentageSize, PANEL_MAX_SIZE));
+}
+
 export function OpenCutEditor() {
   const styles = useStyles();
   const projectStore = useOpenCutProjectStore();
 
-  // Panel sizes state
-  const [leftPanelSize, setLeftPanelSize] = useState(320);
-  const [rightPanelSize, setRightPanelSize] = useState(320);
+  // Panel sizes state - responsive initial size based on viewport
+  const [leftPanelSize, setLeftPanelSize] = useState(() => getResponsivePanelSize());
+  const [rightPanelSize, setRightPanelSize] = useState(() => getResponsivePanelSize());
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('media');
 
   // Initialize keyboard shortcuts handler
@@ -138,8 +152,8 @@ export function OpenCutEditor() {
         <ResizablePanel
           direction="right"
           defaultSize={leftPanelSize}
-          minSize={260}
-          maxSize={480}
+          minSize={PANEL_MIN_SIZE}
+          maxSize={PANEL_MAX_SIZE}
           className={styles.leftPanel}
           onResize={handleLeftPanelResize}
         >
@@ -168,8 +182,8 @@ export function OpenCutEditor() {
         <ResizablePanel
           direction="left"
           defaultSize={rightPanelSize}
-          minSize={260}
-          maxSize={480}
+          minSize={PANEL_MIN_SIZE}
+          maxSize={PANEL_MAX_SIZE}
           className={styles.rightPanel}
           onResize={handleRightPanelResize}
         >
