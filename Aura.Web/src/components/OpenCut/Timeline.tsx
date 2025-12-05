@@ -322,6 +322,16 @@ const useStyles = makeStyles({
     boxShadow: `0 0 0 2px ${tokens.colorBrandStroke1}`,
     transform: 'translateY(-1px)',
   },
+  clipDraggable: {
+    cursor: 'grab',
+  },
+  clipDragging: {
+    cursor: 'grabbing',
+    opacity: 0.8,
+  },
+  clipLocked: {
+    cursor: 'not-allowed',
+  },
   clipThumbnail: {
     width: '48px',
     height: '100%',
@@ -451,6 +461,9 @@ const WAVEFORM_MAX_SAMPLES = 500;
 
 /** Pixels per sample for waveform detail calculation */
 const WAVEFORM_PIXELS_PER_SAMPLE = 2;
+
+/** Minimum time shift threshold in seconds to trigger ripple preview */
+const MIN_TIME_SHIFT_THRESHOLD = 0.01;
 
 export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const styles = useStyles();
@@ -981,18 +994,19 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     }
 
     const timeShift = dragCurrentTime - dragStartTime;
-    if (Math.abs(timeShift) < 0.01) {
+    if (Math.abs(timeShift) < MIN_TIME_SHIFT_THRESHOLD) {
       return { visible: false, direction: 'right', timeShift: 0, affectedClips: [] };
     }
 
     const direction: RippleDirection = timeShift > 0 ? 'right' : 'left';
 
     // Find clips that would be affected by ripple
+    // Use > instead of >= to exclude clips that touch exactly at the boundary
     const affectedClips: RippleClipPreview[] = clips
       .filter((c) => {
         // Only clips on the same track, after the dragged clip's original position
         if (c.id === dragClipId || c.trackId !== draggedClip.trackId) return false;
-        return c.startTime >= dragStartTime + draggedClip.duration;
+        return c.startTime > dragStartTime + draggedClip.duration;
       })
       .map((c) => ({
         clipId: c.id,
@@ -1060,12 +1074,19 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     return (
       <motion.div
         key={clip.id}
-        className={mergeClasses(styles.clip, clipTypeClass, isSelected && styles.clipSelected)}
+        className={mergeClasses(
+          styles.clip,
+          clipTypeClass,
+          isSelected && styles.clipSelected,
+          clip.locked
+            ? styles.clipLocked
+            : isBeingDragged
+              ? styles.clipDragging
+              : styles.clipDraggable
+        )}
         style={{
           left: clipLeft,
           width: Math.max(clipWidth, 30),
-          cursor: clip.locked ? 'not-allowed' : 'grab',
-          opacity: isBeingDragged ? 0.8 : 1,
         }}
         onClick={(e) => handleClipClick(clip.id, e)}
         onMouseDown={(e) => handleClipDragStart(clip.id, e)}
