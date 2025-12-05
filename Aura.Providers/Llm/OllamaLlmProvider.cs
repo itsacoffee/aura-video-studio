@@ -84,6 +84,73 @@ public class OllamaLlmProvider : ILlmProvider
         _circuitBreaker = circuitBreaker;
     }
 
+    /// <summary>
+    /// Ensures the HttpClient timeout is properly configured for Ollama's long-running requests.
+    /// Handles shared HttpClient instances safely by creating a new instance if modification fails.
+    /// </summary>
+    /// <param name="httpClient">The HttpClient to configure</param>
+    /// <param name="timeoutSeconds">The provider timeout in seconds</param>
+    /// <param name="logger">Logger for diagnostic messages</param>
+    /// <returns>A properly configured HttpClient (may be the same instance or a new one)</returns>
+    private static HttpClient EnsureProperTimeout(
+        HttpClient httpClient,
+        int timeoutSeconds,
+        ILogger logger)
+    {
+        var requiredTimeout = TimeSpan.FromSeconds(timeoutSeconds + 300);
+
+        // If HttpClient has infinite timeout, it's already configured for long-running requests
+        if (httpClient.Timeout == Timeout.InfiniteTimeSpan)
+        {
+            return httpClient;
+        }
+
+        // If HttpClient timeout is already sufficient, no changes needed
+        if (httpClient.Timeout >= requiredTimeout)
+        {
+            return httpClient;
+        }
+
+        // Log warning that HttpClient timeout needs to be increased
+        // This indicates the HttpClient should be configured properly in DI registration
+        logger.LogWarning(
+            "HttpClient timeout ({HttpClientTimeout}s) is shorter than required ({RequiredTimeout}s). " +
+            "Adjusting timeout. For best results, configure HttpClient timeout in DI registration.",
+            httpClient.Timeout.TotalSeconds, requiredTimeout.TotalSeconds);
+
+        // Try to modify the existing HttpClient's timeout
+        try
+        {
+            httpClient.Timeout = requiredTimeout;
+            logger.LogInformation(
+                "Configured HttpClient timeout to {Timeout}s for Ollama provider",
+                requiredTimeout.TotalSeconds);
+            return httpClient;
+        }
+        catch (InvalidOperationException)
+        {
+            // HttpClient is already in use (e.g., shared instance), create a new one
+            logger.LogWarning(
+                "HttpClient already in use, creating new instance with timeout {Timeout}s",
+                requiredTimeout.TotalSeconds);
+
+            var newClient = new HttpClient
+            {
+                Timeout = requiredTimeout,
+                BaseAddress = httpClient.BaseAddress
+            };
+
+            // Copy default request headers from the original client
+            foreach (var header in httpClient.DefaultRequestHeaders)
+            {
+                newClient.DefaultRequestHeaders.TryAddWithoutValidation(
+                    header.Key, header.Value);
+            }
+
+            return newClient;
+        }
+    }
+
     public OllamaLlmProvider(
         ILogger<OllamaLlmProvider> logger,
         HttpClient httpClient,
@@ -99,7 +166,10 @@ public class OllamaLlmProvider : ILlmProvider
     {
         _logger = logger;
         _circuitBreaker = circuitBreaker;
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _httpClient = EnsureProperTimeout(
+            httpClient ?? throw new ArgumentNullException(nameof(httpClient)),
+            timeoutSeconds,
+            logger);
         _baseUrl = ValidateBaseUrl(baseUrl);
         _model = model;
         _maxRetries = maxRetries;
@@ -109,24 +179,6 @@ public class OllamaLlmProvider : ILlmProvider
         _gpuEnabled = gpuEnabled;
         _numGpu = gpuEnabled ? numGpu : 0; // Force CPU mode if GPU disabled
         _numCtx = numCtx;
-
-        // CRITICAL: Ensure HttpClient timeout is longer than provider timeout
-        // HttpClient has a default 100-second timeout that would kill connections
-        // before our 15-minute provider timeout is reached
-        if (_httpClient.Timeout < TimeSpan.FromSeconds(timeoutSeconds + 300))
-        {
-            _logger.LogWarning(
-                "HttpClient timeout ({HttpClientTimeout}s) is shorter than provider timeout ({ProviderTimeout}s). " +
-                "Increasing HttpClient timeout to prevent premature cancellation. " +
-                "This should be configured in DI registration instead.",
-                _httpClient.Timeout.TotalSeconds, timeoutSeconds);
-
-            _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds + 300); // Add 5-minute buffer
-
-            _logger.LogInformation(
-                "HttpClient timeout increased to {NewTimeout}s to accommodate slow Ollama generation",
-                _httpClient.Timeout.TotalSeconds);
-        }
 
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)
