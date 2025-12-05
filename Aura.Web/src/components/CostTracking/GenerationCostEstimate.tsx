@@ -206,10 +206,12 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<GenerationCostEstimateResponse | null>(null);
+  const [isUnavailable, setIsUnavailable] = useState(false);
 
   const fetchEstimate = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setIsUnavailable(false);
 
     try {
       const response = await apiClient.post<GenerationCostEstimateResponse>(
@@ -227,9 +229,26 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
       setEstimate(response.data);
       onCostEstimated?.(response.data);
     } catch (err: unknown) {
+      // When cost estimation API fails (e.g., 428 Precondition Required, network errors),
+      // create a zero-cost fallback estimate to allow the user to continue with local/free providers
       const errorMessage = err instanceof Error ? err.message : 'Failed to estimate costs';
-      console.error('Cost estimation failed:', errorMessage);
-      setError(errorMessage);
+      console.warn('Cost estimation unavailable:', errorMessage);
+
+      // Fallback to zero-cost estimate - assumes user will proceed with local/free providers
+      const fallbackEstimate: GenerationCostEstimateResponse = {
+        llmCost: 0,
+        ttsCost: 0,
+        imageCost: 0,
+        totalCost: 0,
+        currency: 'USD',
+        breakdown: [],
+        isFreeGeneration: true,
+        confidence: 'low', // Low confidence since we couldn't get actual estimate
+      };
+      setEstimate(fallbackEstimate);
+      onCostEstimated?.(fallbackEstimate);
+      setError(null);
+      setIsUnavailable(true);
     } finally {
       setLoading(false);
     }
@@ -297,6 +316,9 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
   if (!estimate) {
     return null;
   }
+
+  // Show success card only for confirmed free generation (not when estimation failed)
+  const shouldShowFreeGenerationSuccess = estimate.isFreeGeneration && !isUnavailable;
 
   return (
     <Card className={styles.container}>
@@ -373,10 +395,16 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
           </div>
         )}
 
-      {estimate.isFreeGeneration && (
+      {shouldShowFreeGenerationSuccess && (
         <div className={styles.successCard}>
           <CheckmarkCircle16Regular className={styles.successIcon} />
           <Text className={styles.successText}>All providers are local/free - no API costs</Text>
+        </div>
+      )}
+
+      {isUnavailable && (
+        <div className={styles.confidenceNote}>
+          Cost estimation unavailable - using local/free providers by default
         </div>
       )}
     </Card>

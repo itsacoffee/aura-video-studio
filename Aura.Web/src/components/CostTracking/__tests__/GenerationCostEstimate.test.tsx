@@ -239,13 +239,16 @@ describe('GenerationCostEstimate', () => {
     });
   });
 
-  it('displays error message on API failure', async () => {
+  it('shows fallback estimate when API fails', async () => {
     mockApiClient.post.mockRejectedValue(new Error('Network error'));
 
     render(<GenerationCostEstimate {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/could not estimate costs/i)).toBeInTheDocument();
+      // Should show fallback message instead of error
+      expect(
+        screen.getByText(/cost estimation unavailable - using local\/free providers by default/i)
+      ).toBeInTheDocument();
     });
   });
 

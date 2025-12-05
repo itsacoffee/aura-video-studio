@@ -38,10 +38,10 @@ public class PexelsStockProvider : IStockProvider
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
-            _logger.LogWarning("Pexels API key not provided, throwing exception to trigger fallback");
-            throw new InvalidOperationException(
-                "Pexels API key is required. Configure a Pexels API key in Settings or use a different image provider. " +
-                "Get a free API key at https://www.pexels.com/api/");
+            _logger.LogWarning(
+                "Pexels API key not configured. Get a free API key at https://www.pexels.com/api/ and configure it in Settings > Providers");
+            // Return empty list to let caller handle fallback gracefully
+            return Array.Empty<Asset>();
         }
 
         _logger.LogInformation("Searching Pexels for: {Query} (count: {Count})", query, count);
