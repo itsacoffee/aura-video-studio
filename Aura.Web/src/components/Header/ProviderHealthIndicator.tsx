@@ -22,8 +22,14 @@ import {
   DrawerHeaderTitle,
   DrawerBody,
 } from '@fluentui/react-components';
-import { Circle20Filled, ChevronRight20Regular, Dismiss24Regular } from '@fluentui/react-icons';
-import { useState, type FC } from 'react';
+import {
+  Circle20Filled,
+  ChevronRight20Regular,
+  Dismiss24Regular,
+  ArrowSync20Regular,
+  Warning20Filled,
+} from '@fluentui/react-icons';
+import { useState, type FC, useCallback } from 'react';
 import { useProviderStatus, type ProviderHealthLevel } from '../../hooks/useProviderStatus';
 import { ProviderStatusPanel } from '../ProviderStatusPanel';
 
@@ -53,6 +59,10 @@ const useStyles = makeStyles({
   },
   criticalDot: {
     color: tokens.colorPaletteRedForeground1,
+  },
+  errorDot: {
+    color: tokens.colorPaletteRedForeground1,
+    animation: 'pulse 1.5s ease-in-out infinite',
   },
   tooltipContent: {
     display: 'flex',
@@ -84,11 +94,28 @@ const useStyles = makeStyles({
     alignItems: 'center',
     gap: tokens.spacingHorizontalXXS,
   },
+  tooltipError: {
+    marginTop: tokens.spacingVerticalXS,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorPaletteRedForeground1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalXXS,
+  },
+  tooltipStale: {
+    marginTop: tokens.spacingVerticalXS,
+    fontSize: tokens.fontSizeBase100,
+    color: tokens.colorPaletteYellowForeground2,
+    fontStyle: 'italic',
+  },
   drawer: {
     width: '450px',
   },
   drawerBody: {
     padding: tokens.spacingVerticalM,
+  },
+  refreshButton: {
+    marginTop: tokens.spacingVerticalS,
   },
 });
 
@@ -134,6 +161,10 @@ interface TooltipContentProps {
   availableImages: number;
   totalImages: number;
   lastUpdated: Date | null;
+  hasFetchError?: boolean;
+  errorMessage?: string;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 const TooltipContentComponent: FC<TooltipContentProps> = ({
@@ -146,16 +177,34 @@ const TooltipContentComponent: FC<TooltipContentProps> = ({
   availableImages,
   totalImages,
   lastUpdated,
+  hasFetchError,
+  errorMessage,
+  onRefresh,
+  isRefreshing,
 }) => {
   const styles = useStyles();
 
   const levelText =
     level === 'healthy' ? 'Healthy' : level === 'degraded' ? 'Degraded' : 'Critical';
 
+  // Calculate if the data is stale (more than 2 minutes old)
+  const isStale = lastUpdated && Date.now() - lastUpdated.getTime() > 2 * 60 * 1000;
+
   return (
     <div className={styles.tooltipContent}>
       <Text className={styles.tooltipTitle}>Provider Status: {levelText}</Text>
       <Text size={200}>{message}</Text>
+
+      {hasFetchError && (
+        <div className={styles.tooltipError}>
+          <Warning20Filled />
+          <span>{errorMessage || 'Unable to fetch provider status'}</span>
+        </div>
+      )}
+
+      {isStale && !hasFetchError && (
+        <div className={styles.tooltipStale}>Last successful update was over 2 minutes ago</div>
+      )}
 
       <div className={styles.tooltipRow}>
         <span className={styles.tooltipLabel}>Script (LLM):</span>
@@ -188,6 +237,22 @@ const TooltipContentComponent: FC<TooltipContentProps> = ({
           Updated: {lastUpdated.toLocaleTimeString()}
         </Text>
       )}
+
+      {hasFetchError && onRefresh && (
+        <Button
+          className={styles.refreshButton}
+          appearance="secondary"
+          size="small"
+          icon={isRefreshing ? <Spinner size="tiny" /> : <ArrowSync20Regular />}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRefresh();
+          }}
+          disabled={isRefreshing}
+        >
+          Retry
+        </Button>
+      )}
     </div>
   );
 };
@@ -208,8 +273,10 @@ export const ProviderHealthIndicator: FC<ProviderHealthIndicatorProps> = ({
 }) => {
   const styles = useStyles();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { healthSummary, isLoading, lastUpdated } = useProviderStatus(pollInterval);
+  const { healthSummary, isLoading, lastUpdated, hasFetchError, error, refresh } =
+    useProviderStatus(pollInterval);
 
   const handleClick = () => {
     setIsDrawerOpen(true);
@@ -218,6 +285,15 @@ export const ProviderHealthIndicator: FC<ProviderHealthIndicatorProps> = ({
   const handleDrawerClose = () => {
     setIsDrawerOpen(false);
   };
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refresh]);
 
   // Show loading spinner during initial load
   if (isLoading && !lastUpdated) {
@@ -246,8 +322,11 @@ export const ProviderHealthIndicator: FC<ProviderHealthIndicatorProps> = ({
     totalImages,
   } = healthSummary;
 
-  const dotClass = getStatusDotClass(level, styles);
-  const ariaLabel = getAriaLabel(level, message);
+  // Show error indicator if fetch failed
+  const dotClass = hasFetchError ? styles.errorDot : getStatusDotClass(level, styles);
+  const ariaLabel = hasFetchError
+    ? 'Provider status unavailable. Click to retry.'
+    : getAriaLabel(level, message);
 
   return (
     <>
@@ -264,6 +343,10 @@ export const ProviderHealthIndicator: FC<ProviderHealthIndicatorProps> = ({
               availableImages={availableImages}
               totalImages={totalImages}
               lastUpdated={lastUpdated}
+              hasFetchError={hasFetchError}
+              errorMessage={error?.message}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshing}
             />
           }
           relationship="description"

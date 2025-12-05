@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 
 export interface ProviderStatus {
   name: string;
@@ -16,6 +16,12 @@ export interface ProviderStatusResponse {
   images: ProviderStatus[];
   timestamp: string;
 }
+
+/** Maximum number of retry attempts for failed fetch requests */
+const MAX_RETRIES = 3;
+
+/** Base delay in milliseconds for exponential backoff between retries */
+const RETRY_DELAY_MS = 2000;
 
 /**
  * Backend DTO for detailed provider status
@@ -132,6 +138,10 @@ export interface UseProviderStatusResult {
   imageProviders: ProviderStatus[];
   isLoading: boolean;
   error: Error | null;
+  /** Whether the last fetch attempt failed (different from error being set during initial load) */
+  hasFetchError: boolean;
+  /** Number of consecutive fetch failures */
+  failureCount: number;
   refresh: () => Promise<void>;
   lastUpdated: Date | null;
   healthSummary: ProviderHealthSummary;
@@ -140,41 +150,104 @@ export interface UseProviderStatusResult {
 /**
  * Hook for polling and managing provider status
  * Polls every 15 seconds for real-time updates
+ * Includes retry logic with exponential backoff for transient failures
+ * Preserves last successful data when fetch fails
  */
 export function useProviderStatus(pollInterval: number = 15000): UseProviderStatusResult {
   const [status, setStatus] = useState<ProviderStatusResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [hasFetchError, setHasFetchError] = useState(false);
+  const [failureCount, setFailureCount] = useState(0);
+
+  // Track if component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+
+  /**
+   * Fetch with retry logic and exponential backoff
+   */
+  const fetchWithRetry = useCallback(
+    async (retryCount: number = 0): Promise<BackendSystemProviderStatusDto | null> => {
+      try {
+        const response = await fetch('/api/provider-status');
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch provider status: ${response.statusText}`);
+        }
+
+        const data: BackendSystemProviderStatusDto = await response.json();
+        return data;
+      } catch (err) {
+        if (retryCount < MAX_RETRIES) {
+          // Wait with exponential backoff before retrying
+          const delay = RETRY_DELAY_MS * Math.pow(2, retryCount);
+          console.warn(
+            `Provider status fetch failed (attempt ${retryCount + 1}/${MAX_RETRIES + 1}), retrying in ${delay}ms...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
+
+          // Check if still mounted before retrying
+          if (!isMountedRef.current) {
+            return null;
+          }
+
+          return fetchWithRetry(retryCount + 1);
+        }
+        throw err;
+      }
+    },
+    []
+  );
 
   const fetchStatus = useCallback(async () => {
-    try {
+    // Only set loading to true if we don't have any data yet
+    if (!status) {
       setIsLoading(true);
-      setError(null);
+    }
 
-      const response = await fetch('/api/provider-status');
+    try {
+      const backendData = await fetchWithRetry();
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch provider status: ${response.statusText}`);
+      // Check if still mounted
+      if (!isMountedRef.current || !backendData) {
+        return;
       }
-
-      const backendData: BackendSystemProviderStatusDto = await response.json();
 
       // Transform backend response format to frontend format
       const transformedData = transformBackendResponse(backendData);
 
       setStatus(transformedData);
       setLastUpdated(new Date());
+      setError(null);
+      setHasFetchError(false);
+      setFailureCount(0);
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
+
+      // Only update error state if mounted
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      console.error('Error fetching provider status after retries:', error);
       setError(error);
-      console.error('Error fetching provider status:', error);
+      setHasFetchError(true);
+      setFailureCount((prev) => prev + 1);
+
+      // Keep the previous successful status data if available (don't reset to null)
+      // This ensures users see stale data rather than 0/0 when there's a transient failure
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, []);
+  }, [status, fetchWithRetry]);
 
   useEffect(() => {
+    // Mark as mounted
+    isMountedRef.current = true;
+
     // Initial fetch
     void fetchStatus();
 
@@ -184,6 +257,7 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
     }, pollInterval);
 
     return () => {
+      isMountedRef.current = false;
       clearInterval(interval);
     };
   }, [fetchStatus, pollInterval]);
@@ -256,6 +330,8 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
     imageProviders: status?.images ?? [],
     isLoading,
     error,
+    hasFetchError,
+    failureCount,
     refresh: fetchStatus,
     lastUpdated,
     healthSummary,
