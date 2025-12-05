@@ -20,6 +20,12 @@ namespace Aura.Api.Controllers;
 [Route("api/health-dashboard")]
 public class HealthDashboardController : ControllerBase
 {
+    /// <summary>
+    /// Providers that are always available without requiring API keys or external services.
+    /// These providers should default to "healthy" status even without health metrics.
+    /// </summary>
+    private static readonly string[] AlwaysAvailableProviders = { "RuleBased", "WindowsSAPI", "Stock" };
+    
     private readonly ILogger<HealthDashboardController> _logger;
     private readonly ProviderHealthMonitoringService _healthMonitoring;
     private readonly ProviderCircuitBreakerService _circuitBreaker;
@@ -187,11 +193,7 @@ public class HealthDashboardController : ControllerBase
         {
             // For providers that don't require API keys and don't need external services,
             // default to "healthy" since they should always be available
-            // RuleBased LLM provider is always available (offline fallback)
-            // WindowsSAPI TTS is always available on Windows
-            // Stock image providers are always available
-            var alwaysAvailableProviders = new[] { "RuleBased", "WindowsSAPI", "Stock" };
-            if (!requiresApiKey && providerName != null && alwaysAvailableProviders.Contains(providerName))
+            if (!requiresApiKey && providerName != null && AlwaysAvailableProviders.Contains(providerName))
             {
                 return "healthy";
             }
