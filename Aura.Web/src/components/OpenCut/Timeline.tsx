@@ -4,13 +4,14 @@
  * Professional timeline with full editing capabilities:
  * - Track and clip management with visual feedback
  * - Functional split, copy, delete, and add track buttons
- * - Keyboard shortcuts (S for split, Cmd/Ctrl+D duplicate, Delete/Backspace)
+ * - Keyboard shortcuts (S for split, Cmd/Ctrl+D duplicate, Delete/Backspace, Cmd/Ctrl+T for transitions)
  * - Zoom that actually affects timeline scale
  * - Scroll-to-zoom with Cmd/Ctrl + mouse wheel
  * - Clip rendering with thumbnails and waveforms
  * - Selection support with multi-select
  * - Undo/redo support
  * - Timeline markers support
+ * - Transitions between clips
  */
 
 import {
@@ -59,9 +60,11 @@ import {
   type ClipType,
   type TimelineClip,
 } from '../../stores/opencutTimeline';
+import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
 import { openCutTokens } from '../../styles/designTokens';
 import type { MarkerType } from '../../types/opencut';
 import { MarkerTrack } from './Markers';
+import { TransitionHandle } from './Transitions';
 import { ClipWaveform } from './Waveform';
 
 export interface TimelineProps {
@@ -438,6 +441,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const keyframesStore = useOpenCutKeyframesStore();
   const markersStore = useOpenCutMarkersStore();
   const mediaStore = useOpenCutMediaStore();
+  const transitionsStore = useOpenCutTransitionsStore();
 
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -445,7 +449,8 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const startHeightRef = useRef(0);
 
   const { tracks, clips, selectedClipIds, selectedTrackId, zoom, snapEnabled } = timelineStore;
-  const { markers, selectedMarkerId, getFilteredMarkers } = markersStore;
+  const { selectedMarkerId, getFilteredMarkers } = markersStore;
+  const { selectedTransitionId } = transitionsStore;
   const duration = playbackStore.duration;
   const currentTime = playbackStore.currentTime;
 
@@ -650,6 +655,15 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
             }
           }
           break;
+        case 't':
+          if (cmdOrCtrl) {
+            e.preventDefault();
+            // Apply default transition to selected clips
+            selectedClipIds.forEach((clipId) => {
+              transitionsStore.applyTransition('cross-dissolve', clipId, 'end');
+            });
+          }
+          break;
       }
     };
 
@@ -663,6 +677,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     keyframesStore,
     playbackStore,
     markersStore,
+    transitionsStore,
   ]);
 
   // Scroll-to-zoom with Cmd/Ctrl + mouse wheel
@@ -877,6 +892,33 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
         <div className={mergeClasses(styles.clipTrimHandle, styles.clipTrimHandleRight)} />
       </motion.div>
     );
+  };
+
+  // Render transition handles for clips in a track
+  const renderTransitionHandles = (trackClips: TimelineClip[]) => {
+    return trackClips.flatMap((clip) => {
+      const clipTransitions = transitionsStore.getTransitionsForClip(clip.id);
+      return clipTransitions.map((transition) => {
+        // Calculate position based on whether it's at start or end
+        const clipStart = clip.startTime * pixelsPerSecond;
+        const clipEnd = (clip.startTime + clip.duration) * pixelsPerSecond;
+        const position = transition.position === 'start' ? clipStart : clipEnd;
+
+        return (
+          <TransitionHandle
+            key={transition.id}
+            transition={transition}
+            position={position}
+            pixelsPerSecond={pixelsPerSecond}
+            isSelected={selectedTransitionId === transition.id}
+            onClick={() => transitionsStore.selectTransition(transition.id)}
+            onDurationChange={(id, newDuration) => {
+              transitionsStore.updateTransition(id, { duration: newDuration });
+            }}
+          />
+        );
+      });
+    });
   };
 
   const sortedTracks = useMemo(() => [...tracks].sort((a, b) => a.order - b.order), [tracks]);
@@ -1146,6 +1188,9 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                 <div className={styles.trackContentScrollable}>
                   <div className={styles.trackContent} style={{ width: totalWidth }}>
                     {trackClips.map(renderClip)}
+
+                    {/* Transition handles */}
+                    {renderTransitionHandles(trackClips)}
 
                     {/* Playhead line continues through tracks */}
                     <motion.div

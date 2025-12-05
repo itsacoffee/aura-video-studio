@@ -29,6 +29,7 @@ import {
   Pin24Regular,
   Speaker224Regular,
   TextFont24Regular,
+  Blur24Regular,
 } from '@fluentui/react-icons';
 import { useState, useCallback } from 'react';
 import type { FC } from 'react';
@@ -36,9 +37,11 @@ import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
 import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutTimelineStore, type BlendMode } from '../../stores/opencutTimeline';
+import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
 import { openCutTokens } from '../../styles/designTokens';
 import { EmptyState } from './EmptyState';
 import { KeyframeDiamond } from './KeyframeEditor';
+import { TransitionEditor } from './Transitions';
 
 export interface PropertiesPanelProps {
   className?: string;
@@ -261,6 +264,7 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
   const timelineStore = useOpenCutTimelineStore();
   const keyframesStore = useOpenCutKeyframesStore();
   const playbackStore = useOpenCutPlaybackStore();
+  const transitionsStore = useOpenCutTransitionsStore();
 
   const [aspectLocked, setAspectLocked] = useState(true);
 
@@ -271,6 +275,9 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
   const selectedClips = timelineStore.getSelectedClips();
   const selectedClip = selectedClips.length === 1 ? selectedClips[0] : null;
   const currentTime = playbackStore.currentTime;
+
+  // Get selected transition
+  const selectedTransition = transitionsStore.getSelectedTransition();
 
   // Keyframe helpers
   const hasKeyframeAt = useCallback(
@@ -939,7 +946,18 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
     );
   };
 
-  const hasSelection = selectedMedia || selectedClip;
+  const renderTransitionSection = () => {
+    if (!selectedTransition) return null;
+
+    return (
+      <TransitionEditor
+        transition={selectedTransition}
+        onRemove={() => transitionsStore.selectTransition(null)}
+      />
+    );
+  };
+
+  const hasSelection = selectedMedia || selectedClip || selectedTransition;
 
   return (
     <div className={mergeClasses(styles.container, className)}>
@@ -966,6 +984,7 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
             {renderTransformSection()}
             {renderAudioSection()}
             {renderTextSection()}
+            {renderTransitionSection()}
           </div>
         )}
       </div>
