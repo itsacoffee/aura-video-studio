@@ -17,6 +17,7 @@ import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import { openCutTokens } from '../../styles/designTokens';
 import { EffectsPanel } from './Effects';
 import { MediaPanel } from './MediaPanel';
+import { GraphicsPanel } from './MotionGraphics';
 import { PreviewPanel } from './PreviewPanel';
 import { PropertiesPanel } from './PropertiesPanel';
 import { ResizablePanel } from './ResizablePanel';
@@ -78,7 +79,7 @@ const useStyles = makeStyles({
   },
 });
 
-type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates';
+type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates' | 'graphics';
 
 export function OpenCutEditor() {
   const styles = useStyles();
@@ -122,6 +123,8 @@ export function OpenCutEditor() {
         return <TransitionsPanel />;
       case 'templates':
         return <TemplatesPanel />;
+      case 'graphics':
+        return <GraphicsPanel />;
       default:
         return <MediaPanel />;
     }
@@ -149,6 +152,7 @@ export function OpenCutEditor() {
               <Tab value="media">Media</Tab>
               <Tab value="effects">Effects</Tab>
               <Tab value="transitions">Transitions</Tab>
+              <Tab value="graphics">Graphics</Tab>
               <Tab value="templates">Templates</Tab>
             </TabList>
           </div>

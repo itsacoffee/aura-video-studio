@@ -66,3 +66,6 @@ export type {
   TextAnimationPreset,
   AppliedTextAnimation,
 } from './opencutTextAnimations';
+
+export { useMotionGraphicsStore, BUILTIN_GRAPHICS } from './opencutMotionGraphics';
+export type { MotionGraphicsStore } from './opencutMotionGraphics';
