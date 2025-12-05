@@ -828,6 +828,11 @@ public class JobsController : ControllerBase
                 var videoArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4");
                 var subtitleArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "subtitle" || a.Type == "text/srt");
 
+                // Log job completion details for debugging
+                Log.Information(
+                    "[{CorrelationId}] Job {JobId} completed via events endpoint. OutputPath={OutputPath}, Artifacts={ArtifactCount}",
+                    correlationId, job.Id, job.OutputPath ?? "NULL", job.Artifacts?.Count ?? 0);
+
                 await SendSseEventWithId("job-completed", new
                 {
                     status = "Succeeded",
@@ -1496,13 +1501,20 @@ public class JobsController : ControllerBase
                     if (job.Status == JobStatus.Done || job.Status == JobStatus.Succeeded ||
                         job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
                     {
+                        // Log job completion details for debugging
+                        var videoArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4");
+                        Log.Information(
+                            "[{CorrelationId}] Job {JobId} completed. Status={Status}, OutputPath={OutputPath}, Artifacts={ArtifactCount}",
+                            correlationId, jobId, job.Status, 
+                            job.OutputPath ?? "NULL", job.Artifacts?.Count ?? 0);
+
                         var finalData = JsonSerializer.Serialize(new
                         {
                             percent = job.Percent,
                             stage = job.Stage,
                             status = MapJobStatus(job.Status.ToString()),
                             message = job.Logs.LastOrDefault() ?? "",
-                            outputPath = job.OutputPath ?? job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4")?.Path
+                            outputPath = job.OutputPath ?? videoArtifact?.Path
                         });
 
                         await Response.WriteAsync($"event: job-completed\n", cancellationToken).ConfigureAwait(false);
