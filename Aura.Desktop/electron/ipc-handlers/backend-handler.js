@@ -112,7 +112,7 @@ class BackendHandler {
     // Get provider status
     ipcMain.handle('backend:providerStatus', async () => {
       try {
-        const response = await axios.get(`${this.backendUrl}/api/providers/status`, {
+        const response = await axios.get(`${this.backendUrl}/api/provider-status`, {
           timeout: 10000
         });
         
