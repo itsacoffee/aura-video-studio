@@ -56,3 +56,13 @@ export type {
   EasingType,
   BezierHandles,
 } from './opencutKeyframes';
+
+export { useTextAnimationsStore, BUILTIN_TEXT_ANIMATION_PRESETS } from './opencutTextAnimations';
+export type {
+  TextAnimationsStore,
+  TextAnimationType,
+  TextAnimationCategory,
+  TextAnimationPosition,
+  TextAnimationPreset,
+  AppliedTextAnimation,
+} from './opencutTextAnimations';
