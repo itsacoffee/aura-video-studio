@@ -56,6 +56,17 @@ function mapTier(tier: string): 'free' | 'local' | 'paid' | 'unknown' {
 }
 
 /**
+ * Maps backend category strings to normalized category keys
+ */
+function normalizeCategory(category: string): 'llm' | 'tts' | 'images' | 'other' {
+  const lowerCategory = category.toLowerCase();
+  if (lowerCategory === 'llm') return 'llm';
+  if (lowerCategory === 'tts') return 'tts';
+  if (lowerCategory === 'image' || lowerCategory === 'images') return 'images';
+  return 'other';
+}
+
+/**
  * Transforms backend system provider status to frontend format
  */
 function transformBackendResponse(
@@ -72,17 +83,17 @@ function transformBackendResponse(
     details: provider.message || undefined,
   });
 
-  // Filter providers by category (case-insensitive)
+  // Group providers by normalized category
   const llmProviders = backendData.providers
-    .filter((p) => p.category.toLowerCase() === 'llm')
+    .filter((p) => normalizeCategory(p.category) === 'llm')
     .map(transformProvider);
 
   const ttsProviders = backendData.providers
-    .filter((p) => p.category.toLowerCase() === 'tts')
+    .filter((p) => normalizeCategory(p.category) === 'tts')
     .map(transformProvider);
 
   const imageProviders = backendData.providers
-    .filter((p) => p.category.toLowerCase() === 'image' || p.category.toLowerCase() === 'images')
+    .filter((p) => normalizeCategory(p.category) === 'images')
     .map(transformProvider);
 
   return {

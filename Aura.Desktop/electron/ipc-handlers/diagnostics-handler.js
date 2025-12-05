@@ -278,7 +278,7 @@ class DiagnosticsHandler {
         const providers = Array.isArray(data.providers) ? data.providers : [];
         const availableCount = providers.filter(p => p?.isAvailable).length;
         
-        if (availableCount === 0 && providers.length === 0) {
+        if (providers.length === 0) {
           return {
             status: 'warning',
             message: 'No providers configured. Configure at least one provider to generate videos.',
@@ -287,7 +287,7 @@ class DiagnosticsHandler {
           };
         }
         
-        if (availableCount === 0 && providers.length > 0) {
+        if (availableCount === 0) {
           return {
             status: 'warning',
             message: 'No providers available. Check provider configurations.',
