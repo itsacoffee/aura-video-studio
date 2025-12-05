@@ -45,11 +45,12 @@ public class RagContextBuilder
         if (!config.Enabled)
         {
             _logger.LogDebug("RAG is disabled, returning empty context");
-            return new RagContext { Query = query };
+            return RagContext.Empty(query, RagContextStatus.Disabled);
         }
 
-        // Check cache first
-        var cacheKey = $"{query}_{config.TopK}_{config.MinimumScore}";
+        // Include config hash in cache key to avoid stale results
+        var configHash = config.TopK.GetHashCode() ^ config.MinimumScore.GetHashCode();
+        var cacheKey = $"{query}_{config.TopK}_{config.MinimumScore}_{configHash}";
         if (_contextCache.TryGetValue(cacheKey, out var cached) && 
             DateTime.UtcNow - cached.Timestamp < _cacheTtl)
         {
@@ -58,25 +59,41 @@ public class RagContextBuilder
         }
 
         // Check if vector index has any documents
-        var indexStats = await _vectorIndex.GetStatisticsAsync(ct).ConfigureAwait(false);
-        if (indexStats.TotalChunks == 0)
+        IndexStatistics indexStats;
+        try
         {
-            _logger.LogInformation("Vector index is empty, no documents indexed. Returning empty context.");
-            return new RagContext { Query = query };
+            indexStats = await _vectorIndex.GetStatisticsAsync(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get vector index statistics, RAG unavailable");
+            return RagContext.Empty(query, RagContextStatus.IndexUnavailable);
         }
 
-        // Generate query embeddings with fallback
+        if (indexStats.TotalChunks == 0)
+        {
+            _logger.LogInformation("Vector index is empty, no documents indexed.");
+            return RagContext.Empty(query, RagContextStatus.NoDocuments);
+        }
+
+        // Generate query embeddings with proper error handling
         float[] queryEmbedding;
         try
         {
             queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query, ct).ConfigureAwait(false);
+
+            if (queryEmbedding == null || queryEmbedding.Length == 0)
+            {
+                _logger.LogWarning("Embedding service returned empty embeddings for query");
+                return RagContext.Empty(query, RagContextStatus.EmbeddingFailed);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to generate embedding for query, using fallback simple search");
-            // Return empty context if embeddings fail - let caller handle gracefully
-            return new RagContext { Query = query };
+            _logger.LogWarning(ex, "Failed to generate embedding for query, RAG unavailable");
+            return RagContext.Empty(query, RagContextStatus.EmbeddingFailed);
         }
+
 
         // Use query expansion for better recall
         var expandedQueries = ExpandQuery(query);
@@ -136,8 +153,8 @@ public class RagContextBuilder
 
         if (allChunks.Count == 0)
         {
-            _logger.LogInformation("No relevant chunks found for query");
-            return new RagContext { Query = query };
+            _logger.LogInformation("No relevant chunks found above minimum score {MinScore}", config.MinimumScore);
+            return RagContext.Empty(query, RagContextStatus.NoRelevantChunks);
         }
 
         // Apply relevance filtering - remove low-score chunks
@@ -151,7 +168,7 @@ public class RagContextBuilder
         if (filteredChunks.Count == 0)
         {
             _logger.LogInformation("All chunks below minimum score threshold ({MinScore})", config.MinimumScore);
-            return new RagContext { Query = query };
+            return RagContext.Empty(query, RagContextStatus.NoRelevantChunks);
         }
 
         var contextChunks = new List<ContextChunk>();
@@ -216,6 +233,7 @@ public class RagContextBuilder
         var context = new RagContext
         {
             Query = query,
+            Status = RagContextStatus.Success,
             Chunks = contextChunks,
             FormattedContext = formattedContext,
             Citations = citations,
