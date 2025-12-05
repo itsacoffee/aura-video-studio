@@ -42,6 +42,7 @@ import { openCutTokens } from '../../styles/designTokens';
 import { EffectStack } from './Effects';
 import { EmptyState } from './EmptyState';
 import { KeyframeDiamond } from './KeyframeEditor';
+import { SpeedControls } from './Speed/SpeedControls';
 import { TransitionEditor } from './Transitions';
 
 export interface PropertiesPanelProps {
@@ -958,6 +959,12 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
     );
   };
 
+  const renderSpeedSection = () => {
+    if (!selectedClip) return null;
+
+    return <SpeedControls clipId={selectedClip.id} className={styles.propertyGroup} />;
+  };
+
   const renderEffectsSection = () => {
     if (!selectedClip) return null;
 
@@ -989,6 +996,7 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
           <div className={styles.selectedMediaInfo}>
             {renderFileInfoSection()}
             {renderTransformSection()}
+            {renderSpeedSection()}
             {renderAudioSection()}
             {renderTextSection()}
             {renderEffectsSection()}
