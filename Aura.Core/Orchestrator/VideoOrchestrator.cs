@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Errors;
@@ -147,6 +149,95 @@ public class VideoOrchestrator
         if (_voiceEnhancementService != null || _musicMatchingService != null || _intelligentDuckingService != null)
         {
             _logger.LogInformation("Audio Intelligence Suite configured for enhanced audio processing");
+        }
+    }
+
+    /// <summary>
+    /// Execute a pipeline stage with proper error handling, cancellation, and timeout
+    /// </summary>
+    private async Task<T> ExecuteStageAsync<T>(
+        string stageName,
+        Func<CancellationToken, Task<T>> stageAction,
+        Action<string>? progressCallback,
+        CancellationToken ct,
+        int timeoutSeconds = 600)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        _logger.LogInformation("[{StageName}] Starting stage execution", stageName);
+
+        try
+        {
+            SafeReportProgress(progressCallback, "Starting " + stageName + "...");
+
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+            var result = await stageAction(linkedCts.Token).ConfigureAwait(false);
+
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "[{StageName}] Stage completed successfully in {Elapsed}ms",
+                stageName, stopwatch.ElapsedMilliseconds);
+
+            SafeReportProgress(progressCallback, stageName + " completed");
+
+            return result;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("[{StageName}] Stage cancelled by user", stageName);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            var message = "Stage '" + stageName + "' timed out after " + timeoutSeconds + " seconds. " +
+                "This may indicate the provider is not responding.";
+            var error = new VideoGenerationException(message, stageName, new TimeoutException());
+
+            _logger.LogError(error, "[{StageName}] Stage timed out", stageName);
+            throw error;
+        }
+        catch (HttpRequestException ex)
+        {
+            stopwatch.Stop();
+            var message = "Stage '" + stageName + "' failed due to network error: " + ex.Message + ". " +
+                "Please check that all required services are running.";
+            var error = new VideoGenerationException(message, stageName, ex);
+
+            _logger.LogError(error, "[{StageName}] Network error", stageName);
+            throw error;
+        }
+        catch (VideoGenerationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            var message = "Stage '" + stageName + "' failed: " + ex.Message;
+            var error = new VideoGenerationException(message, stageName, ex);
+
+            _logger.LogError(error, "[{StageName}] Unexpected error after {Elapsed}ms", stageName, stopwatch.ElapsedMilliseconds);
+            throw error;
+        }
+    }
+
+    /// <summary>
+    /// Safely report progress without breaking the pipeline if callback throws
+    /// </summary>
+    private void SafeReportProgress(Action<string>? progressCallback, string message)
+    {
+        if (progressCallback == null) return;
+
+        try
+        {
+            progressCallback(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Progress callback threw exception for message: {Message}", message);
         }
     }
 
