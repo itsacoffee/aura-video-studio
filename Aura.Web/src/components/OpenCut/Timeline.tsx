@@ -27,6 +27,7 @@ import {
   MenuPopover,
   MenuList,
   MenuItem,
+  Divider,
 } from '@fluentui/react-components';
 import {
   Video24Regular,
@@ -59,11 +60,13 @@ import {
   useOpenCutTimelineStore,
   type ClipType,
   type TimelineClip,
+  type TimelineGap,
 } from '../../stores/opencutTimeline';
 import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
 import { openCutTokens } from '../../styles/designTokens';
 import type { MarkerType } from '../../types/opencut';
 import { MarkerTrack } from './Markers';
+import { GapIndicator, TimelineToolbar } from './Timeline/index';
 import { TransitionHandle } from './Transitions';
 import { ClipWaveform } from './Waveform';
 
@@ -149,6 +152,15 @@ const useStyles = makeStyles({
     marginRight: tokens.spacingHorizontalM,
     paddingRight: tokens.spacingHorizontalM,
     borderRight: `1px solid ${tokens.colorNeutralStroke3}`,
+  },
+  magneticToolbar: {
+    marginRight: tokens.spacingHorizontalM,
+    paddingRight: tokens.spacingHorizontalM,
+    borderRight: `1px solid ${tokens.colorNeutralStroke3}`,
+  },
+  headerDivider: {
+    height: '24px',
+    margin: `0 ${tokens.spacingHorizontalS}`,
   },
   content: {
     flex: 1,
@@ -448,7 +460,17 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const startYRef = useRef(0);
   const startHeightRef = useRef(0);
 
-  const { tracks, clips, selectedClipIds, selectedTrackId, zoom, snapEnabled } = timelineStore;
+  const {
+    tracks,
+    clips,
+    selectedClipIds,
+    selectedTrackId,
+    zoom,
+    snapEnabled,
+    magneticTimelineEnabled,
+    findGaps,
+    closeGap,
+  } = timelineStore;
   const { selectedMarkerId, getFilteredMarkers } = markersStore;
   const { selectedTransitionId } = transitionsStore;
   const duration = playbackStore.duration;
@@ -825,6 +847,27 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     [playbackStore]
   );
 
+  // Magnetic timeline handlers
+  const handleCloseGap = useCallback(
+    (trackId: string, gapStart: number, gapEnd: number) => {
+      closeGap(trackId, gapStart, gapEnd);
+    },
+    [closeGap]
+  );
+
+  // Compute gaps for each track when magnetic timeline is enabled
+  const trackGaps = useMemo(() => {
+    if (!magneticTimelineEnabled) return new Map<string, TimelineGap[]>();
+    const gaps = new Map<string, TimelineGap[]>();
+    tracks.forEach((track) => {
+      const trackGapList = findGaps(track.id);
+      if (trackGapList.length > 0) {
+        gaps.set(track.id, trackGapList);
+      }
+    });
+    return gaps;
+  }, [magneticTimelineEnabled, tracks, findGaps, clips]);
+
   const renderClip = (clip: TimelineClip) => {
     const isSelected = selectedClipIds.includes(clip.id);
     const clipLeft = clip.startTime * pixelsPerSecond;
@@ -987,6 +1030,11 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
               />
             </Tooltip>
           </div>
+
+          {/* Magnetic Timeline Toolbar */}
+          <TimelineToolbar className={styles.magneticToolbar} />
+
+          <Divider vertical className={styles.headerDivider} />
 
           {/* Zoom Controls */}
           <div className={styles.zoomControls}>
@@ -1188,6 +1236,24 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                 <div className={styles.trackContentScrollable}>
                   <div className={styles.trackContent} style={{ width: totalWidth }}>
                     {trackClips.map(renderClip)}
+
+                    {/* Gap indicators */}
+                    {magneticTimelineEnabled &&
+                      trackGaps
+                        .get(track.id)
+                        ?.map((gap, index) => (
+                          <GapIndicator
+                            key={`gap-${track.id}-${index}`}
+                            startPosition={gap.start * pixelsPerSecond}
+                            endPosition={gap.end * pixelsPerSecond}
+                            duration={gap.end - gap.start}
+                            trackId={track.id}
+                            gapStart={gap.start}
+                            gapEnd={gap.end}
+                            visible={true}
+                            onCloseGap={handleCloseGap}
+                          />
+                        ))}
 
                     {/* Transition handles */}
                     {renderTransitionHandles(trackClips)}

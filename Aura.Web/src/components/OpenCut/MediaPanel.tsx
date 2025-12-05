@@ -453,6 +453,8 @@ export const MediaPanel: FC<MediaPanelProps> = ({ className }) => {
           },
           blendMode: 'normal',
           speed: 1,
+          reversed: false,
+          timeRemapEnabled: false,
           locked: false,
         });
       }
