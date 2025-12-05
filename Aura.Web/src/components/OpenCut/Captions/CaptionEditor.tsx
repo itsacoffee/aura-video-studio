@@ -113,13 +113,16 @@ function parseTimecode(timecode: string): number | null {
     const secs = parseInt(secParts[0], 10);
     const ms = secParts[1] ? parseInt(secParts[1].padEnd(3, '0'), 10) : 0;
     if (isNaN(mins) || isNaN(secs) || isNaN(ms)) return null;
+    // Validate ranges: minutes can be any positive number, seconds must be 0-59
+    if (mins < 0 || secs < 0 || secs > 59 || ms < 0 || ms > 999) return null;
     totalSeconds = mins * 60 + secs + ms / 1000;
   } else if (parts.length === 1) {
-    // SS.mmm or SS
+    // SS.mmm or SS (accepts seconds >= 60 for convenience)
     const secParts = parts[0].split('.');
     const secs = parseInt(secParts[0], 10);
     const ms = secParts[1] ? parseInt(secParts[1].padEnd(3, '0'), 10) : 0;
     if (isNaN(secs) || isNaN(ms)) return null;
+    if (secs < 0 || ms < 0 || ms > 999) return null;
     totalSeconds = secs + ms / 1000;
   } else {
     return null;

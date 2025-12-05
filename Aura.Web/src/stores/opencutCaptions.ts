@@ -283,6 +283,13 @@ export const useOpenCutCaptionsStore = create<OpenCutCaptionsStore>((set, get) =
     return `WEBVTT\n\n${captions}`;
   },
 
+  /**
+   * Splits a caption at the specified time.
+   * The text is split at the midpoint of words rather than based on the split time,
+   * as there's no reliable way to correlate text position with timing without
+   * word-level timestamps. The splitTime parameter determines where the timing
+   * boundary occurs.
+   */
   splitCaption: (captionId, splitTime) => {
     const track = get().tracks.find((t) => t.captions.some((c) => c.id === captionId));
     const caption = track?.captions.find((c) => c.id === captionId);

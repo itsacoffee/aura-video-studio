@@ -32,6 +32,10 @@ export interface CaptionStyleEditorProps {
   className?: string;
 }
 
+const DEFAULT_BACKGROUND_COLOR = '#000000';
+const DEFAULT_STROKE_COLOR = '#000000';
+const DEFAULT_STROKE_WIDTH = 2;
+
 const useStyles = makeStyles({
   root: {
     display: 'flex',
@@ -220,7 +224,7 @@ export const CaptionStyleEditor: FC<CaptionStyleEditorProps> = ({ className }) =
         <div className={styles.colorRow}>
           <input
             type="color"
-            value={defaultStyle.backgroundColor ?? '#000000'}
+            value={defaultStyle.backgroundColor ?? DEFAULT_BACKGROUND_COLOR}
             onChange={(e) => handleBackgroundColorChange(e.target.value)}
             className={styles.colorInput}
             title="Background color"
@@ -230,7 +234,7 @@ export const CaptionStyleEditor: FC<CaptionStyleEditorProps> = ({ className }) =
         <div className={styles.colorRow}>
           <input
             type="color"
-            value={defaultStyle.strokeColor ?? '#000000'}
+            value={defaultStyle.strokeColor ?? DEFAULT_STROKE_COLOR}
             onChange={(e) => handleStrokeColorChange(e.target.value)}
             className={styles.colorInput}
             title="Outline color"
@@ -246,11 +250,13 @@ export const CaptionStyleEditor: FC<CaptionStyleEditorProps> = ({ className }) =
           <Slider
             min={0}
             max={8}
-            value={defaultStyle.strokeWidth ?? 2}
+            value={defaultStyle.strokeWidth ?? DEFAULT_STROKE_WIDTH}
             onChange={(_, data) => handleStrokeWidthChange(data.value)}
             style={{ flex: 1 }}
           />
-          <span className={styles.sliderValue}>{defaultStyle.strokeWidth ?? 2}px</span>
+          <span className={styles.sliderValue}>
+            {defaultStyle.strokeWidth ?? DEFAULT_STROKE_WIDTH}px
+          </span>
         </div>
       </div>
     </div>
