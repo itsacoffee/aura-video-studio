@@ -206,10 +206,12 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<GenerationCostEstimateResponse | null>(null);
+  const [isUnavailable, setIsUnavailable] = useState(false);
 
   const fetchEstimate = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setIsUnavailable(false);
 
     try {
       const response = await apiClient.post<GenerationCostEstimateResponse>(
@@ -227,9 +229,26 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
       setEstimate(response.data);
       onCostEstimated?.(response.data);
     } catch (err: unknown) {
+      // Don't show error for cost estimation failures - show fallback free generation estimate
+      // This handles 428 Precondition Required and other API errors gracefully
       const errorMessage = err instanceof Error ? err.message : 'Failed to estimate costs';
-      console.error('Cost estimation failed:', errorMessage);
-      setError(errorMessage);
+      console.warn('Cost estimation unavailable:', errorMessage);
+
+      // Provide a fallback estimate indicating cost estimation is unavailable
+      const fallbackEstimate: GenerationCostEstimateResponse = {
+        llmCost: 0,
+        ttsCost: 0,
+        imageCost: 0,
+        totalCost: 0,
+        currency: 'USD',
+        breakdown: [],
+        isFreeGeneration: true,
+        confidence: 'low',
+      };
+      setEstimate(fallbackEstimate);
+      onCostEstimated?.(fallbackEstimate);
+      setError(null);
+      setIsUnavailable(true);
     } finally {
       setLoading(false);
     }
@@ -373,10 +392,16 @@ export const GenerationCostEstimate: FC<GenerationCostEstimateProps> = ({
           </div>
         )}
 
-      {estimate.isFreeGeneration && (
+      {estimate.isFreeGeneration && !isUnavailable && (
         <div className={styles.successCard}>
           <CheckmarkCircle16Regular className={styles.successIcon} />
           <Text className={styles.successText}>All providers are local/free - no API costs</Text>
+        </div>
+      )}
+
+      {isUnavailable && (
+        <div className={styles.confidenceNote}>
+          Cost estimation unavailable - using local/free providers by default
         </div>
       )}
     </Card>
