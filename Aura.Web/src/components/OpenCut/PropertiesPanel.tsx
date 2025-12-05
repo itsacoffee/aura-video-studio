@@ -3,7 +3,7 @@
  *
  * Properties panel for editing selected elements following Apple HIG.
  * Features transform controls, audio/video properties, text styling,
- * and professional editing capabilities similar to Final Cut Pro.
+ * effects stack, and professional editing capabilities similar to Final Cut Pro.
  */
 
 import {
@@ -39,6 +39,7 @@ import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutTimelineStore, type BlendMode } from '../../stores/opencutTimeline';
 import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
 import { openCutTokens } from '../../styles/designTokens';
+import { EffectStack } from './Effects';
 import { EmptyState } from './EmptyState';
 import { KeyframeDiamond } from './KeyframeEditor';
 import { TransitionEditor } from './Transitions';
@@ -957,6 +958,12 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
     );
   };
 
+  const renderEffectsSection = () => {
+    if (!selectedClip) return null;
+
+    return <EffectStack clipId={selectedClip.id} className={styles.propertyGroup} />;
+  };
+
   const hasSelection = selectedMedia || selectedClip || selectedTransition;
 
   return (
@@ -984,6 +991,7 @@ export const PropertiesPanel: FC<PropertiesPanelProps> = ({ className }) => {
             {renderTransformSection()}
             {renderAudioSection()}
             {renderTextSection()}
+            {renderEffectsSection()}
             {renderTransitionSection()}
           </div>
         )}
