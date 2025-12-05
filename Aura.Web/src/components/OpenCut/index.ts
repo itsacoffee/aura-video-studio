@@ -10,3 +10,4 @@ export { Timeline } from './Timeline';
 export * from './KeyframeEditor';
 export * from './Transitions';
 export * from './Effects';
+export * from './Settings';

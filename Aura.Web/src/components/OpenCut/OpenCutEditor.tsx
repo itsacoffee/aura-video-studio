@@ -12,6 +12,7 @@
 
 import { makeStyles, tokens, TabList, Tab } from '@fluentui/react-components';
 import { useEffect, useState, useCallback } from 'react';
+import { useOpenCutKeyboardHandler } from '../../hooks/useOpenCutKeyboardHandler';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import { openCutTokens } from '../../styles/designTokens';
 import { EffectsPanel } from './Effects';
@@ -86,6 +87,10 @@ export function OpenCutEditor() {
   const [leftPanelSize, setLeftPanelSize] = useState(320);
   const [rightPanelSize, setRightPanelSize] = useState(320);
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('media');
+
+  // Initialize keyboard shortcuts handler
+  // In/out points are returned but will be used by future components
+  const _keyboardState = useOpenCutKeyboardHandler({ enabled: true });
 
   // Initialize project on mount
   useEffect(() => {
