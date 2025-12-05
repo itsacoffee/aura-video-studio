@@ -18,6 +18,12 @@ namespace Aura.Api.Endpoints;
 public static class ProviderStatusEndpoints
 {
     /// <summary>
+    /// Name of the NullTtsProvider after type name processing.
+    /// This provider is always available as it generates silent audio.
+    /// </summary>
+    private const string NullTtsProviderName = "Null";
+    
+    /// <summary>
     /// Maps provider status endpoints to the API route group
     /// </summary>
     public static IEndpointRouteBuilder MapProviderStatusEndpoints(this IEndpointRouteBuilder endpoints)
@@ -291,6 +297,7 @@ public static class ProviderStatusEndpoints
         return providerName switch
         {
             "Piper" or "Mimic3" or "Windows" => "local",
+            NullTtsProviderName => "free", // NullTtsProvider is always available as a silent fallback
             "EdgeTTS" => "free",
             "ElevenLabs" or "PlayHT" or "Azure" or "OpenAI" => "paid",
             _ => "unknown"
@@ -335,6 +342,12 @@ public static class ProviderStatusEndpoints
 
     private static async Task<bool> CheckTtsProviderAvailabilityAsync(ITtsProvider provider, string providerName, CancellationToken ct)
     {
+        // NullTtsProvider is always available (it generates silent audio)
+        if (providerName == NullTtsProviderName)
+        {
+            return true;
+        }
+        
         try
         {
             // Check if provider has IsHealthyAsync method (like PiperTtsProvider)
