@@ -133,7 +133,7 @@ public class HealthDashboardController : ControllerBase
         var isConfigured = !def.RequiresApiKey || hasApiKey;
 
         // Determine health status
-        var healthStatus = DetermineHealthStatus(healthMetrics, circuitStatus, isConfigured, def.RequiresApiKey);
+        var healthStatus = DetermineHealthStatus(healthMetrics, circuitStatus, isConfigured, def.RequiresApiKey, def.Name);
 
         // Get quota info for rate-limited providers
         var quotaInfo = GetQuotaInfo(def.Name, def.Tier);
@@ -161,7 +161,8 @@ public class HealthDashboardController : ControllerBase
         Aura.Core.Models.Providers.ProviderHealthMetrics? metrics,
         Aura.Core.Services.Providers.CircuitBreakerStatus circuitStatus,
         bool isConfigured,
-        bool requiresApiKey)
+        bool requiresApiKey,
+        string? providerName = null)
     {
         // Not configured but requires API key
         if (requiresApiKey && !isConfigured)
@@ -184,6 +185,17 @@ public class HealthDashboardController : ControllerBase
         // No health metrics yet
         if (metrics == null)
         {
+            // For providers that don't require API keys and don't need external services,
+            // default to "healthy" since they should always be available
+            // RuleBased LLM provider is always available (offline fallback)
+            // WindowsSAPI TTS is always available on Windows
+            // Stock image providers are always available
+            var alwaysAvailableProviders = new[] { "RuleBased", "WindowsSAPI", "Stock" };
+            if (!requiresApiKey && providerName != null && alwaysAvailableProviders.Contains(providerName))
+            {
+                return "healthy";
+            }
+            
             return isConfigured ? "unknown" : "not_configured";
         }
 
