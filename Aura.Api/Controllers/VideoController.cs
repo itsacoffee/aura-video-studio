@@ -5,8 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Api.Models.ApiModels.V1;
 using Aura.Api.Services;
+using Aura.Core.Hardware;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
+using Aura.Core.Validation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,19 +28,25 @@ public class VideoController : ControllerBase
     private readonly SseService _sseService;
     private readonly Aura.Core.Services.FFmpeg.IFFmpegStatusService _ffmpegStatusService;
     private readonly VideoOrchestrator _videoOrchestrator;
+    private readonly PreGenerationValidator _preGenerationValidator;
+    private readonly IHardwareDetector _hardwareDetector;
 
     public VideoController(
         ILogger<VideoController> logger,
         JobRunner jobRunner,
         SseService sseService,
         Aura.Core.Services.FFmpeg.IFFmpegStatusService ffmpegStatusService,
-        VideoOrchestrator videoOrchestrator)
+        VideoOrchestrator videoOrchestrator,
+        PreGenerationValidator preGenerationValidator,
+        IHardwareDetector hardwareDetector)
     {
         _logger = logger;
         _jobRunner = jobRunner;
         _sseService = sseService;
         _ffmpegStatusService = ffmpegStatusService;
         _videoOrchestrator = videoOrchestrator;
+        _preGenerationValidator = preGenerationValidator;
+        _hardwareDetector = hardwareDetector;
     }
 
     /// <summary>
@@ -47,7 +55,7 @@ public class VideoController : ControllerBase
     /// <param name="ct">Cancellation token</param>
     /// <returns>Validation result with list of errors if any</returns>
     [HttpGet("validate")]
-    [ProducesResponseType(typeof(PipelineValidationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PipelinePreflightReportDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ValidatePipeline(CancellationToken ct = default)
     {
@@ -57,18 +65,25 @@ public class VideoController : ControllerBase
         {
             _logger.LogInformation("[{CorrelationId}] GET /api/video/validate - Pipeline validation requested", correlationId);
 
-            var (isValid, errors) = await _videoOrchestrator.ValidatePipelineAsync(ct).ConfigureAwait(false);
+            var systemProfile = await _hardwareDetector.DetectSystemAsync().ConfigureAwait(false);
+            var report = await _preGenerationValidator.ValidateAsync(systemProfile, ct).ConfigureAwait(false);
             
-            var response = new PipelineValidationResponse(
-                IsValid: isValid,
-                Errors: errors,
-                Timestamp: DateTime.UtcNow,
-                CorrelationId: correlationId
+            var response = new PipelinePreflightReportDto(
+                Ok: report.Ok,
+                Timestamp: report.Timestamp,
+                DurationMs: report.DurationMs,
+                FFmpeg: MapCheckResult(report.FFmpeg),
+                Ollama: MapCheckResult(report.Ollama),
+                TTS: MapCheckResult(report.TTS),
+                DiskSpace: MapCheckResult(report.DiskSpace),
+                ImageProvider: MapCheckResult(report.ImageProvider),
+                Errors: report.Errors,
+                Warnings: report.Warnings
             );
 
-            if (!isValid)
+            if (!report.Ok)
             {
-                _logger.LogWarning("[{CorrelationId}] Pipeline validation failed with {ErrorCount} errors", correlationId, errors.Count);
+                _logger.LogWarning("[{CorrelationId}] Pipeline validation failed with {ErrorCount} errors", correlationId, report.Errors.Count);
             }
             else
             {
@@ -89,6 +104,17 @@ public class VideoController : ControllerBase
                     StatusCodes.Status500InternalServerError,
                     correlationId));
         }
+    }
+
+    private static PipelineCheckResultDto MapCheckResult(PreflightCheckResult result)
+    {
+        return new PipelineCheckResultDto(
+            Passed: result.Passed,
+            Skipped: result.Skipped,
+            Status: result.Status,
+            Details: result.Details,
+            SuggestedAction: result.SuggestedAction
+        );
     }
 
     /// <summary>
