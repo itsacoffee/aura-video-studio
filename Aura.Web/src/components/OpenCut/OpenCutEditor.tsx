@@ -22,6 +22,7 @@ import { PropertiesPanel } from './PropertiesPanel';
 import { ResizablePanel } from './ResizablePanel';
 import { Timeline } from './Timeline';
 import { TransitionsPanel } from './Transitions';
+import { TemplatesPanel } from './Templates';
 
 const useStyles = makeStyles({
   root: {
@@ -77,7 +78,7 @@ const useStyles = makeStyles({
   },
 });
 
-type LeftPanelTab = 'media' | 'effects' | 'transitions';
+type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates';
 
 export function OpenCutEditor() {
   const styles = useStyles();
@@ -119,6 +120,8 @@ export function OpenCutEditor() {
         return <EffectsPanel />;
       case 'transitions':
         return <TransitionsPanel />;
+      case 'templates':
+        return <TemplatesPanel />;
       default:
         return <MediaPanel />;
     }
@@ -146,6 +149,7 @@ export function OpenCutEditor() {
               <Tab value="media">Media</Tab>
               <Tab value="effects">Effects</Tab>
               <Tab value="transitions">Transitions</Tab>
+              <Tab value="templates">Templates</Tab>
             </TabList>
           </div>
           <div className={styles.leftPanelContent}>{renderLeftPanelContent()}</div>
