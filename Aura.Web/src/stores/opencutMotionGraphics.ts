@@ -19,6 +19,10 @@ import type {
 } from '../types/motionGraphics';
 
 function generateId(): string {
+  // Use crypto.randomUUID if available, fallback to timestamp-based ID
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `graphic-${crypto.randomUUID()}`;
+  }
   return `graphic-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 

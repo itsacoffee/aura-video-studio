@@ -286,11 +286,14 @@ export const GraphicRenderer: FC<GraphicRendererProps> = ({
     const exitDuration = 0.3; // Default exit duration
     const holdDuration = graphic.duration - enterDuration - exitDuration;
 
-    const state = createAnimationState();
-    state.startTime = 0;
+    // Create initial state with startTime set to 0
+    const initialState = {
+      ...createAnimationState(),
+      startTime: 0,
+    };
 
     return updateAnimationState(
-      state,
+      initialState,
       relativeTime,
       enterDuration,
       Math.max(0, holdDuration),

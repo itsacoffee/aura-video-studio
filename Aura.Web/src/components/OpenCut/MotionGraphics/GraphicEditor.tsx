@@ -251,13 +251,14 @@ export const GraphicEditor: FC<GraphicEditorProps> = ({ graphicId, className }) 
 
   const renderField = (field: CustomizationField) => {
     const currentValue = graphic.customValues[field.id] ?? field.defaultValue;
+    const fieldInputId = `graphic-${graphicId}-${field.id}`;
 
     switch (field.type) {
       case 'text':
         return (
           <div key={field.id} className={styles.fieldGroup}>
             <div className={styles.fieldLabel}>
-              <Label htmlFor={field.id}>{field.label}</Label>
+              <Label htmlFor={fieldInputId}>{field.label}</Label>
               {field.maxLength && (
                 <span className={styles.fieldCharCount}>
                   {String(currentValue).length}/{field.maxLength}
@@ -265,7 +266,7 @@ export const GraphicEditor: FC<GraphicEditorProps> = ({ graphicId, className }) 
               )}
             </div>
             <Input
-              id={field.id}
+              id={fieldInputId}
               size="small"
               value={String(currentValue)}
               onChange={(_, data) => handleValueChange(field.id, data.value)}
@@ -278,11 +279,11 @@ export const GraphicEditor: FC<GraphicEditorProps> = ({ graphicId, className }) 
       case 'color':
         return (
           <div key={field.id} className={styles.fieldGroup}>
-            <Label htmlFor={field.id}>{field.label}</Label>
+            <Label htmlFor={fieldInputId}>{field.label}</Label>
             <div className={styles.colorInput}>
               <input
                 type="color"
-                id={field.id}
+                id={fieldInputId}
                 value={String(currentValue)}
                 onChange={(e) => handleValueChange(field.id, e.target.value)}
                 className={styles.colorSwatch}
@@ -305,10 +306,10 @@ export const GraphicEditor: FC<GraphicEditorProps> = ({ graphicId, className }) 
       case 'slider':
         return (
           <div key={field.id} className={styles.fieldGroup}>
-            <Label htmlFor={field.id}>{field.label}</Label>
+            <Label htmlFor={fieldInputId}>{field.label}</Label>
             <div className={styles.sliderContainer}>
               <Slider
-                id={field.id}
+                id={fieldInputId}
                 min={field.min ?? 0}
                 max={field.max ?? 100}
                 step={field.step ?? 1}
@@ -325,9 +326,9 @@ export const GraphicEditor: FC<GraphicEditorProps> = ({ graphicId, className }) 
         return (
           <div key={field.id} className={styles.fieldGroup}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Label htmlFor={field.id}>{field.label}</Label>
+              <Label htmlFor={fieldInputId}>{field.label}</Label>
               <Switch
-                id={field.id}
+                id={fieldInputId}
                 checked={Boolean(currentValue)}
                 onChange={(_, data) => handleValueChange(field.id, data.checked)}
               />
@@ -338,9 +339,9 @@ export const GraphicEditor: FC<GraphicEditorProps> = ({ graphicId, className }) 
       case 'select':
         return (
           <div key={field.id} className={styles.fieldGroup}>
-            <Label htmlFor={field.id}>{field.label}</Label>
+            <Label htmlFor={fieldInputId}>{field.label}</Label>
             <Dropdown
-              id={field.id}
+              id={fieldInputId}
               size="small"
               value={
                 field.options?.find((o) => o.value === String(currentValue))?.label ||
@@ -382,11 +383,12 @@ export const GraphicEditor: FC<GraphicEditorProps> = ({ graphicId, className }) 
         <AnimatePresence>
           {isExpanded && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className={styles.sectionContent}
+              style={{ overflow: 'hidden' }}
             >
               {fields.map(renderField)}
             </motion.div>
