@@ -56,3 +56,16 @@ export type {
   EasingType,
   BezierHandles,
 } from './opencutKeyframes';
+
+export { useTemplatesStore, BUILTIN_TEMPLATES } from './opencutTemplates';
+export type {
+  OpenCutTemplatesStore,
+  Template,
+  TemplateData,
+  TemplateTrack,
+  TemplateClip,
+  TemplateEffect,
+  TemplateTransition,
+  TemplateMarker,
+  TemplateTrackType,
+} from './opencutTemplates';
