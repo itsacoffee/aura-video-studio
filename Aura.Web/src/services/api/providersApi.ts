@@ -71,7 +71,7 @@ export interface ApiKeyValidationResponse {
 export async function getProviderStatuses(
   config?: ExtendedAxiosRequestConfig
 ): Promise<ProviderStatus[]> {
-  return get<ProviderStatus[]>('/api/providers/status', config);
+  return get<ProviderStatus[]>('/api/provider-status', config);
 }
 
 /**

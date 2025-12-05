@@ -268,15 +268,17 @@ class DiagnosticsHandler {
    */
   async checkProviders() {
     try {
-      const response = await axios.get(`${this.backendUrl}/api/providers/status`, {
+      const response = await axios.get(`${this.backendUrl}/api/provider-status`, {
         timeout: 5000
       });
       
       if (response.status === 200 && response.data) {
-        const providers = response.data;
-        const configuredCount = Object.values(providers).filter(p => p?.configured).length;
+        const data = response.data;
+        // Backend returns providers in a flat array with isAvailable field
+        const providers = Array.isArray(data.providers) ? data.providers : [];
+        const availableCount = providers.filter(p => p?.isAvailable).length;
         
-        if (configuredCount === 0) {
+        if (providers.length === 0) {
           return {
             status: 'warning',
             message: 'No providers configured. Configure at least one provider to generate videos.',
@@ -285,9 +287,18 @@ class DiagnosticsHandler {
           };
         }
         
+        if (availableCount === 0) {
+          return {
+            status: 'warning',
+            message: 'No providers available. Check provider configurations.',
+            canFix: true,
+            fixAction: 'Navigate to setup wizard'
+          };
+        }
+        
         return {
           status: 'ok',
-          message: `${configuredCount} provider(s) configured`,
+          message: `${availableCount} provider(s) available`,
           canFix: false
         };
       }

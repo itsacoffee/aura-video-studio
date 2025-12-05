@@ -55,7 +55,7 @@ describe('providersApi', () => {
 
       const result = await getProviderStatuses();
 
-      expect(apiClient.get).toHaveBeenCalledWith('/api/providers/status', undefined);
+      expect(apiClient.get).toHaveBeenCalledWith('/api/provider-status', undefined);
       expect(result).toEqual(mockStatuses);
     });
   });

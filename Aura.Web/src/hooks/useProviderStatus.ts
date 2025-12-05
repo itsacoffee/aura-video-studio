@@ -18,6 +18,93 @@ export interface ProviderStatusResponse {
 }
 
 /**
+ * Backend DTO for detailed provider status
+ */
+interface BackendProviderStatusDto {
+  name: string;
+  category: string;
+  isAvailable: boolean;
+  isOnline: boolean;
+  tier: string;
+  features: string[];
+  message: string;
+}
+
+/**
+ * Backend DTO for system provider status response
+ */
+interface BackendSystemProviderStatusDto {
+  isOfflineMode: boolean;
+  providers: BackendProviderStatusDto[];
+  onlineProvidersCount: number;
+  offlineProvidersCount: number;
+  availableFeatures: string[];
+  degradedFeatures: string[];
+  lastUpdated: string;
+  message: string;
+}
+
+/**
+ * Transforms backend tier string to frontend tier type
+ */
+function mapTier(tier: string): 'free' | 'local' | 'paid' | 'unknown' {
+  const lowerTier = tier.toLowerCase();
+  if (lowerTier === 'free') return 'free';
+  if (lowerTier === 'local') return 'local';
+  if (lowerTier === 'paid' || lowerTier === 'premium' || lowerTier === 'pro') return 'paid';
+  return 'unknown';
+}
+
+/**
+ * Maps backend category strings to normalized category keys
+ */
+function normalizeCategory(category: string): 'llm' | 'tts' | 'images' | 'other' {
+  const lowerCategory = category.toLowerCase();
+  if (lowerCategory === 'llm') return 'llm';
+  if (lowerCategory === 'tts') return 'tts';
+  if (lowerCategory === 'image' || lowerCategory === 'images') return 'images';
+  return 'other';
+}
+
+/**
+ * Transforms backend system provider status to frontend format
+ */
+function transformBackendResponse(
+  backendData: BackendSystemProviderStatusDto
+): ProviderStatusResponse {
+  const now = new Date();
+
+  const transformProvider = (provider: BackendProviderStatusDto): ProviderStatus => ({
+    name: provider.name,
+    available: provider.isAvailable,
+    tier: mapTier(provider.tier),
+    lastChecked: now,
+    errorMessage: provider.isAvailable ? undefined : provider.message || undefined,
+    details: provider.message || undefined,
+  });
+
+  // Group providers by normalized category
+  const llmProviders = backendData.providers
+    .filter((p) => normalizeCategory(p.category) === 'llm')
+    .map(transformProvider);
+
+  const ttsProviders = backendData.providers
+    .filter((p) => normalizeCategory(p.category) === 'tts')
+    .map(transformProvider);
+
+  const imageProviders = backendData.providers
+    .filter((p) => normalizeCategory(p.category) === 'images')
+    .map(transformProvider);
+
+  return {
+    llm: llmProviders,
+    tts: ttsProviders,
+    images: imageProviders,
+    timestamp: backendData.lastUpdated || now.toISOString(),
+  };
+}
+
+/**
  * Health level indicating overall provider availability
  * - healthy: All critical and important providers are available
  * - degraded: Some providers unavailable but core functionality works
@@ -65,43 +152,19 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/providers/status');
+      const response = await fetch('/api/provider-status');
 
       if (!response.ok) {
         throw new Error(`Failed to fetch provider status: ${response.statusText}`);
       }
 
-      const data: ProviderStatusResponse = await response.json();
+      const backendData: BackendSystemProviderStatusDto = await response.json();
 
-      // CRITICAL: Defensive coding to prevent crashes from malformed responses
-      // If any of the arrays are null/undefined, use empty arrays as fallback
-      const llmArray = Array.isArray(data?.llm) ? data.llm : [];
-      const ttsArray = Array.isArray(data?.tts) ? data.tts : [];
-      const imagesArray = Array.isArray(data?.images) ? data.images : [];
+      // Transform backend response format to frontend format
+      const transformedData = transformBackendResponse(backendData);
 
-      // Convert timestamp strings to Date objects safely
-      // Note: Using current time as fallback for missing timestamps since the data was just fetched
-      // This is preferable to using Date(0) which would show "January 1, 1970" in the UI
-      const now = new Date();
-      const processedData: ProviderStatusResponse = {
-        ...data,
-        llm: llmArray.map((p) => ({
-          ...p,
-          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
-        })),
-        tts: ttsArray.map((p) => ({
-          ...p,
-          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
-        })),
-        images: imagesArray.map((p) => ({
-          ...p,
-          lastChecked: p?.lastChecked ? new Date(p.lastChecked) : now,
-        })),
-        timestamp: data?.timestamp || now.toISOString(),
-      };
-
-      setStatus(processedData);
-      setLastUpdated(now);
+      setStatus(transformedData);
+      setLastUpdated(new Date());
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error);

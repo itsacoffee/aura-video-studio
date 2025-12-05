@@ -327,9 +327,13 @@ export const useProviderStore = create<ProviderStoreState>((set) => ({
   refreshProviderStatuses: async () => {
     set({ isLoadingStatuses: true });
     try {
-      const response = await fetch('/api/providers/status');
+      const response = await fetch('/api/provider-status');
       if (response.ok) {
-        const statuses = (await response.json()) as ProviderStatus[];
+        const data = (await response.json()) as {
+          providers?: ProviderStatus[];
+        };
+        // Backend returns providers in a flat array, extract it
+        const statuses = Array.isArray(data.providers) ? data.providers : [];
         set({
           providerStatuses: statuses,
           lastStatusCheck: new Date(),
