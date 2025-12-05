@@ -449,7 +449,8 @@ public static class ServiceCollectionExtensions
         // Pexels provider - using consolidated PexelsProvider (requires API key)
         // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
         // KeyStore may have keys stored as "Pexels" (from UI) or "pexels" (from legacy code)
-        // Register as both IEnhancedStockProvider and IStockProvider for adapter compatibility
+        // Note: Registered as IEnhancedStockProvider only. For IStockProvider compatibility,
+        // StockToImageProviderAdapter explicitly resolves PexelsProvider and falls back to PlaceholderImageProvider.
         services.AddSingleton<Images.PexelsProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.PexelsProvider>>();
@@ -478,17 +479,12 @@ public static class ServiceCollectionExtensions
             logger.LogInformation("Pexels provider registered with API key from settings");
             return new Images.PexelsProvider(logger, httpClient, apiKey);
         });
-        // Register Pexels as IEnhancedStockProvider (forward to singleton, may be null if not configured)
+        // Register Pexels as IEnhancedStockProvider (forwards to singleton, null-forgiving is intentional
+        // because the factory above can return null when API key is not configured)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var pexels = sp.GetService<Images.PexelsProvider>();
-            return pexels!; // Returns null if Pexels is not configured
-        });
-        // Register Pexels as IStockProvider for StockToImageProviderAdapter compatibility (may be null)
-        services.AddSingleton<IStockProvider>(sp =>
-        {
-            var pexels = sp.GetService<Images.PexelsProvider>();
-            return pexels!; // Returns null if Pexels is not configured
+            return pexels!;
         });
 
         // Pixabay provider (requires API key)
