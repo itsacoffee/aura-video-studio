@@ -527,38 +527,61 @@ public class VideoOrchestrator
             }
 
             // Extract final video path from composition task result with multiple fallback strategies
+            // CRITICAL FIX: Check executorContext.FinalVideoPath FIRST as it's set directly by the render operation
             string? outputPath = null;
             string extractionMethod = "unknown";
             
-            _logger.LogInformation("Extracting output path. Available task result keys: {Keys}", 
-                string.Join(", ", result.TaskResults.Keys));
+            _logger.LogInformation("Extracting output path. Available task result keys: {Keys}, ExecutorState.FinalVideoPath: {FinalVideoPath}", 
+                string.Join(", ", result.TaskResults.Keys),
+                executorContext.FinalVideoPath ?? "(null)");
 
-            // Strategy 1: Try primary "composition" task result key
-            if (result.TaskResults.TryGetValue("composition", out var compositionTask) && 
-                compositionTask.Result is string compositionPath && 
-                !string.IsNullOrEmpty(compositionPath) &&
-                File.Exists(compositionPath))
+            // Strategy 1: Check TaskExecutorState.FinalVideoPath (PRIMARY - most reliable)
+            // This is set directly by the VideoComposition task executor at line 1965
+            if (!string.IsNullOrEmpty(executorContext.FinalVideoPath))
             {
-                outputPath = compositionPath;
-                extractionMethod = "composition_task_result";
-                _logger.LogInformation("Extracted output path from composition task result: {Path}", outputPath);
-            }
-            else if (result.TaskResults.ContainsKey("composition"))
-            {
-                var pathValue = compositionTask?.Result as string;
-                if (!string.IsNullOrEmpty(pathValue) && !File.Exists(pathValue))
+                if (File.Exists(executorContext.FinalVideoPath))
                 {
-                    _logger.LogWarning("Composition task returned path that does not exist: {Path}", pathValue);
+                    outputPath = executorContext.FinalVideoPath;
+                    extractionMethod = "executor_state_final_video_path";
+                    _logger.LogInformation("Extracted output path from executor state (Strategy 1 - Primary): {Path}", outputPath);
                 }
                 else
                 {
-                    _logger.LogWarning("Composition task exists but result is not a valid string. Result type: {Type}, Value: {Value}",
-                        compositionTask?.Result?.GetType()?.Name ?? "null",
-                        compositionTask?.Result?.ToString() ?? "null");
+                    _logger.LogWarning("Executor state FinalVideoPath does not exist: {Path}", executorContext.FinalVideoPath);
                 }
             }
 
-            // Strategy 2: Try alternate task result keys
+            // Strategy 2: Try primary "composition" task result key
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                if (result.TaskResults.TryGetValue("composition", out var compositionTask))
+                {
+                    if (compositionTask.Result is string compositionPath && 
+                        !string.IsNullOrEmpty(compositionPath) &&
+                        File.Exists(compositionPath))
+                    {
+                        outputPath = compositionPath;
+                        extractionMethod = "composition_task_result";
+                        _logger.LogInformation("Extracted output path from composition task result (Strategy 2): {Path}", outputPath);
+                    }
+                    else
+                    {
+                        var pathValue = compositionTask.Result as string;
+                        if (!string.IsNullOrEmpty(pathValue) && !File.Exists(pathValue))
+                        {
+                            _logger.LogWarning("Composition task returned path that does not exist: {Path}", pathValue);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Composition task exists but result is not a valid string. Result type: {Type}, Value: {Value}",
+                                compositionTask.Result?.GetType()?.Name ?? "null",
+                                compositionTask.Result?.ToString() ?? "null");
+                        }
+                    }
+                }
+            }
+
+            // Strategy 3: Try alternate task result keys
             if (string.IsNullOrEmpty(outputPath))
             {
                 string[] alternateKeys = { "render", "video_output", "final_video", "output" };
@@ -571,28 +594,13 @@ public class VideoOrchestrator
                     {
                         outputPath = altPath;
                         extractionMethod = $"{key}_task_result";
-                        _logger.LogInformation("Extracted output path from alternate task result key '{Key}': {Path}", key, outputPath);
+                        _logger.LogInformation("Extracted output path from alternate task result key '{Key}' (Strategy 3): {Path}", key, outputPath);
                         break;
                     }
                     else if (taskResult?.Result is string nonExistentPath && !string.IsNullOrEmpty(nonExistentPath) && !File.Exists(nonExistentPath))
                     {
                         _logger.LogWarning("Task result key '{Key}' returned path that does not exist: {Path}", key, nonExistentPath);
                     }
-                }
-            }
-
-            // Strategy 3: Check TaskExecutorState.FinalVideoPath
-            if (string.IsNullOrEmpty(outputPath) && !string.IsNullOrEmpty(executorContext.FinalVideoPath))
-            {
-                if (File.Exists(executorContext.FinalVideoPath))
-                {
-                    outputPath = executorContext.FinalVideoPath;
-                    extractionMethod = "executor_state_final_video_path";
-                    _logger.LogInformation("Extracted output path from executor state: {Path}", outputPath);
-                }
-                else
-                {
-                    _logger.LogWarning("Executor state FinalVideoPath does not exist: {Path}", executorContext.FinalVideoPath);
                 }
             }
 

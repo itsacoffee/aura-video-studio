@@ -401,12 +401,41 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                         cleanedResponse.Length, 
                         cleanedResponse.Substring(0, Math.Min(500, cleanedResponse.Length)));
 
-                    // Validate JSON structure before breaking with proper options
-                    var testDoc = JsonDocument.Parse(cleanedResponse, new JsonDocumentOptions
+                    // CRITICAL FIX: Wrap JSON parsing in try-catch with detailed error reporting
+                    JsonDocument testDoc;
+                    try
                     {
-                        AllowTrailingCommas = true,
-                        CommentHandling = JsonCommentHandling.Skip
-                    });
+                        // Validate JSON structure before breaking with proper options
+                        testDoc = JsonDocument.Parse(cleanedResponse, new JsonDocumentOptions
+                        {
+                            AllowTrailingCommas = true,
+                            CommentHandling = JsonCommentHandling.Skip
+                        });
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        _logger.LogError(jsonEx, 
+                            "Failed to parse JSON response (Attempt {Attempt}). Response preview: {Preview}",
+                            attempt + 1,
+                            cleanedResponse.Substring(0, Math.Min(500, cleanedResponse.Length)));
+                        
+                        // If this is not the last attempt, retry
+                        if (attempt < maxRetries)
+                        {
+                            _logger.LogWarning("JSON parsing failed, will retry (attempt {Attempt}/{MaxRetries})",
+                                attempt + 1, maxRetries + 1);
+                            lastException = jsonEx;
+                            continue;
+                        }
+                        
+                        // Last attempt failed - provide detailed error
+                        throw new InvalidOperationException(
+                            $"Failed to parse Ollama JSON response after {maxRetries + 1} attempts. " +
+                            $"Last error: {jsonEx.Message}. " +
+                            $"Response preview: {cleanedResponse.Substring(0, Math.Min(200, cleanedResponse.Length))}...",
+                            jsonEx);
+                    }
+
                     if (testDoc.RootElement.TryGetProperty("concepts", out var conceptsArray) &&
                         conceptsArray.ValueKind == JsonValueKind.Array &&
                         conceptsArray.GetArrayLength() > 0)
@@ -4357,14 +4386,53 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
         cleaned = cleaned.Trim();
 
-        // Find the JSON content - look for object or array
-        // First, try to find a JSON object
+        // CRITICAL FIX: Handle incomplete JSON from Ollama streaming
+        // If the response ends with incomplete JSON structure, try to repair it
         var firstBrace = cleaned.IndexOf('{');
         var lastBrace = cleaned.LastIndexOf('}');
 
         if (firstBrace >= 0 && lastBrace > firstBrace)
         {
             cleaned = cleaned.Substring(firstBrace, lastBrace - firstBrace + 1);
+            
+            // CRITICAL FIX: Try to repair incomplete JSON
+            // Count braces to detect truncated JSON
+            int openBraces = 0;
+            int closeBraces = 0;
+            foreach (char c in cleaned)
+            {
+                if (c == '{') openBraces++;
+                if (c == '}') closeBraces++;
+            }
+            
+            // If we have more open braces than close braces, try to close them
+            if (openBraces > closeBraces)
+            {
+                // Add missing closing braces
+                var missingBraces = openBraces - closeBraces;
+                cleaned = cleaned + new string('}', missingBraces);
+            }
+        }
+        else if (firstBrace >= 0 && lastBrace < 0)
+        {
+            // CRITICAL FIX: Incomplete JSON - only opening brace found
+            // Try to extract and complete it
+            cleaned = cleaned.Substring(firstBrace);
+            
+            // Count open and close braces in a single pass for efficiency
+            int openBraces = 0;
+            int closeBraces = 0;
+            foreach (char c in cleaned)
+            {
+                if (c == '{') openBraces++;
+                else if (c == '}') closeBraces++;
+            }
+            
+            var missingBraces = openBraces - closeBraces;
+            if (missingBraces > 0)
+            {
+                cleaned = cleaned + new string('}', missingBraces);
+            }
         }
         else
         {

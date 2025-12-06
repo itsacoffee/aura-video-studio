@@ -469,26 +469,55 @@ public class TranslationService
             string? response = null;
             try
             {
-                // Use LlmStageAdapter for unified orchestration (same path as script generation)
-                // This ensures proper provider selection, fallback logic, and timeout configuration
-                _logger.LogInformation("Using LlmStageAdapter for translation (unified orchestration path)");
-                var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
-                    systemPrompt,
-                    userPrompt,
-                    "Free", // Use Free tier for translation (works with Ollama)
-                    false,  // Allow online providers
-                    llmParameters,
-                    cancellationToken).ConfigureAwait(false);
+                // CRITICAL FIX: Detect Ollama provider and use direct path with proper timeout handling
+                // This fixes timeout issues where LlmStageAdapter may have shorter timeouts
+                var providerTypeName = _llmProvider.GetType().Name;
+                bool isOllamaProvider = providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase);
 
-                if (!orchestrationResult.IsSuccess)
+                if (isOllamaProvider)
                 {
-                    throw new InvalidOperationException(
-                        orchestrationResult.ErrorMessage ?? "LLM orchestration failed for translation");
+                    _logger.LogInformation("Detected Ollama provider - using direct Ollama path with 15-minute timeout and heartbeat logging");
+                    try
+                    {
+                        response = await GenerateWithOllamaDirectAsync(
+                            systemPrompt,
+                            userPrompt,
+                            sourceLanguage,
+                            targetLanguage,
+                            cancellationToken).ConfigureAwait(false);
+                        _logger.LogInformation("Successfully generated translation via direct Ollama path");
+                    }
+                    catch (Exception directEx)
+                    {
+                        _logger.LogWarning(directEx, "Direct Ollama path failed, falling back to LlmStageAdapter");
+                        // Fall through to LlmStageAdapter fallback
+                        response = null;
+                    }
                 }
 
-                response = orchestrationResult.Data;
-                _logger.LogInformation("Successfully generated translation via LlmStageAdapter (Provider: {Provider})",
-                    orchestrationResult.ProviderUsed ?? "Unknown");
+                // Use LlmStageAdapter for unified orchestration (fallback or non-Ollama providers)
+                // This ensures proper provider selection, fallback logic, and timeout configuration
+                if (response == null)
+                {
+                    _logger.LogInformation("Using LlmStageAdapter for translation (unified orchestration path)");
+                    var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                        systemPrompt,
+                        userPrompt,
+                        "Free", // Use Free tier for translation (works with Ollama)
+                        false,  // Allow online providers
+                        llmParameters,
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (!orchestrationResult.IsSuccess)
+                    {
+                        throw new InvalidOperationException(
+                            orchestrationResult.ErrorMessage ?? "LLM orchestration failed for translation");
+                    }
+
+                    response = orchestrationResult.Data;
+                    _logger.LogInformation("Successfully generated translation via LlmStageAdapter (Provider: {Provider})",
+                        orchestrationResult.ProviderUsed ?? "Unknown");
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -1120,7 +1149,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         System.Net.Http.HttpClient? httpClient = null;
         string baseUrl = "http://127.0.0.1:11434";
         string? defaultModel = null; // No hardcoded fallback - must get from provider configuration
-        TimeSpan timeout = TimeSpan.FromMinutes(10); // 10 minutes for GPU-intensive operations with large context
+        TimeSpan timeout = TimeSpan.FromMinutes(15); // CRITICAL FIX: Use 15 minutes to match OllamaScriptProvider (allows for slow local models)
         int maxRetries = 3;
         ILlmProvider? ollamaProvider = null;
 
@@ -1299,8 +1328,67 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                 _logger.LogInformation("Sending translation request to Ollama (attempt {Attempt}/{MaxRetries}, timeout: {Timeout:F1} minutes)",
                     attempt + 1, maxRetries + 1, timeout.TotalMinutes);
 
+                _logger.LogInformation("Request sent to Ollama, awaiting response (timeout: {Timeout:F1} minutes, this may take a while for large models)...",
+                    timeout.TotalMinutes);
+
+                // CRITICAL FIX: Start periodic heartbeat logging to show the system is still working
+                // During a 15-minute wait, there's no visibility that the system is working without this
+                var requestStartTime = DateTime.UtcNow;
+                using var heartbeatCts = new System.Threading.CancellationTokenSource();
+                var heartbeatTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        while (!heartbeatCts.Token.IsCancellationRequested)
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(30), heartbeatCts.Token).ConfigureAwait(false);
+                            var elapsed = DateTime.UtcNow - requestStartTime;
+                            var remaining = timeout.TotalSeconds - elapsed.TotalSeconds;
+                            if (remaining > 0)
+                            {
+                                _logger.LogInformation(
+                                    "Still awaiting Ollama translation response... ({Elapsed:F0}s elapsed, {Remaining:F0}s remaining before timeout)",
+                                    elapsed.TotalSeconds,
+                                    remaining);
+                            }
+                            else
+                            {
+                                // Timeout exceeded, stop logging
+                                break;
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected when generation completes or fails - ignore
+                    }
+                }, heartbeatCts.Token);
+
                 // Use /api/generate endpoint (like script generation) - this is the correct endpoint for Ollama
-                var response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
+                System.Net.Http.HttpResponseMessage response;
+                try
+                {
+                    response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    // Stop heartbeat logging regardless of success/failure
+                    heartbeatCts.Cancel();
+                    try
+                    {
+                        await heartbeatTask.ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Expected
+                    }
+                }
+
+                // Check for user cancellation after long operation
+                if (ct.IsCancellationRequested)
+                {
+                    throw new OperationCanceledException("Translation was cancelled by user", ct);
+                }
 
                 // Check for model not found error - if model doesn't exist, query for available models and use first one
                 if (!response.IsSuccessStatusCode)
