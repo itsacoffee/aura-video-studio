@@ -1120,7 +1120,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         System.Net.Http.HttpClient? httpClient = null;
         string baseUrl = "http://127.0.0.1:11434";
         string? defaultModel = null; // No hardcoded fallback - must get from provider configuration
-        TimeSpan timeout = TimeSpan.FromSeconds(900);
+        TimeSpan timeout = TimeSpan.FromMinutes(10); // 10 minutes for GPU-intensive operations with large context
         int maxRetries = 3;
         ILlmProvider? ollamaProvider = null;
 
@@ -1267,7 +1267,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         {
             model = modelToUse,
             prompt = combinedPrompt,
-            stream = false,
+            stream = true,  // Use streaming for better timeout handling with GPU-intensive operations
             options = options
         };
         // Note: NOT adding format="json" for translation - we want plain text output
@@ -1351,7 +1351,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                                         {
                                             model = modelToUse,
                                             prompt = combinedPrompt,
-                                            stream = false,
+                                            stream = true,
                                             options = options
                                         };
                                         json = System.Text.Json.JsonSerializer.Serialize(requestBody);
@@ -1391,74 +1391,99 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                     }
                 }
 
-                // CRITICAL: Use cts.Token instead of ct for ReadAsStringAsync (like script generation)
-                // This prevents upstream components from cancelling our long-running operation
-                var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-
-                if (string.IsNullOrWhiteSpace(responseJson))
+                // Read streaming response (better for GPU-intensive operations)
+                var fullResponse = new System.Text.StringBuilder();
+                using (var stream = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false))
+                using (var reader = new System.IO.StreamReader(stream))
                 {
-                    _logger.LogError("Ollama returned empty JSON response for translation");
-                    throw new InvalidOperationException("Ollama returned an empty JSON response");
-                }
-
-                // Parse and validate response structure (like script generation)
-                System.Text.Json.JsonDocument? responseDoc = null;
-                try
-                {
-                    responseDoc = System.Text.Json.JsonDocument.Parse(responseJson);
-                }
-                catch (System.Text.Json.JsonException ex)
-                {
-                    _logger.LogError(ex, "Failed to parse Ollama JSON response: {Response}",
-                        responseJson.Substring(0, Math.Min(500, responseJson.Length)));
-                    throw new InvalidOperationException("Ollama returned invalid JSON response", ex);
-                }
-
-                // Check for errors in response (like script generation)
-                if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
-                {
-                    var errorMessage = errorElement.GetString() ?? "Unknown error";
-                    _logger.LogError("Ollama API error: {Error}", errorMessage);
-                    throw new InvalidOperationException($"Ollama API error: {errorMessage}");
-                }
-
-                // /api/generate returns response in 'response' field (like script generation)
-                if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
-                {
-                    var result = responseText.GetString() ?? string.Empty;
-
-                    if (string.IsNullOrWhiteSpace(result))
+                    string? line;
+                    while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
                     {
-                        _logger.LogError("Ollama returned an empty response. Response JSON: {Response}",
-                            responseJson.Substring(0, Math.Min(1000, responseJson.Length)));
-                        throw new InvalidOperationException(
-                            "Ollama returned an empty response. " +
-                            "This may indicate: (1) The model is not responding correctly, " +
-                            "(2) The prompt was too restrictive, or (3) The model needs to be reloaded. " +
-                            "Try: 'ollama run <model>' to test the model directly.");
-                    }
+                        if (string.IsNullOrWhiteSpace(line))
+                            continue;
 
-                    _logger.LogInformation("Ollama translation succeeded with {Length} characters", result.Length);
-                    return result;
+                        try
+                        {
+                            var chunk = System.Text.Json.JsonSerializer.Deserialize<Models.Ollama.OllamaStreamResponse>(line);
+                            if (chunk != null)
+                            {
+                                // Check for error in chunk
+                                if (line.Contains("\"error\""))
+                                {
+                                    using var errorDoc = System.Text.Json.JsonDocument.Parse(line);
+                                    if (errorDoc.RootElement.TryGetProperty("error", out var errorElement))
+                                    {
+                                        var errorMessage = errorElement.GetString() ?? "Unknown error";
+                                        _logger.LogError("Ollama API error in stream: {Error}", errorMessage);
+                                        throw new InvalidOperationException($"Ollama API error: {errorMessage}");
+                                    }
+                                }
+
+                                fullResponse.Append(chunk.Response);
+
+                                if (chunk.Done)
+                                {
+                                    _logger.LogDebug("Streaming complete. Total tokens: {Tokens}, Duration: {Duration}ms",
+                                        chunk.EvalCount, chunk.TotalDuration.HasValue ? chunk.TotalDuration.Value / 1_000_000 : 0);
+                                    break;
+                                }
+                            }
+                        }
+                        catch (System.Text.Json.JsonException ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to parse streaming chunk, skipping: {Line}",
+                                line.Substring(0, Math.Min(200, line.Length)));
+                        }
+                    }
                 }
 
-                var availableFields = string.Join(", ", responseDoc.RootElement.EnumerateObject().Select(p => p.Name));
-                _logger.LogError(
-                    "Ollama response did not contain expected 'response' field. Available fields: {Fields}. Response: {Response}",
-                    availableFields,
-                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
-                throw new InvalidOperationException($"Invalid response structure from Ollama. Expected 'response' field but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
+                var result = fullResponse.ToString();
+
+                if (string.IsNullOrWhiteSpace(result))
+                {
+                    _logger.LogError(
+                        "Ollama returned an empty response after streaming. " +
+                        "This may indicate: (1) GPU is under heavy load and model timed out, " +
+                        "(2) The model ran out of memory during GPU processing, " +
+                        "(3) The prompt was too restrictive, or (4) The model needs to be reloaded. " +
+                        "If GPU is at 100%, wait and retry.");
+                    
+                    // Retry on empty response instead of throwing immediately
+                    if (attempt < maxRetries)
+                    {
+                        _logger.LogInformation("Retrying due to empty response (GPU may be busy)");
+                        continue;
+                    }
+                    
+                    throw new InvalidOperationException(
+                        "Ollama returned an empty response after streaming. " +
+                        "This often happens when GPU is under heavy load (100% usage). " +
+                        "Possible causes: (1) GPU is processing other Ollama operations, " +
+                        "(2) Model ran out of memory, (3) Model crashed during inference. " +
+                        "Try: (1) Wait a few moments and retry, (2) Check GPU usage with 'nvidia-smi' or equivalent, " +
+                        "(3) Restart Ollama with 'ollama serve', (4) Test model with 'ollama run <model>'.");
+                }
+
+                _logger.LogInformation("Ollama translation succeeded with {Length} characters", result.Length);
+                return result;
             }
             catch (TaskCanceledException ex)
             {
                 lastException = ex;
                 if (attempt < maxRetries)
                 {
-                    _logger.LogWarning(ex, "Ollama translation timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                    _logger.LogWarning(ex, 
+                        "Ollama translation timed out (attempt {Attempt}/{MaxRetries}). " +
+                        "This may be due to heavy GPU load. GPU at 100% can cause slower response times.", 
+                        attempt + 1, maxRetries + 1);
                 }
                 else
                 {
-                    _logger.LogError(ex, "Ollama translation timed out on final attempt ({Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
+                    _logger.LogError(ex, 
+                        "Ollama translation timed out on final attempt ({Attempt}/{MaxRetries}). " +
+                        "If GPU is under heavy load (100% usage), wait and retry. " +
+                        "Check GPU usage with 'nvidia-smi' or Task Manager.", 
+                        attempt + 1, maxRetries + 1);
                 }
             }
             catch (System.Net.Http.HttpRequestException ex)
@@ -1493,7 +1518,13 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
             }
         }
 
-        throw lastException ?? new InvalidOperationException(
-            $"Ollama translation failed after {maxRetries + 1} attempts");
+        // Provide actionable error message mentioning GPU load as a possible cause
+        var finalErrorMessage = lastException is TaskCanceledException 
+            ? $"Ollama translation failed after {maxRetries + 1} attempts due to timeouts. " +
+              $"This often indicates GPU is under heavy load (100% usage) from other operations. " +
+              $"Wait a few moments for GPU to become available and try again."
+            : $"Ollama translation failed after {maxRetries + 1} attempts: {lastException?.Message}";
+        
+        throw lastException ?? new InvalidOperationException(finalErrorMessage);
     }
 }

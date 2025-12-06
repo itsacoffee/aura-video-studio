@@ -280,20 +280,24 @@ public class LocalizationController : ControllerBase
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
         {
-            _logger.LogWarning("Translation request timed out after {Timeout}s, CorrelationId: {CorrelationId}",
+            _logger.LogWarning("Translation request timed out after {Timeout}s, CorrelationId: {CorrelationId}. " +
+                "This may be due to GPU being under heavy load.",
                 _llmTimeoutSeconds, HttpContext.TraceIdentifier);
             return StatusCode(StatusCodes.Status408RequestTimeout, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#TIMEOUT",
                 Title = "Request Timeout",
                 Status = StatusCodes.Status408RequestTimeout,
-                Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. Please try with shorter text or check your connection.",
+                Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. " +
+                         $"This often happens when GPU is under heavy load (100% usage). " +
+                         $"Please wait a few moments and try again with shorter text or check GPU availability.",
                 Extensions = 
                 { 
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "TIMEOUT",
                     ["timeoutSeconds"] = _llmTimeoutSeconds,
-                    ["isRetryable"] = true
+                    ["isRetryable"] = true,
+                    ["suggestion"] = "If using Ollama with GPU: Check GPU usage (nvidia-smi), wait for GPU to become available, then retry"
                 }
             });
         }
@@ -507,20 +511,24 @@ public class LocalizationController : ControllerBase
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
         {
-            _logger.LogWarning("Simple translation request timed out after {Timeout}s, CorrelationId: {CorrelationId}",
+            _logger.LogWarning("Simple translation request timed out after {Timeout}s, CorrelationId: {CorrelationId}. " +
+                "This may be due to GPU being under heavy load.",
                 _llmTimeoutSeconds, HttpContext.TraceIdentifier);
             return StatusCode(StatusCodes.Status408RequestTimeout, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#TIMEOUT",
                 Title = "Request Timeout",
                 Status = StatusCodes.Status408RequestTimeout,
-                Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. Please try with shorter text or check your connection.",
+                Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. " +
+                         $"This often happens when GPU is under heavy load (100% usage). " +
+                         $"Please wait a few moments and try again with shorter text.",
                 Extensions = 
                 { 
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "TIMEOUT",
                     ["timeoutSeconds"] = _llmTimeoutSeconds,
-                    ["isRetryable"] = true
+                    ["isRetryable"] = true,
+                    ["suggestion"] = "If using Ollama with GPU: Check GPU usage (nvidia-smi), wait for GPU to become available, then retry"
                 }
             });
         }
@@ -720,20 +728,24 @@ public class LocalizationController : ControllerBase
         }
         catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested)
         {
-            _logger.LogWarning("Cultural analysis request timed out after {Timeout}s, CorrelationId: {CorrelationId}",
+            _logger.LogWarning("Cultural analysis request timed out after {Timeout}s, CorrelationId: {CorrelationId}. " +
+                "This may be due to GPU being under heavy load.",
                 _llmTimeoutSeconds, HttpContext.TraceIdentifier);
             return StatusCode(StatusCodes.Status408RequestTimeout, new ProblemDetails
             {
                 Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#TIMEOUT",
                 Title = "Request Timeout",
                 Status = StatusCodes.Status408RequestTimeout,
-                Detail = $"Cultural analysis request timed out after {_llmTimeoutSeconds} seconds. Please try with shorter content.",
+                Detail = $"Cultural analysis request timed out after {_llmTimeoutSeconds} seconds. " +
+                         $"This often happens when GPU is under heavy load. " +
+                         $"Please try with shorter content or wait for GPU to become available.",
                 Extensions = 
                 { 
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "TIMEOUT",
                     ["timeoutSeconds"] = _llmTimeoutSeconds,
-                    ["isRetryable"] = true
+                    ["isRetryable"] = true,
+                    ["suggestion"] = "If using Ollama with GPU: Check GPU usage and wait for GPU to become available"
                 }
             });
         }
