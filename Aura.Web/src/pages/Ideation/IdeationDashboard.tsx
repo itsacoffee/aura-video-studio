@@ -308,10 +308,50 @@ export const IdeationDashboard: React.FC = () => {
         console.error('Brainstorm error:', err);
 
         let errorMessage = 'Failed to generate concepts';
+        let errorType: 'connection' | 'parsing' | 'generation' | 'generic' = 'generic';
         let suggestions: string[] = [];
 
         if (err instanceof Error) {
           errorMessage = err.message;
+
+          // Categorize error type based on message content
+          if (
+            errorMessage.toLowerCase().includes('cannot connect') ||
+            errorMessage.toLowerCase().includes('connection') ||
+            errorMessage.toLowerCase().includes('not available') ||
+            errorMessage.toLowerCase().includes('ollama is not running')
+          ) {
+            errorType = 'connection';
+            suggestions = [
+              'Ensure Ollama is running (open terminal and run: ollama serve)',
+              'Check if Ollama is accessible at http://127.0.0.1:11434',
+              'Verify a model is installed (run: ollama list)',
+              'Try selecting a different AI model from the toolbar',
+            ];
+          } else if (
+            errorMessage.toLowerCase().includes('json') ||
+            errorMessage.toLowerCase().includes('parse') ||
+            errorMessage.toLowerCase().includes('invalid response')
+          ) {
+            errorType = 'parsing';
+            suggestions = [
+              'The AI provider returned an unexpected format',
+              'Try again - this is often a temporary issue',
+              'If the issue persists, try a different AI model',
+              'Check the browser console for detailed error information',
+            ];
+          } else if (
+            errorMessage.toLowerCase().includes('generic') ||
+            errorMessage.toLowerCase().includes('placeholder')
+          ) {
+            errorType = 'generation';
+            suggestions = [
+              'The AI model may not be suitable for ideation tasks',
+              'Try using a larger or more capable AI model',
+              "Ensure you're using Ollama with a capable model (llama3.1, qwen2.5, or mistral)",
+              'Check if your AI provider is properly configured in Settings',
+            ];
+          }
         }
 
         // Try to extract suggestions from API response
@@ -319,7 +359,10 @@ export const IdeationDashboard: React.FC = () => {
           const apiError = err as {
             response?: { data?: { suggestions?: string[]; error?: string } };
           };
-          if (apiError.response?.data?.suggestions) {
+          if (
+            apiError.response?.data?.suggestions &&
+            apiError.response.data.suggestions.length > 0
+          ) {
             suggestions = apiError.response.data.suggestions;
           }
           if (apiError.response?.data?.error) {
@@ -327,11 +370,27 @@ export const IdeationDashboard: React.FC = () => {
           }
         }
 
-        // Build comprehensive error message
-        const fullError =
-          suggestions.length > 0
-            ? `${errorMessage}\n\nSuggestions:\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
-            : errorMessage;
+        // Add default suggestions if none were provided
+        if (suggestions.length === 0) {
+          suggestions = [
+            'Check your AI provider configuration in Settings',
+            'Ensure your AI provider is running and accessible',
+            'Try a different topic or simplify your request',
+            'Check the browser console for detailed error information',
+          ];
+        }
+
+        // Build comprehensive error message with error type indicator
+        const errorTypeLabel =
+          errorType === 'connection'
+            ? '🔌 Connection Error'
+            : errorType === 'parsing'
+              ? '📋 Response Format Error'
+              : errorType === 'generation'
+                ? '🤖 AI Generation Error'
+                : '❌ Error';
+
+        const fullError = `${errorTypeLabel}\n\n${errorMessage}\n\n💡 Suggestions:\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
 
         setError(fullError);
       } finally {

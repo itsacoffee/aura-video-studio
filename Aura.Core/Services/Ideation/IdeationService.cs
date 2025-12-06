@@ -338,11 +338,20 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     var providerType = _llmProvider.GetType();
                     var providerTypeName = providerType.Name;
 
+                    // Log progress during initialization phase
+                    if (attempt == 0)
+                    {
+                        _logger.LogInformation("Connecting to AI provider for ideation...");
+                    }
+
                     _logger.LogInformation(
                         "Calling LLM for ideation (Attempt {Attempt}/{Max}, Provider: {Provider}, Topic: {Topic})",
                         attempt + 1, maxRetries + 1, providerTypeName, request.Topic);
 
                     var callStartTime = DateTime.UtcNow;
+
+                    // Log progress: generating concepts
+                    _logger.LogInformation("Generating concepts for topic: {Topic}...", request.Topic);
 
                     // Use LlmStageAdapter for unified orchestration (same path as script generation)
                     // This ensures proper provider selection, fallback logic, and timeout configuration
@@ -385,8 +394,8 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                         attempt + 1, callDuration.TotalMilliseconds, jsonResponse.Length,
                         jsonResponse.Substring(0, Math.Min(200, jsonResponse.Length)));
 
-                    // Clean response before parsing (remove markdown code blocks)
-                    var cleanedResponse = CleanJsonResponse(jsonResponse);
+                    // Clean response before parsing (remove markdown code blocks, BOM, etc.)
+                    var cleanedResponse = RepairJsonResponse(jsonResponse);
 
                     // Validate JSON structure before breaking
                     var testDoc = JsonDocument.Parse(cleanedResponse);
@@ -548,7 +557,8 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             // Validate concepts are not generic placeholders
             // Focus on actual placeholder phrases rather than strict length requirements
             // Local LLMs like Ollama may produce shorter but valid content
-            var hasGenericContent = concepts.Any(c =>
+            // IMPORTANT: Only reject if ALL concepts are generic (not just one or some)
+            var genericConcepts = concepts.Where(c =>
                 c.Description.Contains("This approach provides unique value through its specific perspective") ||
                 (c.Description.Contains("Introduction to how to") && c.Description.Length < 80) ||
                 (c.Description.Contains("Key aspects of") && !c.Description.Contains(request.Topic) && c.Description.Length < 60) ||
@@ -558,25 +568,18 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 (c.Description.Length < 30 && (
                     c.Description.Contains("This approach") ||
                     c.Description.Contains("Introduction to") ||
-                    c.Description.Contains("Key aspects"))));
+                    c.Description.Contains("Key aspects")))).ToList();
 
-            if (hasGenericContent)
+            // Only fail if ALL concepts are generic (reduce false positives)
+            var hasAllGenericContent = genericConcepts.Count > 0 && genericConcepts.Count == concepts.Count;
+
+            if (hasAllGenericContent)
             {
                 // Log detailed diagnostic information
                 var providerType = _llmProvider.GetType().Name;
-                var genericConcepts = concepts.Where(c =>
-                    c.Description.Contains("This approach provides unique value through its specific perspective") ||
-                    (c.Description.Contains("Introduction to how to") && c.Description.Length < 80) ||
-                    (c.Description.Contains("Key aspects of") && !c.Description.Contains(request.Topic) && c.Description.Length < 60) ||
-                    c.TalkingPoints?.Any(tp => tp.Contains("Introduction to") && !tp.Contains(request.Topic)) == true ||
-                    c.Pros.Any(p => p == "Engaging and accessible format") ||
-                    (c.Description.Length < 30 && (
-                        c.Description.Contains("This approach") ||
-                        c.Description.Contains("Introduction to") ||
-                        c.Description.Contains("Key aspects")))).ToList();
 
                 _logger.LogError(
-                    "Parsed concepts contain generic/placeholder content after all retries. " +
+                    "ALL parsed concepts contain generic/placeholder content after all retries. " +
                     "Provider: {Provider}, Response length: {Length}, Generic concepts: {GenericCount}/{TotalCount}. " +
                     "Response preview: {Preview}. " +
                     "This indicates the LLM may not be properly configured, the model is too small/weak, or needs different prompting.",
@@ -601,6 +604,15 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     "The LLM generated generic placeholder content instead of specific concepts. " +
                     "This usually means: (1) The LLM provider is not properly configured, (2) The model is not responding correctly, " +
                     "or (3) The prompt needs adjustment. Please check your LLM provider settings and try again.");
+            }
+            else if (genericConcepts.Count > 0)
+            {
+                // Some generic content found, but not all - log a warning but continue
+                _logger.LogWarning(
+                    "Some concepts contain generic/placeholder content, but not all. " +
+                    "Generic: {GenericCount}/{TotalCount}. Continuing with valid concepts.",
+                    genericConcepts.Count,
+                    concepts.Count);
             }
 
             _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}",
@@ -1814,7 +1826,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         try
         {
             // Clean the response - remove markdown code blocks and other LLM formatting artifacts
-            var cleanedResponse = CleanJsonResponse(response);
+            var cleanedResponse = RepairJsonResponse(response);
 
             if (string.IsNullOrWhiteSpace(cleanedResponse))
             {
@@ -1823,8 +1835,21 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             }
             else
             {
-                // Parse JSON response
-                var jsonDoc = JsonDocument.Parse(cleanedResponse);
+                // Create lenient JSON serializer options
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    AllowTrailingCommas = true,
+                    ReadCommentHandling = JsonCommentHandling.Skip,
+                    PropertyNameCaseInsensitive = true
+                };
+
+                // Parse JSON response with lenient options
+                var jsonDoc = JsonDocument.Parse(cleanedResponse, new JsonDocumentOptions
+                {
+                    AllowTrailingCommas = true,
+                    CommentHandling = JsonCommentHandling.Skip
+                });
+
                 if (jsonDoc.RootElement.TryGetProperty("concepts", out var conceptsArray))
                 {
                     foreach (var conceptElement in conceptsArray.EnumerateArray())
@@ -1959,10 +1984,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 ex.Message,
                 response.Substring(0, Math.Min(500, response.Length)));
 
+            // Log the raw response on parse failure for debugging
+            _logger.LogDebug("Raw LLM response that failed to parse: {RawResponse}",
+                response.Substring(0, Math.Min(2000, response.Length)));
+
             // Log the cleaned response for debugging
             try
             {
-                var cleaned = CleanJsonResponse(response);
+                var cleaned = RepairJsonResponse(response);
                 if (!string.IsNullOrWhiteSpace(cleaned) && cleaned != response)
                 {
                     _logger.LogDebug("Cleaned response (length: {Length}): {CleanedPreview}",
@@ -2016,7 +2045,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     "Full response preview: {Preview}",
                     originalTopic, response.Length, responsePreview);
 
-                // Provide more helpful error message
+                // Provide more helpful error message based on response characteristics
                 var errorMessage = response.Length < 50
                     ? $"LLM returned an incomplete response ({response.Length} characters). The response is too short to contain valid JSON. Please try again or check your LLM provider configuration."
                     : $"Failed to generate concepts from LLM response. The response could not be parsed as JSON and no meaningful content could be extracted. " +
@@ -4187,6 +4216,21 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                         throw new InvalidOperationException("Ollama returned an empty response");
                     }
 
+                    // Clean response of common Ollama artifacts before returning
+                    // Remove BOM (Byte Order Mark) if present
+                    if (result.Length > 0 && result[0] == '\uFEFF')
+                    {
+                        result = result.Substring(1);
+                        _logger.LogDebug("Removed BOM from Ollama response");
+                    }
+
+                    // Trim leading/trailing whitespace
+                    result = result.Trim();
+
+                    // Log raw response on potential parse issues for debugging
+                    _logger.LogDebug("Cleaned Ollama response (length: {Length}, preview: {Preview})",
+                        result.Length, result.Substring(0, Math.Min(200, result.Length)));
+
                     _logger.LogInformation("Ollama ideation succeeded with {Length} characters", result.Length);
                     return result;
                 }
@@ -4275,12 +4319,73 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
     /// <summary>
     /// Clean JSON response by removing markdown code blocks and other LLM formatting artifacts
     /// </summary>
+    /// <summary>
+    /// Repair and clean JSON response from LLM providers to handle common formatting issues
+    /// </summary>
+    private static string RepairJsonResponse(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return string.Empty;
+
+        var cleaned = response.Trim();
+
+        // Remove BOM (Byte Order Mark) if present
+        if (cleaned.Length > 0 && cleaned[0] == '\uFEFF')
+        {
+            cleaned = cleaned.Substring(1);
+        }
+
+        // Remove markdown code block wrappers using regex for more robust matching
+        cleaned = System.Text.RegularExpressions.Regex.Replace(
+            cleaned, 
+            @"^```(?:json)?\s*", 
+            "", 
+            System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleaned = System.Text.RegularExpressions.Regex.Replace(
+            cleaned, 
+            @"\s*```$", 
+            "", 
+            System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        cleaned = cleaned.Trim();
+
+        // Find the JSON content - look for object or array
+        // First, try to find a JSON object
+        var firstBrace = cleaned.IndexOf('{');
+        var lastBrace = cleaned.LastIndexOf('}');
+
+        if (firstBrace >= 0 && lastBrace > firstBrace)
+        {
+            cleaned = cleaned.Substring(firstBrace, lastBrace - firstBrace + 1);
+        }
+        else
+        {
+            // If no object found, try to find a JSON array
+            var arrayMatch = System.Text.RegularExpressions.Regex.Match(cleaned, @"\[[\s\S]*\]");
+            if (arrayMatch.Success)
+            {
+                cleaned = arrayMatch.Value;
+            }
+        }
+
+        // Final trim
+        cleaned = cleaned.Trim();
+
+        return cleaned;
+    }
+
     private static string CleanJsonResponse(string response)
     {
         if (string.IsNullOrWhiteSpace(response))
             return string.Empty;
 
         var cleanedResponse = response.Trim();
+
+        // Remove BOM (Byte Order Mark) if present
+        if (cleanedResponse.Length > 0 && cleanedResponse[0] == '\uFEFF')
+        {
+            cleanedResponse = cleanedResponse.Substring(1);
+        }
 
         // Remove markdown code block markers with language specifier (case-insensitive)
         var jsonMarker = "```json";

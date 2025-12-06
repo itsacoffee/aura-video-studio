@@ -135,6 +135,81 @@ public class IdeationServiceTests
         Assert.Equal(82, firstConcept.ViralityScore);
     }
 
+    [Fact]
+    public async Task BrainstormConceptsAsync_WithMarkdownCodeBlocks_ParsesCorrectly()
+    {
+        // Arrange
+        var request = new BrainstormRequest(
+            Topic: "Testing markdown cleanup",
+            ConceptCount: 1
+        );
+
+        // Simulate response with markdown code block wrappers
+        var markdownResponse = "```json\n" + GetSampleBrainstormJsonResponse() + "\n```";
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(markdownResponse);
+
+        // Act
+        var response = await _service.BrainstormConceptsAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Single(response.Concepts);
+        Assert.Equal("AI Tools for Video Editing", response.Concepts[0].Title);
+    }
+
+    [Fact]
+    public async Task BrainstormConceptsAsync_WithTrailingText_ParsesCorrectly()
+    {
+        // Arrange
+        var request = new BrainstormRequest(
+            Topic: "Testing trailing text",
+            ConceptCount: 1
+        );
+
+        // Simulate response with trailing text after JSON
+        var responseWithTrailing = GetSampleBrainstormJsonResponse() + "\n\nSome trailing text that should be ignored.";
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(responseWithTrailing);
+
+        // Act
+        var response = await _service.BrainstormConceptsAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Single(response.Concepts);
+        Assert.Equal("AI Tools for Video Editing", response.Concepts[0].Title);
+    }
+
+    [Fact]
+    public async Task BrainstormConceptsAsync_WithBOM_ParsesCorrectly()
+    {
+        // Arrange
+        var request = new BrainstormRequest(
+            Topic: "Testing BOM handling",
+            ConceptCount: 1
+        );
+
+        // Simulate response with BOM (Byte Order Mark)
+        var responseWithBOM = "\uFEFF" + GetSampleBrainstormJsonResponse();
+
+        _mockLlmProvider
+            .Setup(p => p.DraftScriptAsync(It.IsAny<Core.Models.Brief>(), It.IsAny<Core.Models.PlanSpec>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(responseWithBOM);
+
+        // Act
+        var response = await _service.BrainstormConceptsAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(response);
+        Assert.Single(response.Concepts);
+        Assert.Equal("AI Tools for Video Editing", response.Concepts[0].Title);
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(5)]
