@@ -25,7 +25,7 @@ import { GlobalStatusFooter } from './GlobalStatusFooter';
 import { JobProgressDrawer } from './JobProgressDrawer';
 import { KeyboardShortcutsPanel } from './KeyboardShortcuts/KeyboardShortcutsPanel';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
-import { Layout } from './Layout';
+import { Layout, FullBleedLayout } from './Layout';
 import { LazyRoute } from './LazyRoute';
 import { NotificationsToaster } from './Notifications/Toasts';
 import { PlatformDashboard } from './Platform';
@@ -468,14 +468,6 @@ const AppRouterContentInner: FC<
                   }
                 />
                 <Route
-                  path="opencut"
-                  element={
-                    <LazyRoute routePath="/opencut">
-                      <OpenCutPage />
-                    </LazyRoute>
-                  }
-                />
-                <Route
                   path="pacing"
                   element={
                     <LazyRoute routePath="/pacing">
@@ -803,6 +795,20 @@ const AppRouterContentInner: FC<
                 <Route path="models" element={<Navigate to="/settings" replace />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
+
+              {/* Full-bleed routes with FullBleedLayout wrapper - Protected by first-run check */}
+              <Route
+                path="/opencut"
+                element={
+                  <ProtectedRoute>
+                    <FullBleedLayout>
+                      <LazyRoute routePath="/opencut">
+                        <OpenCutPage />
+                      </LazyRoute>
+                    </FullBleedLayout>
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </ConfigurationGate>
         </ErrorBoundary>

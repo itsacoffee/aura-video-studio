@@ -1160,7 +1160,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     <div
       ref={containerRef}
       className={mergeClasses(styles.container, className)}
-      style={{ height: '280px', minHeight: '200px', maxHeight: '500px' }}
+      style={{ height: 'clamp(180px, 25vh, 400px)', minHeight: '180px', maxHeight: '400px' }}
       onWheel={handleWheel}
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}

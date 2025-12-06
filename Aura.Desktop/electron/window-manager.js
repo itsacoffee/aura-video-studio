@@ -275,8 +275,10 @@ class WindowManager {
 
     // Create window with saved or optimal size
     // Configure background for Mica support on Windows 11
+    // Note: transparent must be false even with Mica - Electron 22+ setBackgroundMaterial()
+    // handles transparency internally. Setting transparent:true can disable window controls.
     const backgroundColor = this.micaManager.isSupported ? "#00000000" : "#0F0F0F";
-    const transparent = this.micaManager.isSupported;
+    const transparent = false;
 
     this.mainWindow = new BrowserWindow({
       width: windowWidth,
@@ -288,8 +290,9 @@ class WindowManager {
       show: false, // Don't show until ready-to-show event
       backgroundColor: backgroundColor,
       transparent: transparent,
-      resizable: true, // Explicitly enable resizing even with Mica/transparency
-      maximizable: true, // Explicitly enable maximizing even with Mica/transparency
+      resizable: true, // Explicitly enable resizing
+      maximizable: true, // Explicitly enable maximizing
+      fullscreenable: true, // Explicitly enable fullscreen
       icon: this._getAppIcon(),
       webPreferences: {
         preload: preloadPath,
