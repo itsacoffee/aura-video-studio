@@ -36,6 +36,11 @@ public class VideoOrchestrator
     private const float StallProgressThreshold = 0.1f;
     private const int StallTimeoutSeconds = 60;
     
+    // Output path extraction constants
+    private const string OutputDirectoryName = "AuraVideoStudio";
+    private const string OutputSubdirectoryName = "Output";
+    private const int RecentFileThresholdMinutes = 10;
+    
     private readonly ILogger<VideoOrchestrator> _logger;
     private readonly ILlmProvider _llmProvider;
     private readonly ITtsProvider _ttsProvider;
@@ -566,12 +571,12 @@ public class VideoOrchestrator
             {
                 try
                 {
-                    var outputDir = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "Output");
+                    var outputDir = Path.Combine(Path.GetTempPath(), OutputDirectoryName, OutputSubdirectoryName);
                     if (Directory.Exists(outputDir))
                     {
                         var recentFiles = Directory.GetFiles(outputDir, "*.mp4")
                             .Select(f => new FileInfo(f))
-                            .Where(fi => (DateTime.UtcNow - fi.CreationTimeUtc).TotalMinutes < 10)
+                            .Where(fi => (DateTime.UtcNow - fi.CreationTimeUtc).TotalMinutes < RecentFileThresholdMinutes)
                             .OrderByDescending(fi => fi.CreationTimeUtc)
                             .ToList();
 
