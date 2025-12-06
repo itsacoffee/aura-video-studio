@@ -25,8 +25,8 @@ import {
   type EffectDefinition,
 } from '../../../stores/opencutEffects';
 import { useOpenCutTimelineStore } from '../../../stores/opencutTimeline';
-import type { EffectCategory } from '../../../types/opencut';
 import { openCutTokens } from '../../../styles/designTokens';
+import type { EffectCategory } from '../../../types/opencut';
 import { EmptyState } from '../EmptyState';
 
 export interface EffectsPanelProps {

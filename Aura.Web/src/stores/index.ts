@@ -75,3 +75,6 @@ export type {
   ExportSettings,
   ExportPreset,
 } from './opencutExport';
+
+export { useMotionGraphicsStore, BUILTIN_GRAPHICS } from './opencutMotionGraphics';
+export type { MotionGraphicsStore } from './opencutMotionGraphics';

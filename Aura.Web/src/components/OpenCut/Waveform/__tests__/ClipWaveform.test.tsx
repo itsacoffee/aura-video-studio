@@ -4,9 +4,7 @@
 
 import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-
 import { useWaveformStore, clearWaveformCache } from '../../../../stores/opencutWaveforms';
-
 import { ClipWaveform } from '../ClipWaveform';
 
 // Mock canvas context

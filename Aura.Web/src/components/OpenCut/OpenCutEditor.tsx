@@ -18,12 +18,13 @@ import { openCutTokens } from '../../styles/designTokens';
 import { CaptionsPanel } from './Captions';
 import { EffectsPanel } from './Effects';
 import { MediaPanel } from './MediaPanel';
+import { GraphicsPanel } from './MotionGraphics';
 import { PreviewPanel } from './PreviewPanel';
 import { PropertiesPanel } from './PropertiesPanel';
 import { ResizablePanel } from './ResizablePanel';
+import { TemplatesPanel } from './Templates';
 import { Timeline } from './Timeline';
 import { TransitionsPanel } from './Transitions';
-import { TemplatesPanel } from './Templates';
 
 const useStyles = makeStyles({
   root: {
@@ -79,7 +80,7 @@ const useStyles = makeStyles({
   },
 });
 
-type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates' | 'captions';
+type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'graphics' | 'templates' | 'captions';
 
 // Panel sizing constraints - shared between helper function and components
 const PANEL_MIN_SIZE = 200;
@@ -135,6 +136,8 @@ export function OpenCutEditor() {
         return <EffectsPanel />;
       case 'transitions':
         return <TransitionsPanel />;
+      case 'graphics':
+        return <GraphicsPanel />;
       case 'templates':
         return <TemplatesPanel />;
       case 'captions':
@@ -166,6 +169,7 @@ export function OpenCutEditor() {
               <Tab value="media">Media</Tab>
               <Tab value="effects">Effects</Tab>
               <Tab value="transitions">Transitions</Tab>
+              <Tab value="graphics">Graphics</Tab>
               <Tab value="templates">Templates</Tab>
               <Tab value="captions">Captions</Tab>
             </TabList>

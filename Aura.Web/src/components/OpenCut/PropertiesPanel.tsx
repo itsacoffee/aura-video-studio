@@ -37,16 +37,16 @@ import type { FC } from 'react';
 import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
 import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
+import { useTextAnimationsStore } from '../../stores/opencutTextAnimations';
 import { useOpenCutTimelineStore, type BlendMode } from '../../stores/opencutTimeline';
 import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
-import { useTextAnimationsStore } from '../../stores/opencutTextAnimations';
 import { openCutTokens } from '../../styles/designTokens';
 import { EffectStack } from './Effects';
 import { EmptyState } from './EmptyState';
 import { KeyframeDiamond } from './KeyframeEditor';
 import { SpeedControls } from './Speed/SpeedControls';
-import { TransitionEditor } from './Transitions';
 import { AnimationPresetPicker, AnimationEditor } from './TextAnimations';
+import { TransitionEditor } from './Transitions';
 
 export interface PropertiesPanelProps {
   className?: string;

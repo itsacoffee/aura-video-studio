@@ -7,9 +7,7 @@
 
 import { useEffect } from 'react';
 import type { FC } from 'react';
-
 import { useWaveformStore } from '../../../stores/opencutWaveforms';
-
 import { WaveformDisplay } from './WaveformDisplay';
 
 interface ClipWaveformProps {

@@ -4,7 +4,6 @@
 
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-
 import { RipplePreview, type RippleClipPreview } from '../RipplePreview';
 
 describe('RipplePreview', () => {
