@@ -199,32 +199,33 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
         var decision = _providerMixer.ResolveLlm(_providers, preferredTier, offlineOnly, preferredProvider);
         _providerMixer.LogDecision(decision);
 
-        if (decision.ProviderName == "None")
-        {
-            return Array.Empty<ProviderInfo>();
-        }
-
         var providerInfos = new List<ProviderInfo>();
-        
-        foreach (var providerName in decision.DowngradeChain)
+
+        // If decision is "None", skip to fallback logic
+        if (decision.ProviderName != "None")
         {
-            if (_providers.TryGetValue(providerName, out var provider))
+            foreach (var providerName in decision.DowngradeChain)
             {
-                providerInfos.Add(new ProviderInfo(
-                    providerName,
-                    "default",
-                    providerInfos.Count,
-                    provider));
+                if (_providers.TryGetValue(providerName, out var provider))
+                {
+                    providerInfos.Add(new ProviderInfo(
+                        providerName,
+                        "default",
+                        providerInfos.Count,
+                        provider));
+                }
             }
         }
 
-        if (providerInfos.Count == 0 && _providers.TryGetValue("RuleBased", out var value))
+        // Always ensure RuleBased fallback is available if no providers were found
+        if (providerInfos.Count == 0 && _providers.TryGetValue("RuleBased", out var ruleBasedProvider))
         {
+            Logger.LogInformation("No providers available from ProviderMixer decision, falling back to RuleBased provider");
             providerInfos.Add(new ProviderInfo(
                 "RuleBased",
                 "default",
                 0,
-value));
+                ruleBasedProvider));
         }
 
         return providerInfos.ToArray();
