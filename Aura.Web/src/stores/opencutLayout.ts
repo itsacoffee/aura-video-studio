@@ -33,8 +33,8 @@ export const LAYOUT_CONSTANTS = {
   /** Timeline constraints */
   timeline: {
     minHeight: 180,
-    maxHeight: 500,
-    defaultHeight: 280,
+    maxHeight: 600,
+    defaultHeight: 320,
   },
   /** Animation settings */
   animation: {

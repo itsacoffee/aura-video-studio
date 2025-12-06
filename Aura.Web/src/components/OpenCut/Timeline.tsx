@@ -52,6 +52,7 @@ import { motion } from 'framer-motion';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
 import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
+import useOpenCutLayoutStore, { LAYOUT_CONSTANTS } from '../../stores/opencutLayout';
 import { useOpenCutMarkersStore } from '../../stores/opencutMarkers';
 import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
@@ -467,6 +468,7 @@ const MIN_TIME_SHIFT_THRESHOLD = 0.01;
 
 export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const styles = useStyles();
+  const layoutStore = useOpenCutLayoutStore();
   const playbackStore = useOpenCutPlaybackStore();
   const projectStore = useOpenCutProjectStore();
   const timelineStore = useOpenCutTimelineStore();
@@ -749,22 +751,26 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     [timelineStore]
   );
 
-  const handleResizeStart = useCallback((e: ReactMouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    startYRef.current = e.clientY;
-    startHeightRef.current = containerRef.current?.offsetHeight || 280;
-  }, []);
+  const handleResizeStart = useCallback(
+    (e: ReactMouseEvent) => {
+      e.preventDefault();
+      setIsResizing(true);
+      startYRef.current = e.clientY;
+      startHeightRef.current = layoutStore.timelineHeight;
+    },
+    [layoutStore.timelineHeight]
+  );
 
   useEffect(() => {
     if (!isResizing) return;
 
     const handleMouseMove = (e: globalThis.MouseEvent) => {
       const delta = startYRef.current - e.clientY;
-      const newHeight = Math.max(200, Math.min(500, startHeightRef.current + delta));
-      if (containerRef.current) {
-        containerRef.current.style.height = `${newHeight}px`;
-      }
+      const newHeight = Math.max(
+        LAYOUT_CONSTANTS.timeline.minHeight,
+        Math.min(LAYOUT_CONSTANTS.timeline.maxHeight, startHeightRef.current + delta)
+      );
+      layoutStore.setTimelineHeight(newHeight);
       onResize?.(newHeight);
     };
 
@@ -779,7 +785,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, onResize]);
+  }, [isResizing, onResize, layoutStore]);
 
   const handleZoomIn = useCallback(() => {
     timelineStore.zoomIn();
@@ -1160,7 +1166,12 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     <div
       ref={containerRef}
       className={mergeClasses(styles.container, className)}
-      style={{ height: 'clamp(180px, 25vh, 400px)', minHeight: '180px', maxHeight: '400px' }}
+      style={{
+        height: layoutStore.timelineHeight,
+        minHeight: LAYOUT_CONSTANTS.timeline.minHeight,
+        maxHeight: LAYOUT_CONSTANTS.timeline.maxHeight,
+        flexShrink: 0,
+      }}
       onWheel={handleWheel}
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
