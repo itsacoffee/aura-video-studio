@@ -124,10 +124,15 @@ function testElectronUpdaterCanLoadDependency() {
     } else {
       // Other errors (like missing app context) are expected in test environment
       // As long as it's not a missing module error, the fix is working
+      const ERROR_MESSAGE_PREVIEW_LENGTH = 80;
+      const errorPreview = error.message.substring(
+        0,
+        ERROR_MESSAGE_PREVIEW_LENGTH
+      );
       logTest(
         "electron-updater can load with lodash.isequal dependency",
         true,
-        `Module loaded (runtime error expected in test: ${error.message.substring(0, 50)}...)`
+        `Module loaded (runtime error expected in test: ${errorPreview}...)`
       );
     }
   }
