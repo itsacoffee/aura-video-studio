@@ -38,8 +38,8 @@ describe('OpenCutLayoutStore', () => {
 
     it('should have valid timeline constraints', () => {
       expect(LAYOUT_CONSTANTS.timeline.minHeight).toBe(180);
-      expect(LAYOUT_CONSTANTS.timeline.maxHeight).toBe(500);
-      expect(LAYOUT_CONSTANTS.timeline.defaultHeight).toBe(280);
+      expect(LAYOUT_CONSTANTS.timeline.maxHeight).toBe(600);
+      expect(LAYOUT_CONSTANTS.timeline.defaultHeight).toBe(320);
     });
   });
 
@@ -195,7 +195,7 @@ describe('OpenCutLayoutStore', () => {
     it('should clamp timeline height to maximum', () => {
       const { setTimelineHeight } = useOpenCutLayoutStore.getState();
 
-      setTimelineHeight(600); // Above maximum
+      setTimelineHeight(700); // Above maximum
 
       const state = useOpenCutLayoutStore.getState();
       expect(state.timelineHeight).toBe(LAYOUT_CONSTANTS.timeline.maxHeight);
