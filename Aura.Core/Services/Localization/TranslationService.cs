@@ -1351,6 +1351,11 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                                     elapsed.TotalSeconds,
                                     remaining);
                             }
+                            else
+                            {
+                                // Timeout exceeded, stop logging
+                                break;
+                            }
                         }
                     }
                     catch (OperationCanceledException)

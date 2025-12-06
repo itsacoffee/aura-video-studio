@@ -4419,9 +4419,15 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             // Try to extract and complete it
             cleaned = cleaned.Substring(firstBrace);
             
-            // Count open and close braces, add only the missing closing braces
-            int openBraces = cleaned.Count(c => c == '{');
-            int closeBraces = cleaned.Count(c => c == '}');
+            // Count open and close braces in a single pass for efficiency
+            int openBraces = 0;
+            int closeBraces = 0;
+            foreach (char c in cleaned)
+            {
+                if (c == '{') openBraces++;
+                else if (c == '}') closeBraces++;
+            }
+            
             var missingBraces = openBraces - closeBraces;
             if (missingBraces > 0)
             {
