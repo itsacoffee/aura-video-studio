@@ -432,6 +432,30 @@ const useStyles = makeStyles({
     zIndex: openCutTokens.zIndex.sticky - 6,
     pointerEvents: 'none',
   },
+  dropIndicator: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: '2px',
+    backgroundColor: tokens.colorBrandStroke1,
+    zIndex: openCutTokens.zIndex.sticky - 4,
+    pointerEvents: 'none',
+    '::before': {
+      content: '""',
+      position: 'absolute',
+      top: '-4px',
+      left: '-4px',
+      width: '10px',
+      height: '10px',
+      backgroundColor: tokens.colorBrandStroke1,
+      borderRadius: tokens.borderRadiusCircular,
+    },
+  },
+  trackContentDragOver: {
+    backgroundColor: tokens.colorBrandBackground2,
+    outline: `2px dashed ${tokens.colorBrandStroke1}`,
+    outlineOffset: '-2px',
+  },
 });
 
 function formatTimeRuler(seconds: number): string {
@@ -488,6 +512,11 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
   const startHeightRef = useRef(0);
+
+  // Media drop state
+  const [isDraggingMedia, setIsDraggingMedia] = useState(false);
+  const [dragOverTrackId, setDragOverTrackId] = useState<string | null>(null);
+  const [dropIndicatorPosition, setDropIndicatorPosition] = useState<number | null>(null);
 
   const {
     tracks,
@@ -983,6 +1012,131 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     handleClipDragEnd,
   ]);
 
+  // Media drop handlers
+  const handleTrackDragOver = useCallback(
+    (trackId: string, e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Check if dragging media from media panel
+      const mediaId = e.dataTransfer.types.includes('application/x-opencut-media');
+      if (!mediaId) return;
+
+      e.dataTransfer.dropEffect = 'copy';
+      setIsDraggingMedia(true);
+      setDragOverTrackId(trackId);
+
+      // Calculate drop position based on mouse X
+      const trackElement = e.currentTarget as HTMLElement;
+      const rect = trackElement.getBoundingClientRect();
+      const relativeX = e.clientX - rect.left;
+      const timeAtPosition = relativeX / pixelsPerSecond;
+
+      // Apply snapping if enabled
+      let dropTime = Math.max(0, timeAtPosition);
+      if (snapEnabled && snapToClips) {
+        const snapPoint = findNearestSnapPoint(dropTime);
+        if (snapPoint !== null) {
+          dropTime = snapPoint;
+        }
+      }
+
+      setDropIndicatorPosition(dropTime);
+    },
+    [pixelsPerSecond, snapEnabled, snapToClips, findNearestSnapPoint]
+  );
+
+  const handleTrackDragEnter = useCallback((trackId: string, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTrackId(trackId);
+  }, []);
+
+  const handleTrackDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Only clear if leaving the track entirely
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+      setDragOverTrackId(null);
+      setDropIndicatorPosition(null);
+    }
+  }, []);
+
+  const handleTrackDrop = useCallback(
+    (trackId: string, e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const mediaId = e.dataTransfer.getData('application/x-opencut-media');
+      if (!mediaId) {
+        setIsDraggingMedia(false);
+        setDragOverTrackId(null);
+        setDropIndicatorPosition(null);
+        return;
+      }
+
+      // Get media file from store
+      const mediaFile = mediaStore.getMediaById(mediaId);
+      if (!mediaFile) {
+        console.error('Media file not found:', mediaId);
+        setIsDraggingMedia(false);
+        setDragOverTrackId(null);
+        setDropIndicatorPosition(null);
+        return;
+      }
+
+      // Calculate drop position
+      const trackElement = e.currentTarget as HTMLElement;
+      const rect = trackElement.getBoundingClientRect();
+      const relativeX = e.clientX - rect.left;
+      let dropTime = Math.max(0, relativeX / pixelsPerSecond);
+
+      // Apply snapping if enabled
+      if (snapEnabled && snapToClips) {
+        const snapPoint = findNearestSnapPoint(dropTime);
+        if (snapPoint !== null) {
+          dropTime = snapPoint;
+        }
+      }
+
+      // Add clip to timeline
+      timelineStore.addClip({
+        trackId,
+        type: mediaFile.type === 'video' ? 'video' : mediaFile.type === 'audio' ? 'audio' : 'image',
+        name: mediaFile.name,
+        mediaId: mediaFile.id,
+        startTime: dropTime,
+        duration: mediaFile.duration || 5,
+        inPoint: 0,
+        outPoint: mediaFile.duration || 5,
+        thumbnailUrl: mediaFile.thumbnailUrl,
+        transform: {
+          scaleX: 100,
+          scaleY: 100,
+          positionX: 0,
+          positionY: 0,
+          rotation: 0,
+          opacity: 100,
+          anchorX: 50,
+          anchorY: 50,
+        },
+        blendMode: 'normal',
+        speed: 1,
+        reversed: false,
+        timeRemapEnabled: false,
+        locked: false,
+      });
+
+      // Clear drop state
+      setIsDraggingMedia(false);
+      setDragOverTrackId(null);
+      setDropIndicatorPosition(null);
+    },
+    [pixelsPerSecond, snapEnabled, snapToClips, findNearestSnapPoint, mediaStore, timelineStore]
+  );
+
   // Calculate ripple preview data during drag
   const ripplePreviewData = useMemo((): {
     visible: boolean;
@@ -1435,7 +1589,17 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                   </div>
                 </div>
                 <div className={styles.trackContentScrollable}>
-                  <div className={styles.trackContent} style={{ width: totalWidth }}>
+                  <div
+                    className={mergeClasses(
+                      styles.trackContent,
+                      dragOverTrackId === track.id && styles.trackContentDragOver
+                    )}
+                    style={{ width: totalWidth }}
+                    onDragOver={(e) => handleTrackDragOver(track.id, e)}
+                    onDragEnter={(e) => handleTrackDragEnter(track.id, e)}
+                    onDragLeave={handleTrackDragLeave}
+                    onDrop={(e) => handleTrackDrop(track.id, e)}
+                  >
                     {trackClips.map(renderClip)}
 
                     {/* Gap indicators */}
@@ -1474,6 +1638,14 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                         position={activeSnapPoint * pixelsPerSecond}
                         visible={true}
                         snapType="clip-edge"
+                      />
+                    )}
+
+                    {/* Drop indicator - shows where media will be placed when dropped */}
+                    {dragOverTrackId === track.id && dropIndicatorPosition !== null && (
+                      <div
+                        className={styles.dropIndicator}
+                        style={{ left: dropIndicatorPosition * pixelsPerSecond }}
                       />
                     )}
 

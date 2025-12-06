@@ -35,8 +35,11 @@ import {
   ArrowExportLtr24Regular,
 } from '@fluentui/react-icons';
 import { motion } from 'framer-motion';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FC } from 'react';
+import { useOpenCutMediaStore } from '../../stores/opencutMedia';
+import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
+import { useOpenCutTimelineStore } from '../../stores/opencutTimeline';
 import { openCutTokens } from '../../styles/designTokens';
 import { CaptionPreview } from './Captions';
 import { ExportDialog } from './Export';
@@ -45,8 +48,6 @@ import { PlaybackControls } from './PlaybackControls';
 export interface PreviewPanelProps {
   className?: string;
   isLoading?: boolean;
-  hasContent?: boolean;
-  videoSrc?: string;
 }
 
 type PreviewQuality = 'quarter' | 'half' | 'full';
@@ -263,21 +264,108 @@ function formatTimecode(seconds: number, fps: number = 30): string {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}:${f.toString().padStart(2, '0')}`;
 }
 
-export const PreviewPanel: FC<PreviewPanelProps> = ({
-  className,
-  isLoading = false,
-  hasContent = false,
-  videoSrc,
-}) => {
+export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = false }) => {
   const styles = useStyles();
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Connect to stores
+  const playbackStore = useOpenCutPlaybackStore();
+  const timelineStore = useOpenCutTimelineStore();
+  const mediaStore = useOpenCutMediaStore();
 
   const [showSafeAreas, setShowSafeAreas] = useState(false);
   const [showTimecode, setShowTimecode] = useState(false);
   const [loopPlayback, setLoopPlayback] = useState(false);
   const [zoom, setZoom] = useState<ZoomLevel>('fit');
   const [quality, setQuality] = useState<PreviewQuality>('full');
-  const [currentTime] = useState(0);
+
+  // Generate video source from timeline clips
+  const videoSrc = useMemo(() => {
+    // Get all video clips from Video 1 track
+    const videoTrack = timelineStore.tracks.find((t) => t.type === 'video');
+    if (!videoTrack) return undefined;
+
+    const videoClips = timelineStore.clips
+      .filter((c) => c.trackId === videoTrack.id && c.type === 'video')
+      .sort((a, b) => a.startTime - b.startTime);
+
+    if (videoClips.length === 0) return undefined;
+
+    // For now, use the first video clip's media file
+    const firstClip = videoClips[0];
+    if (!firstClip.mediaId) return undefined;
+
+    const mediaFile = mediaStore.getMediaById(firstClip.mediaId);
+    return mediaFile?.url;
+  }, [timelineStore.tracks, timelineStore.clips, mediaStore]);
+
+  // Check if timeline has content
+  const hasContent = timelineStore.clips.length > 0;
+
+  // Sync video playback with playback store
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    const handleLoadedMetadata = () => {
+      playbackStore.setDuration(video.duration);
+    };
+
+    const handleTimeUpdate = () => {
+      if (!playbackStore.isPlaying) return;
+      playbackStore.setCurrentTime(video.currentTime);
+    };
+
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('timeupdate', handleTimeUpdate);
+
+    return () => {
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [videoSrc, playbackStore]);
+
+  // Sync playback state changes to video element
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    if (playbackStore.isPlaying) {
+      video.play().catch((err: unknown) => {
+        console.error('Failed to play video:', err);
+        playbackStore.pause();
+      });
+    } else {
+      video.pause();
+    }
+  }, [playbackStore.isPlaying, videoSrc, playbackStore]);
+
+  // Sync seek events to video element
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    const handleSeek = (e: Event) => {
+      const customEvent = e as CustomEvent<{ time: number }>;
+      video.currentTime = customEvent.detail.time;
+    };
+
+    window.addEventListener('opencut-playback-seek', handleSeek);
+
+    return () => {
+      window.removeEventListener('opencut-playback-seek', handleSeek);
+    };
+  }, [videoSrc]);
+
+  // Sync volume and muted state to video element
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.volume = playbackStore.volume;
+    video.muted = playbackStore.muted;
+  }, [playbackStore.volume, playbackStore.muted]);
 
   const handleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
@@ -475,7 +563,12 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
               </div>
             ) : hasContent && videoSrc ? (
               /* eslint-disable-next-line jsx-a11y/media-has-caption */
-              <video className={styles.videoElement} src={videoSrc} loop={loopPlayback} />
+              <video
+                ref={videoRef}
+                className={styles.videoElement}
+                src={videoSrc}
+                loop={loopPlayback}
+              />
             ) : (
               <div className={styles.placeholder}>
                 <motion.div
@@ -516,7 +609,9 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
 
             {/* Timecode Overlay */}
             {showTimecode && (
-              <div className={styles.timecodeOverlay}>{formatTimecode(currentTime)}</div>
+              <div className={styles.timecodeOverlay}>
+                {formatTimecode(playbackStore.currentTime)}
+              </div>
             )}
 
             {/* Quality Badge */}
