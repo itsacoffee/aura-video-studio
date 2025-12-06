@@ -18,6 +18,7 @@ import { CrashRecoveryScreen, ErrorBoundary } from './components/ErrorBoundary';
 import type { InitializationError } from './components/Initialization';
 import { InitializationScreen, StartupErrorScreen } from './components/Initialization';
 import { NotificationsToaster } from './components/Notifications/Toasts';
+import { ScaledUIContainer } from './components/ScaledUIContainer';
 import { SplashScreen } from './components/SplashScreen/SplashScreen';
 import { env } from './config/env';
 import { ROUTE_METADATA_ENHANCED } from './config/routesWithGuards';
@@ -97,6 +98,13 @@ function App() {
   const [_themeName, _setThemeName] = useState(() => {
     const saved = localStorage.getItem('themeName');
     return saved || 'aura';
+  });
+
+  // UI Scaling preference - default to enabled for better UX
+  const [uiScalingEnabled, setUiScalingEnabled] = useState(() => {
+    const saved = localStorage.getItem('uiScalingEnabled');
+    // Default to true (enabled) for new users
+    return saved === null ? true : JSON.parse(saved);
   });
 
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -406,8 +414,12 @@ function App() {
       root.classList.remove('dark');
     }
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-    // themeName saved in setThemeName
   }, [isDarkMode]);
+
+  // Save UI scaling preference
+  useEffect(() => {
+    localStorage.setItem('uiScalingEnabled', JSON.stringify(uiScalingEnabled));
+  }, [uiScalingEnabled]);
 
   // Optionally sync theme with Windows system theme changes
   useEffect(() => {
@@ -869,27 +881,29 @@ function App() {
               <AccessibilityProvider>
                 <ActivityProvider>
                   <ProjectProvider>
-                    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-                      <ErrorBoundary>
-                        <MemoryRouter initialEntries={[initialRoute]}>
-                          <ErrorBoundary>
-                            <AppRouterContent
-                              showShortcuts={showShortcuts}
-                              showShortcutsPanel={showShortcutsPanel}
-                              showShortcutsCheatSheet={showShortcutsCheatSheet}
-                              showCommandPalette={showCommandPalette}
-                              setShowShortcuts={setShowShortcuts}
-                              setShowShortcutsPanel={setShowShortcutsPanel}
-                              setShowShortcutsCheatSheet={setShowShortcutsCheatSheet}
-                              setShowCommandPalette={setShowCommandPalette}
-                              toasterId={toasterId}
-                              showDiagnostics={_showDiagnostics}
-                              setShowDiagnostics={_setShowDiagnostics}
-                            />
-                          </ErrorBoundary>
-                        </MemoryRouter>
-                      </ErrorBoundary>
-                    </div>
+                    <ScaledUIContainer enabled={uiScalingEnabled}>
+                      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+                        <ErrorBoundary>
+                          <MemoryRouter initialEntries={[initialRoute]}>
+                            <ErrorBoundary>
+                              <AppRouterContent
+                                showShortcuts={showShortcuts}
+                                showShortcutsPanel={showShortcutsPanel}
+                                showShortcutsCheatSheet={showShortcutsCheatSheet}
+                                showCommandPalette={showCommandPalette}
+                                setShowShortcuts={setShowShortcuts}
+                                setShowShortcutsPanel={setShowShortcutsPanel}
+                                setShowShortcutsCheatSheet={setShowShortcutsCheatSheet}
+                                setShowCommandPalette={setShowCommandPalette}
+                                toasterId={toasterId}
+                                showDiagnostics={_showDiagnostics}
+                                setShowDiagnostics={_setShowDiagnostics}
+                              />
+                            </ErrorBoundary>
+                          </MemoryRouter>
+                        </ErrorBoundary>
+                      </div>
+                    </ScaledUIContainer>
                   </ProjectProvider>
                 </ActivityProvider>
               </AccessibilityProvider>
