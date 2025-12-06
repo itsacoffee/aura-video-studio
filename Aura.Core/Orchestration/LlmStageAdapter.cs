@@ -31,8 +31,9 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
     /// <summary>
     /// Tracks if the current operation is a translation request.
     /// Used to prevent RuleBased provider from being used for translation.
+    /// ThreadLocal ensures thread safety for concurrent operations.
     /// </summary>
-    private bool _isTranslationOperation = false;
+    private readonly ThreadLocal<bool> _isTranslationOperation = new(() => false);
 
     public LlmStageAdapter(
         ILogger<LlmStageAdapter> logger,
@@ -156,11 +157,11 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
     {
         // Detect if this is a translation operation based on system prompt
         // This is used to prevent RuleBased provider from being used for translation
-        _isTranslationOperation = systemPrompt.Contains("translator", StringComparison.OrdinalIgnoreCase) ||
-                                  systemPrompt.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
-                                  systemPrompt.Contains("translation", StringComparison.OrdinalIgnoreCase) ||
-                                  systemPrompt.Contains("source language", StringComparison.OrdinalIgnoreCase) ||
-                                  systemPrompt.Contains("target language", StringComparison.OrdinalIgnoreCase);
+        _isTranslationOperation.Value = systemPrompt.Contains("translator", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("translation", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("source language", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("target language", StringComparison.OrdinalIgnoreCase);
 
         var request = new LlmStageRequest
         {
@@ -235,7 +236,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
         // RuleBased provider cannot perform translations - it requires an actual LLM
         if (providerInfos.Count == 0)
         {
-            if (_isTranslationOperation)
+            if (_isTranslationOperation.Value)
             {
                 Logger.LogError(
                     "No LLM providers available for translation. " +
@@ -243,7 +244,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
                     "Please ensure Ollama is running: ollama serve");
                 
                 // Reset the flag before throwing
-                _isTranslationOperation = false;
+                _isTranslationOperation.Value = false;
                 
                 throw new InvalidOperationException(
                     "Translation requires an LLM provider (Ollama). " +
@@ -262,7 +263,7 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
         }
 
         // Reset the flag after use
-        _isTranslationOperation = false;
+        _isTranslationOperation.Value = false;
 
         return providerInfos.ToArray();
     }
