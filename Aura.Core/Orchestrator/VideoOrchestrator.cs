@@ -600,11 +600,14 @@ public class VideoOrchestrator
             if (string.IsNullOrEmpty(outputPath))
             {
                 var availableKeys = string.Join(", ", result.TaskResults.Keys);
-                var errorMessage = $"Video generation completed but output path not returned. " +
-                    $"Checked all extraction strategies but found no valid path. " +
-                    $"Available task result keys: [{availableKeys}]. " +
-                    $"Job ID: {jobId ?? "unknown"}. " +
-                    $"Check backend logs for the actual file location.";
+                var errorMessage = string.Format(
+                    "Video generation completed but output path not returned. " +
+                    "Checked all extraction strategies but found no valid path. " +
+                    "Available task result keys: [{0}]. " +
+                    "Job ID: {1}. " +
+                    "Check backend logs for the actual file location.",
+                    availableKeys,
+                    jobId ?? "unknown");
                 
                 _logger.LogError(
                     "Output path extraction failed. TaskResults keys: {Keys}, ExecutorState.FinalVideoPath: {FinalVideoPath}",
