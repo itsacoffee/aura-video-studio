@@ -4,47 +4,47 @@
  */
 
 :root {
-  /* ==================== SPACING SYSTEM ==================== */
+  /* ==================== SPACING SYSTEM (Apple HIG) ==================== */
 
-  /* Optimized for 1080p displays - Apple/Adobe-inspired density */
+  /* Apple HIG-inspired spacing scale for clarity and visual hierarchy */
   --space-0: 0px;
-  --space-1: 2px;
-  --space-2: 4px;
-  --space-3: 8px;
-  --space-4: 12px;
-  --space-5: 16px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-7: 32px;
   --space-8: 40px;
   --space-9: 48px;
   --space-10: 64px;
-  --panel-padding: var(--space-4);
-  --toolbar-height: 40px;
+  --panel-padding: var(--space-5);
+  --toolbar-height: 48px;
   --timeline-height: 200px;
-  --sidebar-width: 200px;
-  --inspector-width: 280px;
+  --sidebar-width: 240px;
+  --inspector-width: 320px;
 
   /* ==================== TYPOGRAPHY ==================== */
 
-  /* Optimized for 1080p displays - compact but readable */
+  /* Optimized for clarity and readability across all displays */
   --font-family-primary: -apple-system, blinkmacsystemfont, 'Segoe UI', 'Roboto', sans-serif;
   --font-family-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-  --font-size-xs: 10px;
-  --font-size-sm: 11px;
-  --font-size-base: 12px;
-  --font-size-md: 13px;
-  --font-size-lg: 14px;
-  --font-size-xl: 16px;
-  --font-size-2xl: 18px;
-  --font-size-3xl: 20px;
-  --font-size-4xl: 24px;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 28px;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
   --line-height-tight: 1.2;
-  --line-height-normal: 1.4;
-  --line-height-relaxed: 1.5;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.6;
 
   /* ==================== COLORS - PROFESSIONAL DARK THEME ==================== */
   --color-primary-400: #60a5fa;
@@ -75,35 +75,35 @@
   --border-strong: #404040;
   --border-focus: var(--color-primary-500);
 
-  /* ==================== SHADOWS ==================== */
-  --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 30%);
-  --shadow-md: 0 4px 8px 0 rgb(0 0 0 / 35%);
-  --shadow-lg: 0 8px 16px 0 rgb(0 0 0 / 40%);
-  --shadow-xl: 0 12px 24px 0 rgb(0 0 0 / 45%);
-  --shadow-2xl: 0 20px 40px 0 rgb(0 0 0 / 50%);
-  --glow-primary: 0 0 0 3px rgb(59 130 246 / 30%);
-  --glow-success: 0 0 0 3px rgb(16 185 129 / 30%);
-  --glow-error: 0 0 0 3px rgb(239 68 68 / 30%);
+  /* ==================== SHADOWS (Apple-style elevation) ==================== */
+  --shadow-sm: 0 2px 8px 0 rgb(0 0 0 / 12%);
+  --shadow-md: 0 4px 12px 0 rgb(0 0 0 / 16%);
+  --shadow-lg: 0 8px 24px 0 rgb(0 0 0 / 20%);
+  --shadow-xl: 0 12px 32px 0 rgb(0 0 0 / 24%);
+  --shadow-2xl: 0 20px 48px 0 rgb(0 0 0 / 28%);
+  --glow-primary: 0 0 0 4px rgb(59 130 246 / 30%);
+  --glow-success: 0 0 0 4px rgb(16 185 129 / 30%);
+  --glow-error: 0 0 0 4px rgb(239 68 68 / 30%);
 
-  /* ==================== BORDER RADIUS ==================== */
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
+  /* ==================== BORDER RADIUS (Apple-style) ==================== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
   --radius-full: 9999px;
 
-  /* ==================== TRANSITIONS ==================== */
+  /* ==================== TRANSITIONS (Smooth Apple-style animations) ==================== */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
   --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --duration-fast: 150ms;
-  --duration-normal: 200ms;
-  --duration-slow: 300ms;
-  --transition-base: all var(--duration-fast) var(--ease-standard);
+  --duration-fast: 200ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --transition-base: all var(--duration-normal) var(--ease-standard);
   --transition-color:
-    color var(--duration-fast) var(--ease-standard),
-    background-color var(--duration-fast) var(--ease-standard);
+    color var(--duration-normal) var(--ease-standard),
+    background-color var(--duration-normal) var(--ease-standard);
   --transition-transform: transform var(--duration-normal) var(--ease-out-expo);
 
   /* ==================== Z-INDEX ==================== */
@@ -146,8 +146,8 @@
   --z-base: 0;
   --z-panel: 10;
   --z-toolbar: 20;
-  --panel-header-height: 32px;
-  --sidebar-collapsed-width: 40px;
+  --panel-header-height: 44px;
+  --sidebar-collapsed-width: 64px;
   --sidebar-expanded-width-min: 180px;
   --sidebar-expanded-width-max: 320px;
   --timeline-track-height-compact: 20px;

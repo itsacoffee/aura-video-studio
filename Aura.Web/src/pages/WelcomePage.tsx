@@ -36,20 +36,20 @@ import type { HardwareCapabilities } from '../types';
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: '1200px',
+    maxWidth: '1600px',
     margin: '0 auto',
-    padding: tokens.spacingVerticalM,
+    padding: tokens.spacingVerticalXL,
   },
   hero: {
     textAlign: 'center',
-    marginBottom: tokens.spacingVerticalL,
-    padding: tokens.spacingVerticalL,
+    marginBottom: tokens.spacingVerticalXXL,
+    padding: '32px',
     borderRadius: tokens.borderRadiusLarge,
     background: `linear-gradient(135deg, ${tokens.colorNeutralBackground2} 0%, ${tokens.colorNeutralBackground1} 100%)`,
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
   },
   title: {
-    marginBottom: tokens.spacingVerticalS,
+    marginBottom: tokens.spacingVerticalM,
     display: 'block',
     background: `linear-gradient(135deg, ${tokens.colorBrandForeground1} 0%, ${tokens.colorPalettePurpleForeground2} 100%)`,
     WebkitBackgroundClip: 'text',
@@ -58,14 +58,15 @@ const useStyles = makeStyles({
   },
   subtitle: {
     color: tokens.colorNeutralForeground2,
-    marginBottom: tokens.spacingVerticalM,
+    marginBottom: tokens.spacingVerticalL,
     display: 'block',
   },
   actions: {
     display: 'flex',
-    gap: tokens.spacingHorizontalM,
+    gap: tokens.spacingHorizontalL,
     justifyContent: 'center',
-    marginTop: tokens.spacingVerticalM,
+    flexWrap: 'wrap',
+    marginTop: tokens.spacingVerticalL,
   },
   firstTimeCallout: {
     marginBottom: tokens.spacingVerticalXXXL,
@@ -129,17 +130,24 @@ const useStyles = makeStyles({
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: tokens.spacingVerticalM,
-    marginTop: tokens.spacingVerticalL,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: tokens.spacingVerticalL,
+    marginTop: tokens.spacingVerticalXL,
+    '@media (min-width: 1024px)': {
+      gridTemplateColumns: 'repeat(3, 1fr)',
+    },
+    '@media (min-width: 1440px)': {
+      gridTemplateColumns: 'repeat(4, 1fr)',
+    },
   },
   card: {
     height: '100%',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     cursor: 'default',
+    padding: tokens.spacingVerticalL,
     ':hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)',
+      transform: 'translateY(-6px)',
+      boxShadow: '0 12px 28px rgba(0, 0, 0, 0.18)',
     },
   },
   statusBadge: {
@@ -176,18 +184,19 @@ const useStyles = makeStyles({
     maxWidth: '300px',
   },
   summaryCard: {
-    padding: tokens.spacingVerticalL,
-    marginTop: tokens.spacingVerticalL,
+    padding: tokens.spacingVerticalXL,
+    marginTop: tokens.spacingVerticalXXL,
   },
   summaryGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: tokens.spacingVerticalM,
+    gap: tokens.spacingVerticalL,
   },
   summaryItem: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
+    gap: tokens.spacingVerticalS,
+    padding: tokens.spacingVerticalM,
   },
 });
 
@@ -297,7 +306,10 @@ export function WelcomePage() {
             hasCompletedWizard: getLocalFirstRunStatus(),
           });
         } catch (error) {
-          console.error('[WelcomePage] Error refreshing configuration status on navigation:', error);
+          console.error(
+            '[WelcomePage] Error refreshing configuration status on navigation:',
+            error
+          );
           setLoadingConfig(false);
         }
       };
@@ -360,22 +372,22 @@ export function WelcomePage() {
   const handleConfigComplete = async () => {
     // Force a complete refresh of configuration status after setup completion
     console.info('[WelcomePage] Setup completed, refreshing configuration status...');
-    
+
     // Clear any cached status
     await configurationStatusService.resetConfiguration();
-    
+
     // Wait a moment for backend to update
     await new Promise((resolve) => setTimeout(resolve, 500));
-    
+
     // Get fresh status with force refresh
     const status = await configurationStatusService.getStatus(true);
     setConfigStatus(status);
-    
+
     console.info('[WelcomePage] Configuration status after setup:', {
       isConfigured: status.isConfigured,
       checks: status.checks,
     });
-    
+
     // If still not configured, wait a bit longer and retry (backend might need time to update)
     if (!status.isConfigured) {
       console.warn('[WelcomePage] Status still shows not configured, retrying after delay...');
