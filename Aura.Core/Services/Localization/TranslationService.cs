@@ -1397,14 +1397,18 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                 using (var reader = new System.IO.StreamReader(stream))
                 {
                     string? line;
-                    while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
+                    while (!cts.Token.IsCancellationRequested && (line = await reader.ReadLineAsync(cts.Token).ConfigureAwait(false)) != null)
                     {
                         if (string.IsNullOrWhiteSpace(line))
                             continue;
 
                         try
                         {
-                            var chunk = System.Text.Json.JsonSerializer.Deserialize<Models.Ollama.OllamaStreamResponse>(line);
+                            var chunk = System.Text.Json.JsonSerializer.Deserialize<Models.Ollama.OllamaStreamResponse>(line, new System.Text.Json.JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
+                            
                             if (chunk != null)
                             {
                                 // Check for error in chunk
@@ -1419,7 +1423,10 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                                     }
                                 }
 
-                                fullResponse.Append(chunk.Response);
+                                if (!string.IsNullOrEmpty(chunk.Response))
+                                {
+                                    fullResponse.Append(chunk.Response);
+                                }
 
                                 if (chunk.Done)
                                 {

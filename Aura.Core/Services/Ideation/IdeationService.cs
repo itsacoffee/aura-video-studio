@@ -396,9 +396,17 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
                     // Clean response before parsing (remove markdown code blocks, BOM, etc.)
                     var cleanedResponse = RepairJsonResponse(jsonResponse);
+                    
+                    _logger.LogDebug("Repaired JSON response (length: {Length}): {Preview}", 
+                        cleanedResponse.Length, 
+                        cleanedResponse.Substring(0, Math.Min(500, cleanedResponse.Length)));
 
-                    // Validate JSON structure before breaking
-                    var testDoc = JsonDocument.Parse(cleanedResponse);
+                    // Validate JSON structure before breaking with proper options
+                    var testDoc = JsonDocument.Parse(cleanedResponse, new JsonDocumentOptions
+                    {
+                        AllowTrailingCommas = true,
+                        CommentHandling = JsonCommentHandling.Skip
+                    });
                     if (testDoc.RootElement.TryGetProperty("concepts", out var conceptsArray) &&
                         conceptsArray.ValueKind == JsonValueKind.Array &&
                         conceptsArray.GetArrayLength() > 0)

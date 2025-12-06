@@ -529,6 +529,9 @@ public class VideoOrchestrator
             // Extract final video path from composition task result with multiple fallback strategies
             string? outputPath = null;
             string extractionMethod = "unknown";
+            
+            _logger.LogInformation("Extracting output path. Available task result keys: {Keys}", 
+                string.Join(", ", result.TaskResults.Keys));
 
             // Strategy 1: Try primary "composition" task result key
             if (result.TaskResults.TryGetValue("composition", out var compositionTask) && 
@@ -538,6 +541,12 @@ public class VideoOrchestrator
                 outputPath = compositionPath;
                 extractionMethod = "composition_task_result";
                 _logger.LogInformation("Extracted output path from composition task result: {Path}", outputPath);
+            }
+            else if (result.TaskResults.ContainsKey("composition"))
+            {
+                _logger.LogWarning("Composition task exists but result is not a valid string. Result type: {Type}, Value: {Value}",
+                    compositionTask?.Result?.GetType()?.Name ?? "null",
+                    compositionTask?.Result?.ToString() ?? "null");
             }
 
             // Strategy 2: Try alternate task result keys
