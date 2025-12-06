@@ -54,7 +54,8 @@ const useStyles = makeStyles({
   },
   leftPanelTabs: {
     borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
+    padding: `${openCutTokens.spacing.sm} ${openCutTokens.spacing.md}`,
+    backgroundColor: tokens.colorNeutralBackground2,
   },
   leftPanelContent: {
     flex: 1,
@@ -82,16 +83,21 @@ const useStyles = makeStyles({
 
 type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'graphics' | 'templates' | 'captions';
 
-// Panel sizing constraints - optimized to maximize preview area
-const PANEL_MIN_SIZE = 180;
-const PANEL_MAX_SIZE = 400;
-const PANEL_VIEWPORT_PERCENTAGE = 0.12;
+/**
+ * Panel sizing constraints - optimized to maximize preview area while
+ * maintaining comfortable sidebar widths for content.
+ */
+const PANEL_MIN_SIZE = parseInt(openCutTokens.layout.sidebarMinWidth, 10);
+const PANEL_MAX_SIZE = parseInt(openCutTokens.layout.sidebarMaxWidth, 10);
+const PANEL_VIEWPORT_PERCENTAGE = openCutTokens.layout.sidebarDefaultPercent;
 
-// Calculate responsive panel size based on viewport width
+/**
+ * Calculate responsive panel size based on viewport width.
+ * Uses design tokens for consistent sizing across the application.
+ */
 function getResponsivePanelSize(): number {
   if (typeof window === 'undefined') return PANEL_MIN_SIZE;
   const viewportWidth = window.innerWidth;
-  // Use ~15% of viewport width, clamped between min and max
   const percentageSize = Math.round(viewportWidth * PANEL_VIEWPORT_PERCENTAGE);
   return Math.max(PANEL_MIN_SIZE, Math.min(percentageSize, PANEL_MAX_SIZE));
 }

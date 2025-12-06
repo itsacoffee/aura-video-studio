@@ -19,6 +19,7 @@ import {
 import type { FC } from 'react';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
+import { openCutTokens } from '../../styles/designTokens';
 
 export interface PlaybackControlsProps {
   onFullscreen?: () => void;
@@ -30,57 +31,57 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: tokens.spacingHorizontalXL,
-    padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXXL}`,
+    gap: openCutTokens.spacing.xl,
+    padding: `${openCutTokens.spacing.md} ${openCutTokens.spacing.xxl}`,
     borderTop: `1px solid ${tokens.colorNeutralStroke3}`,
     backgroundColor: tokens.colorNeutralBackground2,
-    minHeight: '64px',
+    minHeight: '56px',
   },
   transportGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
+    gap: openCutTokens.spacing.sm,
   },
   timeGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalXS,
-    padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalM}`,
+    gap: openCutTokens.spacing.xs,
+    padding: `${openCutTokens.spacing.xs} ${openCutTokens.spacing.md}`,
     backgroundColor: tokens.colorNeutralBackground3,
-    borderRadius: tokens.borderRadiusMedium,
-    minWidth: '160px',
+    borderRadius: openCutTokens.radius.md,
+    minWidth: '140px',
     justifyContent: 'center',
   },
   timeText: {
-    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace',
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightMedium,
+    fontFamily: openCutTokens.typography.fontFamily.mono,
+    fontSize: openCutTokens.typography.fontSize.md,
+    fontWeight: openCutTokens.typography.fontWeight.medium,
     letterSpacing: '0.02em',
   },
   timeSeparator: {
     color: tokens.colorNeutralForeground3,
-    padding: `0 ${tokens.spacingHorizontalXS}`,
+    padding: `0 ${openCutTokens.spacing.xxs}`,
   },
   volumeGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalS,
-    paddingLeft: tokens.spacingHorizontalL,
+    gap: openCutTokens.spacing.sm,
+    paddingLeft: openCutTokens.spacing.lg,
     borderLeft: `1px solid ${tokens.colorNeutralStroke3}`,
   },
   volumeSlider: {
-    width: '100px',
+    width: '88px',
   },
   screenGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: tokens.spacingHorizontalXS,
-    paddingLeft: tokens.spacingHorizontalL,
+    gap: openCutTokens.spacing.xs,
+    paddingLeft: openCutTokens.spacing.lg,
     borderLeft: `1px solid ${tokens.colorNeutralStroke3}`,
   },
   controlButton: {
-    minWidth: '44px',
-    minHeight: '44px',
+    minWidth: openCutTokens.layout.hitTargetSize,
+    minHeight: openCutTokens.layout.hitTargetSize,
   },
   playButton: {
     minWidth: '48px',
