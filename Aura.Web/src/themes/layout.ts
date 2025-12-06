@@ -2,41 +2,57 @@
  * Centralized Layout Tokens
  *
  * This module provides standardized spacing tokens for consistent layout
- * across all screens in Aura Video Studio. Optimized for 1080p displays
- * with Apple/Adobe-inspired density.
+ * across all screens in Aura Video Studio. Updated to follow Apple Human
+ * Interface Guidelines (HIG) standards for spacing, touch targets, and
+ * responsive design.
  *
- * Spacing Scale (compact for better 1080p density):
- * - XS: 4px  - Tight spacing (icon-label gaps, inline elements)
- * - SM: 8px  - Small spacing (form hints, compact gaps)
- * - MD: 12px - Medium spacing (related elements)
- * - LG: 16px - Standard spacing (section padding)
- * - XL: 24px - Large spacing (page padding on mobile)
- * - XXL: 32px - Extra large (reserved for major sections)
+ * Apple HIG Spacing Scale:
+ * - XS: 4px   - Minimal spacing (icon-label gaps)
+ * - SM: 8px   - Small spacing (compact elements)
+ * - MD: 12px  - Medium spacing (related elements)
+ * - LG: 16px  - Standard spacing (form fields)
+ * - XL: 20px  - Large spacing (section dividers)
+ * - XXL: 24px - Extra large (section padding)
+ * - 3XL: 32px - Major spacing (page sections)
+ * - 4XL: 40px - Very large spacing
+ * - 5XL: 48px - Extra large spacing
+ * - 6XL: 64px - Maximum spacing
  *
- * Note: These map to Fluent UI tokens which provide cross-platform consistency.
+ * Touch Targets: Minimum 44pt (44px) for all interactive elements (Apple HIG)
+ * Responsive Breakpoints: 480px, 768px, 1024px, 1440px for smooth scaling
  *
+ * @see https://developer.apple.com/design/human-interface-guidelines/layout
  * @see https://react.fluentui.dev/?path=/docs/concepts-developer-design-tokens--page
  */
 
 import { tokens } from '@fluentui/react-components';
 
 /**
- * Spacing tokens for consistent vertical and horizontal rhythm.
+ * Spacing tokens following Apple HIG spacing scale.
+ * All values are optimized for clarity, visual hierarchy, and breathing room.
  * Values map to Fluent UI spacing tokens for theme compatibility.
  */
 export const spacing = {
-  /** 4px - Tight spacing for icon-label gaps, inline elements */
+  /** 4px - Minimal spacing for icon-label gaps, inline elements */
   xs: tokens.spacingVerticalXS,
-  /** 8px - Small spacing for form hints, compact item gaps */
+  /** 8px - Small spacing for compact elements */
   sm: tokens.spacingVerticalS,
   /** 12px - Medium spacing for related elements */
   md: tokens.spacingVerticalM,
   /** 16px - Standard spacing between form fields */
   lg: tokens.spacingVerticalL,
-  /** 24px - Large spacing between sections */
-  xl: tokens.spacingVerticalXL,
-  /** 32px - Extra large for page padding and major sections */
+  /** 20px - Large spacing for section dividers */
+  xl: '20px',
+  /** 24px - Extra large for section padding */
   xxl: tokens.spacingVerticalXXL,
+  /** 32px - Major spacing for page sections */
+  xxxl: tokens.spacingVerticalXXXL,
+  /** 40px - Very large spacing */
+  xxxxl: '40px',
+  /** 48px - Extra large spacing */
+  xxxxxl: '48px',
+  /** 64px - Maximum spacing for major separations */
+  xxxxxxl: '64px',
 } as const;
 
 /**
@@ -47,23 +63,57 @@ export const spacingHorizontal = {
   sm: tokens.spacingHorizontalS,
   md: tokens.spacingHorizontalM,
   lg: tokens.spacingHorizontalL,
-  xl: tokens.spacingHorizontalXL,
+  xl: '20px',
   xxl: tokens.spacingHorizontalXXL,
+  xxxl: tokens.spacingHorizontalXXXL,
+  xxxxl: '40px',
+  xxxxxl: '48px',
+  xxxxxxl: '64px',
+} as const;
+
+/**
+ * Responsive breakpoints for smooth scaling from mobile to 4K displays.
+ * Follows Apple HIG recommendations for adaptive layouts.
+ */
+export const breakpoints = {
+  /** Mobile portrait - 320px to 479px */
+  mobile: '480px',
+  /** Tablet portrait / large mobile - 480px to 767px */
+  tablet: '768px',
+  /** Tablet landscape / small desktop - 768px to 1023px */
+  desktop: '1024px',
+  /** Large desktop - 1024px to 1439px */
+  wide: '1440px',
+  /** Ultra-wide / 4K - 1440px and above */
+  ultrawide: '1920px',
+} as const;
+
+/**
+ * Touch target sizes following Apple HIG (minimum 44pt).
+ * All interactive elements must meet these minimums for accessibility.
+ */
+export const touchTargets = {
+  /** Minimum touch target size (Apple HIG standard) */
+  minimum: '44px',
+  /** Comfortable touch target size */
+  comfortable: '48px',
+  /** Large touch target for primary actions */
+  large: '56px',
 } as const;
 
 /**
  * Page layout constants for consistent content areas.
- * Optimized for 1080p displays with Apple/Adobe-like density.
+ * Updated for better space utilization following Apple HIG principles.
  *
- * These fixed values are retained for backwards compatibility.
+ * maxContentWidth significantly increased to utilize screen space more effectively.
  * For adaptive layouts, use the CSS custom properties from adaptive-properties.css
  * or the useAdaptiveLayout hook which provides viewport-relative values.
  */
 export const pageLayout = {
-  /** Maximum content width for central flows (prevents overly wide reading columns) */
-  maxContentWidth: '1400px',
-  /** Standard page padding (desktop) - reduced for more content space */
-  pagePadding: tokens.spacingVerticalL,
+  /** Maximum content width - increased for better space utilization on larger displays */
+  maxContentWidth: '1920px',
+  /** Standard page padding (desktop) - adequate breathing room */
+  pagePadding: '20px',
   /** Page padding for smaller screens */
   pagePaddingMobile: tokens.spacingVerticalM,
   /** Minimum page padding to ensure content is not flush with edges */
@@ -72,7 +122,7 @@ export const pageLayout = {
 
 /**
  * Panel layout ratios for multi-panel views.
- * Optimized for 1080p displays.
+ * Updated with Apple HIG touch targets and improved spacing.
  *
  * These fixed values are retained for backwards compatibility.
  * For adaptive layouts, use CSS custom properties:
@@ -81,16 +131,16 @@ export const pageLayout = {
  * Or the useAdaptiveLayout hook for JavaScript access.
  */
 export const panelLayout = {
-  /** Standard sidebar width - reduced for more content area */
-  sidebarWidth: '200px',
-  /** Collapsed sidebar width */
-  sidebarWidthCollapsed: '48px',
+  /** Standard sidebar width - balanced for content and navigation */
+  sidebarWidth: '240px',
+  /** Collapsed sidebar width - comfortable for icon-only navigation */
+  sidebarWidthCollapsed: '64px',
   /** Inspector/detail panel width */
-  inspectorWidth: '280px',
+  inspectorWidth: '320px',
   /** Minimum panel width for resizable panels */
-  panelMinWidth: '160px',
+  panelMinWidth: '200px',
   /** Maximum panel width for resizable panels */
-  panelMaxWidth: '400px',
+  panelMaxWidth: '480px',
 } as const;
 
 /**
@@ -107,16 +157,19 @@ export const container = {
 
 /**
  * Standard gap values for flex and grid layouts.
+ * Updated for Apple HIG spacing and visual hierarchy.
  */
 export const gaps = {
   /** Tight gap for icon groups */
   tight: tokens.spacingHorizontalXS,
-  /** Standard gap for button groups */
+  /** Standard gap for button groups and related elements */
   standard: tokens.spacingHorizontalM,
-  /** Wide gap for card grids */
+  /** Wide gap for card grids and section separation */
   wide: tokens.spacingHorizontalL,
-  /** Extra wide for section separation */
-  extraWide: tokens.spacingHorizontalXXL,
+  /** Extra wide for major section separation */
+  extraWide: '24px',
+  /** Maximum gap for distinct content areas */
+  maximum: '32px',
 } as const;
 
 /**
@@ -179,6 +232,8 @@ export const adaptiveLayoutVars = {
 export const layoutTokens = {
   spacing,
   spacingHorizontal,
+  breakpoints,
+  touchTargets,
   pageLayout,
   panelLayout,
   container,

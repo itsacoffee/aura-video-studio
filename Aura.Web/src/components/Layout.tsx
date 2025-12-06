@@ -17,10 +17,10 @@ import { Sidebar } from './Sidebar';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
 
 /**
- * Standard toolbar height for consistent vertical rhythm.
- * Reduced from 48px for better 1080p density.
+ * Standard toolbar height meeting Apple HIG touch target minimum (44pt).
+ * Provides comfortable interaction and visual hierarchy.
  */
-const TOOLBAR_HEIGHT = '36px';
+const TOOLBAR_HEIGHT = '48px';
 
 const useStyles = makeStyles({
   container: {
@@ -44,8 +44,8 @@ const useStyles = makeStyles({
     alignItems: 'center',
     height: TOOLBAR_HEIGHT,
     minHeight: TOOLBAR_HEIGHT,
-    paddingLeft: spacing.lg,
-    paddingRight: spacing.lg,
+    paddingLeft: spacing.xl,
+    paddingRight: spacing.xl,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -58,7 +58,7 @@ const useStyles = makeStyles({
   topBarActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: gaps.tight,
+    gap: gaps.standard,
   },
   content: {
     flex: 1,
