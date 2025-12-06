@@ -536,7 +536,8 @@ public class VideoOrchestrator
             // Strategy 1: Try primary "composition" task result key
             if (result.TaskResults.TryGetValue("composition", out var compositionTask) && 
                 compositionTask.Result is string compositionPath && 
-                !string.IsNullOrEmpty(compositionPath))
+                !string.IsNullOrEmpty(compositionPath) &&
+                File.Exists(compositionPath))
             {
                 outputPath = compositionPath;
                 extractionMethod = "composition_task_result";
@@ -544,9 +545,17 @@ public class VideoOrchestrator
             }
             else if (result.TaskResults.ContainsKey("composition"))
             {
-                _logger.LogWarning("Composition task exists but result is not a valid string. Result type: {Type}, Value: {Value}",
-                    compositionTask?.Result?.GetType()?.Name ?? "null",
-                    compositionTask?.Result?.ToString() ?? "null");
+                var pathValue = compositionTask?.Result as string;
+                if (!string.IsNullOrEmpty(pathValue) && !File.Exists(pathValue))
+                {
+                    _logger.LogWarning("Composition task returned path that does not exist: {Path}", pathValue);
+                }
+                else
+                {
+                    _logger.LogWarning("Composition task exists but result is not a valid string. Result type: {Type}, Value: {Value}",
+                        compositionTask?.Result?.GetType()?.Name ?? "null",
+                        compositionTask?.Result?.ToString() ?? "null");
+                }
             }
 
             // Strategy 2: Try alternate task result keys
@@ -557,12 +566,17 @@ public class VideoOrchestrator
                 {
                     if (result.TaskResults.TryGetValue(key, out var taskResult) && 
                         taskResult.Result is string altPath && 
-                        !string.IsNullOrEmpty(altPath))
+                        !string.IsNullOrEmpty(altPath) &&
+                        File.Exists(altPath))
                     {
                         outputPath = altPath;
                         extractionMethod = $"{key}_task_result";
                         _logger.LogInformation("Extracted output path from alternate task result key '{Key}': {Path}", key, outputPath);
                         break;
+                    }
+                    else if (taskResult?.Result is string nonExistentPath && !string.IsNullOrEmpty(nonExistentPath) && !File.Exists(nonExistentPath))
+                    {
+                        _logger.LogWarning("Task result key '{Key}' returned path that does not exist: {Path}", key, nonExistentPath);
                     }
                 }
             }
@@ -570,9 +584,16 @@ public class VideoOrchestrator
             // Strategy 3: Check TaskExecutorState.FinalVideoPath
             if (string.IsNullOrEmpty(outputPath) && !string.IsNullOrEmpty(executorContext.FinalVideoPath))
             {
-                outputPath = executorContext.FinalVideoPath;
-                extractionMethod = "executor_state_final_video_path";
-                _logger.LogInformation("Extracted output path from executor state: {Path}", outputPath);
+                if (File.Exists(executorContext.FinalVideoPath))
+                {
+                    outputPath = executorContext.FinalVideoPath;
+                    extractionMethod = "executor_state_final_video_path";
+                    _logger.LogInformation("Extracted output path from executor state: {Path}", outputPath);
+                }
+                else
+                {
+                    _logger.LogWarning("Executor state FinalVideoPath does not exist: {Path}", executorContext.FinalVideoPath);
+                }
             }
 
             // Strategy 4: Scan output directory for recently created .mp4 files
@@ -585,7 +606,7 @@ public class VideoOrchestrator
                     {
                         var recentFiles = Directory.GetFiles(outputDir, "*.mp4")
                             .Select(f => new FileInfo(f))
-                            .Where(fi => (DateTime.UtcNow - fi.CreationTimeUtc).TotalMinutes < RecentFileThresholdMinutes)
+                            .Where(fi => fi.Exists && (DateTime.UtcNow - fi.CreationTimeUtc).TotalMinutes < RecentFileThresholdMinutes)
                             .OrderByDescending(fi => fi.CreationTimeUtc)
                             .ToList();
 
@@ -597,6 +618,14 @@ public class VideoOrchestrator
                                 "Output path extracted via directory scan fallback. Found {Count} recent .mp4 files, using: {Path}",
                                 recentFiles.Count, outputPath);
                         }
+                        else
+                        {
+                            _logger.LogWarning("Directory scan found no recent .mp4 files in {OutputDir}", outputDir);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Output directory does not exist: {OutputDir}", outputDir);
                     }
                 }
                 catch (Exception ex)
