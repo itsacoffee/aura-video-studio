@@ -8,20 +8,26 @@
  * Redesigned following Apple Human Interface Guidelines for a premium,
  * professional video editing experience with generous spacing, refined
  * typography, and elegant animations.
+ *
+ * Features:
+ * - Collapsible side panels with persistent layout state
+ * - Extended resize ranges for flexible workspace
+ * - Keyboard shortcuts for panel toggling
  */
 
 import { makeStyles, tokens, TabList, Tab } from '@fluentui/react-components';
 import { useEffect, useState, useCallback } from 'react';
 import { useOpenCutKeyboardHandler } from '../../hooks/useOpenCutKeyboardHandler';
+import { useOpenCutLayoutStore, LAYOUT_CONSTANTS } from '../../stores/opencutLayout';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import { openCutTokens } from '../../styles/designTokens';
 import { CaptionsPanel } from './Captions';
 import { EffectsPanel } from './Effects';
+import { CollapsedPanel, PanelDivider } from './Layout';
 import { MediaPanel } from './MediaPanel';
 import { GraphicsPanel } from './MotionGraphics';
 import { PreviewPanel } from './PreviewPanel';
 import { PropertiesPanel } from './PropertiesPanel';
-import { ResizablePanel } from './ResizablePanel';
 import { TemplatesPanel } from './Templates';
 import { Timeline } from './Timeline';
 import { TransitionsPanel } from './Transitions';
@@ -45,12 +51,12 @@ const useStyles = makeStyles({
     overflow: 'hidden',
   },
   leftPanel: {
-    borderRight: `1px solid ${tokens.colorNeutralStroke3}`,
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: tokens.colorNeutralBackground2,
     boxShadow: openCutTokens.shadows.sm,
     zIndex: openCutTokens.zIndex.dropdown,
+    transition: `width ${LAYOUT_CONSTANTS.animation.collapseDuration}ms ${LAYOUT_CONSTANTS.animation.collapseEasing}`,
   },
   leftPanelTabs: {
     borderBottom: `1px solid ${tokens.colorNeutralStroke3}`,
@@ -72,43 +78,22 @@ const useStyles = makeStyles({
     zIndex: openCutTokens.zIndex.base,
   },
   rightPanel: {
-    borderLeft: `1px solid ${tokens.colorNeutralStroke3}`,
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: tokens.colorNeutralBackground2,
     boxShadow: openCutTokens.shadows.sm,
     zIndex: openCutTokens.zIndex.dropdown,
+    transition: `width ${LAYOUT_CONSTANTS.animation.collapseDuration}ms ${LAYOUT_CONSTANTS.animation.collapseEasing}`,
   },
 });
 
 type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'graphics' | 'templates' | 'captions';
 
-/**
- * Panel sizing constraints - optimized to maximize preview area while
- * maintaining comfortable sidebar widths for content.
- */
-const PANEL_MIN_SIZE = parseInt(openCutTokens.layout.sidebarMinWidth, 10);
-const PANEL_MAX_SIZE = parseInt(openCutTokens.layout.sidebarMaxWidth, 10);
-const PANEL_VIEWPORT_PERCENTAGE = openCutTokens.layout.sidebarDefaultPercent;
-
-/**
- * Calculate responsive panel size based on viewport width.
- * Uses design tokens for consistent sizing across the application.
- */
-function getResponsivePanelSize(): number {
-  if (typeof window === 'undefined') return PANEL_MIN_SIZE;
-  const viewportWidth = window.innerWidth;
-  const percentageSize = Math.round(viewportWidth * PANEL_VIEWPORT_PERCENTAGE);
-  return Math.max(PANEL_MIN_SIZE, Math.min(percentageSize, PANEL_MAX_SIZE));
-}
-
 export function OpenCutEditor() {
   const styles = useStyles();
   const projectStore = useOpenCutProjectStore();
+  const layoutStore = useOpenCutLayoutStore();
 
-  // Panel sizes state - responsive initial size based on viewport
-  const [leftPanelSize, setLeftPanelSize] = useState(() => getResponsivePanelSize());
-  const [rightPanelSize, setRightPanelSize] = useState(() => getResponsivePanelSize());
   const [leftPanelTab, setLeftPanelTab] = useState<LeftPanelTab>('media');
 
   // Initialize keyboard shortcuts handler
@@ -122,13 +107,49 @@ export function OpenCutEditor() {
     }
   }, [projectStore]);
 
-  const handleLeftPanelResize = useCallback((size: number) => {
-    setLeftPanelSize(size);
-  }, []);
+  // Register keyboard shortcuts for panel toggling
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
 
-  const handleRightPanelResize = useCallback((size: number) => {
-    setRightPanelSize(size);
-  }, []);
+      if (cmdOrCtrl && e.shiftKey) {
+        switch (e.key) {
+          case '[':
+            e.preventDefault();
+            layoutStore.toggleLeftPanel();
+            break;
+          case ']':
+            e.preventDefault();
+            layoutStore.toggleRightPanel();
+            break;
+          case '\\':
+            e.preventDefault();
+            layoutStore.resetLayout();
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [layoutStore]);
+
+  const handleLeftPanelResize = useCallback(
+    (deltaX: number) => {
+      const newWidth = layoutStore.leftPanelWidth + deltaX;
+      layoutStore.setLeftPanelWidth(newWidth);
+    },
+    [layoutStore]
+  );
+
+  const handleRightPanelResize = useCallback(
+    (deltaX: number) => {
+      const newWidth = layoutStore.rightPanelWidth + deltaX;
+      layoutStore.setRightPanelWidth(newWidth);
+    },
+    [layoutStore]
+  );
 
   const handleLeftPanelTabChange = useCallback((_: unknown, data: { value: unknown }) => {
     setLeftPanelTab(data.value as LeftPanelTab);
@@ -157,48 +178,67 @@ export function OpenCutEditor() {
     <div className={styles.root}>
       {/* Main Content Area */}
       <div className={styles.mainContent}>
-        {/* Left Panel - Media/Effects/Transitions (Resizable) */}
-        <ResizablePanel
-          direction="right"
-          defaultSize={leftPanelSize}
-          minSize={PANEL_MIN_SIZE}
-          maxSize={PANEL_MAX_SIZE}
-          className={styles.leftPanel}
-          onResize={handleLeftPanelResize}
-        >
-          <div className={styles.leftPanelTabs}>
-            <TabList
-              selectedValue={leftPanelTab}
-              onTabSelect={handleLeftPanelTabChange}
-              size="small"
-            >
-              <Tab value="media">Media</Tab>
-              <Tab value="effects">Effects</Tab>
-              <Tab value="transitions">Transitions</Tab>
-              <Tab value="graphics">Graphics</Tab>
-              <Tab value="templates">Templates</Tab>
-              <Tab value="captions">Captions</Tab>
-            </TabList>
+        {/* Left Panel - Media/Effects/Transitions */}
+        {layoutStore.leftPanelCollapsed ? (
+          <CollapsedPanel type="media" onExpand={() => layoutStore.setLeftPanelCollapsed(false)} />
+        ) : (
+          <div
+            className={styles.leftPanel}
+            style={{ width: layoutStore.leftPanelWidth }}
+          >
+            <div className={styles.leftPanelTabs}>
+              <TabList
+                selectedValue={leftPanelTab}
+                onTabSelect={handleLeftPanelTabChange}
+                size="small"
+              >
+                <Tab value="media">Media</Tab>
+                <Tab value="effects">Effects</Tab>
+                <Tab value="transitions">Transitions</Tab>
+                <Tab value="graphics">Graphics</Tab>
+                <Tab value="templates">Templates</Tab>
+                <Tab value="captions">Captions</Tab>
+              </TabList>
+            </div>
+            <div className={styles.leftPanelContent}>{renderLeftPanelContent()}</div>
           </div>
-          <div className={styles.leftPanelContent}>{renderLeftPanelContent()}</div>
-        </ResizablePanel>
+        )}
+
+        {/* Left Panel Divider */}
+        <PanelDivider
+          direction="left"
+          isCollapsed={layoutStore.leftPanelCollapsed}
+          onResize={handleLeftPanelResize}
+          onDoubleClick={layoutStore.toggleLeftPanel}
+        />
 
         {/* Center Panel - Preview */}
         <div className={styles.centerPanel}>
           <PreviewPanel />
         </div>
 
-        {/* Right Panel - Properties (Resizable) */}
-        <ResizablePanel
-          direction="left"
-          defaultSize={rightPanelSize}
-          minSize={PANEL_MIN_SIZE}
-          maxSize={PANEL_MAX_SIZE}
-          className={styles.rightPanel}
+        {/* Right Panel Divider */}
+        <PanelDivider
+          direction="right"
+          isCollapsed={layoutStore.rightPanelCollapsed}
           onResize={handleRightPanelResize}
-        >
-          <PropertiesPanel />
-        </ResizablePanel>
+          onDoubleClick={layoutStore.toggleRightPanel}
+        />
+
+        {/* Right Panel - Properties */}
+        {layoutStore.rightPanelCollapsed ? (
+          <CollapsedPanel
+            type="properties"
+            onExpand={() => layoutStore.setRightPanelCollapsed(false)}
+          />
+        ) : (
+          <div
+            className={styles.rightPanel}
+            style={{ width: layoutStore.rightPanelWidth }}
+          >
+            <PropertiesPanel />
+          </div>
+        )}
       </div>
 
       {/* Timeline (with built-in vertical resize) */}
