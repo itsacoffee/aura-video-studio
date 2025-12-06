@@ -646,18 +646,28 @@ public class VideoOrchestrator
             if (string.IsNullOrEmpty(outputPath))
             {
                 var availableKeys = string.Join(", ", result.TaskResults.Keys);
+                
+                // CRITICAL FIX: Enhanced error message with directory diagnostic information
+                var outputDir = Path.Combine(Path.GetTempPath(), OutputDirectoryName, OutputSubdirectoryName);
+                var dirExists = Directory.Exists(outputDir);
+                var fileCount = dirExists ? Directory.GetFiles(outputDir, "*.mp4").Length : 0;
+                
                 var errorMessage = string.Format(
                     "Video generation completed but output path not returned. " +
                     "Checked all extraction strategies but found no valid path. " +
                     "Available task result keys: [{0}]. " +
                     "Job ID: {1}. " +
+                    "Output directory: {2} (exists: {3}, mp4 files: {4}). " +
                     "Check backend logs for the actual file location.",
                     availableKeys,
-                    jobId ?? "unknown");
+                    jobId ?? "unknown",
+                    outputDir,
+                    dirExists,
+                    fileCount);
                 
                 _logger.LogError(
-                    "Output path extraction failed. TaskResults keys: {Keys}, ExecutorState.FinalVideoPath: {FinalVideoPath}",
-                    availableKeys, executorContext.FinalVideoPath ?? "(null)");
+                    "Output path extraction failed. TaskResults keys: {Keys}, ExecutorState.FinalVideoPath: {FinalVideoPath}, OutputDir: {OutputDir}, DirExists: {DirExists}, Mp4Count: {Mp4Count}",
+                    availableKeys, executorContext.FinalVideoPath ?? "(null)", outputDir, dirExists, fileCount);
                 
                 throw new InvalidOperationException(errorMessage);
             }
@@ -1971,6 +1981,10 @@ public class VideoOrchestrator
 
                     // Store final video path in state for reliable fallback extraction
                     state.FinalVideoPath = outputPath;
+
+                    // CRITICAL FIX: Log the output path being returned to ensure it's captured
+                    _logger.LogInformation("[Composition Task Result] Returning output path from composition task: {Path}, File exists: {FileExists}", 
+                        outputPath, File.Exists(outputPath));
 
                     return outputPath;
 

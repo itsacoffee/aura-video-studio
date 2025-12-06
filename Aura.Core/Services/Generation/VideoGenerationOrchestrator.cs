@@ -436,6 +436,14 @@ public class VideoGenerationOrchestrator
                     _taskResults[node.TaskId] = taskResult;
                     results.Add(taskResult);
 
+                    // CRITICAL FIX: Log what was stored for composition task to verify result storage
+                    if (node.TaskId == CompositionTaskId)
+                    {
+                        _logger.LogInformation("[Composition Result Storage] Stored composition task result. Type: {Type}, Value: {Value}",
+                            result?.GetType()?.Name ?? "null",
+                            result?.ToString() ?? "null");
+                    }
+
                     // Increment completed count and report progress
                     Interlocked.Increment(ref batchCompletedCount);
                     progress?.Report(new OrchestrationProgress(
