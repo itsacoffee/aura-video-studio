@@ -1335,7 +1335,6 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
                 // During a 15-minute wait, there's no visibility that the system is working without this
                 var requestStartTime = DateTime.UtcNow;
                 using var heartbeatCts = new System.Threading.CancellationTokenSource();
-                CancellationTokenSource.CreateLinkedTokenSource(cts.Token, heartbeatCts.Token);
                 var heartbeatTask = Task.Run(async () =>
                 {
                     try
