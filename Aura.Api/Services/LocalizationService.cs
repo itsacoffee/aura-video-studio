@@ -255,9 +255,15 @@ public class LocalizationService : ILocalizationService
         if (ex is TimeoutException)
             return true;
 
-        if (ex is HttpRequestException)
+        if (ex is HttpRequestException httpEx)
         {
             // Network-related errors are typically transient
+            // Also check for HTTP 503 (Service Unavailable) in the message
+            var message = httpEx.Message.ToLowerInvariant();
+            if (message.Contains("503") || message.Contains("service unavailable"))
+            {
+                return true;
+            }
             return true;
         }
 
@@ -281,9 +287,13 @@ public class LocalizationService : ILocalizationService
             return true;
         }
 
-        // Check for Ollama-specific transient errors
+        // Check for Ollama-specific transient errors (model loading, initialization, etc.)
         if (ex.Message.Contains("model is loading", StringComparison.OrdinalIgnoreCase) ||
-            ex.Message.Contains("busy", StringComparison.OrdinalIgnoreCase))
+            ex.Message.Contains("loading model", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("busy", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("503", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("initializing", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("warming up", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
