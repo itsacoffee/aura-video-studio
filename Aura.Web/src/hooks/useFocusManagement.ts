@@ -208,7 +208,7 @@ export function useFocusManagement<T extends HTMLElement>(isActive: boolean) {
  * ```
  */
 export function useScreenReaderAnnounce() {
-  const announce = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
+  return useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
     const announcement = document.createElement('div');
     announcement.setAttribute('role', 'status');
     announcement.setAttribute('aria-live', priority);
@@ -237,6 +237,4 @@ export function useScreenReaderAnnounce() {
       document.body.removeChild(announcement);
     }, 1000);
   }, []);
-
-  return announce;
 }

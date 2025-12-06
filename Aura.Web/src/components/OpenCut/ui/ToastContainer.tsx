@@ -7,8 +7,8 @@
 
 import { makeStyles, mergeClasses } from '@fluentui/react-components';
 import type { FC } from 'react';
-import { openCutTokens } from '../../../styles/designTokens';
 import { useOpenCutToastsStore } from '../../../stores/opencutToasts';
+import { openCutTokens } from '../../../styles/designTokens';
 import { Toast } from './Toast';
 
 export interface ToastContainerProps {

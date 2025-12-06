@@ -15,8 +15,11 @@ import {
 } from '@fluentui/react-icons';
 import { useEffect, useState, useCallback, useRef, type FC } from 'react';
 import { useReducedMotion } from '../../../hooks/useReducedMotion';
-import { openCutTokens } from '../../../styles/designTokens';
 import type { Toast as ToastData, ToastType } from '../../../stores/opencutToasts';
+import { openCutTokens } from '../../../styles/designTokens';
+
+/** Default toast duration in milliseconds */
+const DEFAULT_TOAST_DURATION = 5000;
 
 export interface ToastProps {
   /** Toast data */
@@ -184,7 +187,8 @@ export const Toast: FC<ToastProps> = ({ toast, onDismiss }) => {
   const [progress, setProgress] = useState(100);
   const [isPaused, setIsPaused] = useState(false);
   const startTimeRef = useRef<number>(Date.now());
-  const remainingTimeRef = useRef<number>(toast.duration ?? 5000);
+  const effectiveDuration = toast.duration ?? DEFAULT_TOAST_DURATION;
+  const remainingTimeRef = useRef<number>(effectiveDuration);
 
   const Icon = getToastIcon(toast.type);
 
@@ -201,7 +205,7 @@ export const Toast: FC<ToastProps> = ({ toast, onDismiss }) => {
 
   // Progress bar and auto-dismiss
   useEffect(() => {
-    const duration = toast.duration ?? 5000;
+    const duration = effectiveDuration;
     if (duration <= 0) return;
 
     const updateProgress = () => {
@@ -220,7 +224,7 @@ export const Toast: FC<ToastProps> = ({ toast, onDismiss }) => {
 
     const interval = setInterval(updateProgress, 100);
     return () => clearInterval(interval);
-  }, [toast.duration, isPaused, handleDismiss]);
+  }, [effectiveDuration, isPaused, handleDismiss]);
 
   // Handle pause/resume
   const handleMouseEnter = useCallback(() => {
@@ -292,7 +296,7 @@ export const Toast: FC<ToastProps> = ({ toast, onDismiss }) => {
       />
 
       {/* Progress bar for auto-dismiss */}
-      {(toast.duration ?? 5000) > 0 && (
+      {effectiveDuration > 0 && (
         <div className={styles.progressBar}>
           <div className={progressClassName} style={{ width: `${progress}%` }} />
         </div>

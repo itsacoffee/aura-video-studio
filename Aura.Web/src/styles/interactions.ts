@@ -18,8 +18,7 @@ export const useInteractionStyles = makeStyles({
    * Provides visual feedback with elevation change
    */
   liftOnHover: {
-    transition: `transform ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}, 
-                 box-shadow ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}`,
+    transition: `transform ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}, box-shadow ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}`,
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
@@ -86,9 +85,7 @@ export const useInteractionStyles = makeStyles({
    * Applies to background, text, and border colors
    */
   colorTransition: {
-    transition: `color ${openCutTokens.animation.duration.fast}, 
-                 background-color ${openCutTokens.animation.duration.fast},
-                 border-color ${openCutTokens.animation.duration.fast}`,
+    transition: `color ${openCutTokens.animation.duration.fast}, background-color ${openCutTokens.animation.duration.fast}, border-color ${openCutTokens.animation.duration.fast}`,
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
@@ -101,10 +98,7 @@ export const useInteractionStyles = makeStyles({
   interactive: {
     cursor: 'pointer',
     userSelect: 'none',
-    transition: `transform ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut},
-                 background-color ${openCutTokens.animation.duration.fast},
-                 border-color ${openCutTokens.animation.duration.fast},
-                 box-shadow ${openCutTokens.animation.duration.fast}`,
+    transition: `transform ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}, background-color ${openCutTokens.animation.duration.fast}, border-color ${openCutTokens.animation.duration.fast}, box-shadow ${openCutTokens.animation.duration.fast}`,
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
