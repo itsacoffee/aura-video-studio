@@ -81,10 +81,10 @@ const useStyles = makeStyles({
 
 type LeftPanelTab = 'media' | 'effects' | 'transitions' | 'templates' | 'captions';
 
-// Panel sizing constraints - shared between helper function and components
-const PANEL_MIN_SIZE = 200;
-const PANEL_MAX_SIZE = 600;
-const PANEL_VIEWPORT_PERCENTAGE = 0.15;
+// Panel sizing constraints - optimized to maximize preview area
+const PANEL_MIN_SIZE = 180;
+const PANEL_MAX_SIZE = 400;
+const PANEL_VIEWPORT_PERCENTAGE = 0.12;
 
 // Calculate responsive panel size based on viewport width
 function getResponsivePanelSize(): number {
