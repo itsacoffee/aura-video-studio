@@ -15,6 +15,11 @@ export interface ProviderStatusResponse {
   tts: ProviderStatus[];
   images: ProviderStatus[];
   timestamp: string;
+  overallHealth: 'Green' | 'Yellow' | 'Red';
+  ollamaActive: boolean;
+  hasAnyLlm: boolean;
+  hasAnyTts: boolean;
+  hasAnyImageProvider: boolean;
 }
 
 /** Maximum number of retry attempts for failed fetch requests */
@@ -37,6 +42,18 @@ interface BackendProviderStatusDto {
 }
 
 /**
+ * Backend DTO for category health
+ */
+interface BackendCategoryHealthDto {
+  category: string;
+  required: boolean;
+  configuredCount: number;
+  healthyCount: number;
+  activeProviders: string[];
+  message: string;
+}
+
+/**
  * Backend DTO for system provider status response
  */
 interface BackendSystemProviderStatusDto {
@@ -48,6 +65,12 @@ interface BackendSystemProviderStatusDto {
   degradedFeatures: string[];
   lastUpdated: string;
   message: string;
+  overallHealth: 'Green' | 'Yellow' | 'Red' | 'Healthy' | 'Degraded' | 'Unhealthy' | 'Unknown';
+  categoryHealth: BackendCategoryHealthDto[];
+  ollamaActive: boolean;
+  hasAnyLlm: boolean;
+  hasAnyTts: boolean;
+  hasAnyImageProvider: boolean;
 }
 
 /**
@@ -102,11 +125,29 @@ function transformBackendResponse(
     .filter((p) => normalizeCategory(p.category) === 'images')
     .map(transformProvider);
 
+  // Map health status to Green/Yellow/Red
+  let overallHealth: 'Green' | 'Yellow' | 'Red' = 'Yellow';
+  if (backendData.overallHealth) {
+    const healthStr = backendData.overallHealth.toString().toLowerCase();
+    if (healthStr === 'green' || healthStr === 'healthy') {
+      overallHealth = 'Green';
+    } else if (healthStr === 'red' || healthStr === 'unhealthy') {
+      overallHealth = 'Red';
+    } else {
+      overallHealth = 'Yellow';
+    }
+  }
+
   return {
     llm: llmProviders,
     tts: ttsProviders,
     images: imageProviders,
     timestamp: backendData.lastUpdated || now.toISOString(),
+    overallHealth,
+    ollamaActive: backendData.ollamaActive ?? false,
+    hasAnyLlm: backendData.hasAnyLlm ?? false,
+    hasAnyTts: backendData.hasAnyTts ?? false,
+    hasAnyImageProvider: backendData.hasAnyImageProvider ?? false,
   };
 }
 
@@ -284,41 +325,48 @@ export function useProviderStatus(pollInterval: number = 15000): UseProviderStat
     const availableImages = imageProviders.filter((p) => p.available).length;
     const totalImages = imageProviders.length;
 
-    // Determine health level based on provider categories:
-    // - Critical: LLM providers (required for script generation)
-    // - Important: TTS providers (required for narration)
-    // - Optional: Image providers (graceful degradation)
-    let level: ProviderHealthLevel;
-    let message: string;
+    // Map backend health (Green/Yellow/Red) to frontend health level
+    let level: ProviderHealthLevel = 'degraded';
+    if (status?.overallHealth) {
+      if (status.overallHealth === 'Green') {
+        level = 'healthy';
+      } else if (status.overallHealth === 'Red') {
+        level = 'critical';
+      } else {
+        level = 'degraded';
+      }
+    } else {
+      // Fallback to old client-side logic if backend doesn't provide health
+      if (availableLlm === 0 && totalLlm > 0) {
+        level = 'critical';
+      } else if (availableTts === 0 && totalTts > 0) {
+        level = 'critical';
+      } else if (availableLlm < totalLlm || availableTts < totalTts) {
+        level = 'degraded';
+      } else if (availableImages < totalImages && totalImages > 0) {
+        level = 'degraded';
+      } else if (totalLlm === 0 && totalTts === 0 && totalImages === 0) {
+        level = 'degraded';
+      } else {
+        level = 'healthy';
+      }
+    }
 
-    if (availableLlm === 0 && totalLlm > 0) {
-      // No LLM providers available - critical
-      level = 'critical';
-      message = 'No script generation providers available';
-    } else if (availableTts === 0 && totalTts > 0) {
-      // No TTS providers available - critical (required for video)
-      level = 'critical';
-      message = 'No voice providers available';
-    } else if (availableLlm < totalLlm || availableTts < totalTts) {
-      // Some critical/important providers unavailable
-      level = 'degraded';
+    // Generate appropriate message
+    let message: string;
+    if (level === 'critical') {
+      message = 'Critical: Required providers unavailable';
+    } else if (level === 'healthy') {
+      message = 'All providers operational';
+    } else {
       const unavailable: string[] = [];
       if (availableLlm < totalLlm) unavailable.push('LLM');
       if (availableTts < totalTts) unavailable.push('TTS');
       if (availableImages < totalImages) unavailable.push('Image');
-      message = `Some ${unavailable.join(', ')} providers unavailable`;
-    } else if (availableImages < totalImages && totalImages > 0) {
-      // Only image providers have issues - degraded but less severe
-      level = 'degraded';
-      message = 'Some image providers unavailable';
-    } else if (totalLlm === 0 && totalTts === 0 && totalImages === 0) {
-      // No providers configured at all
-      level = 'degraded';
-      message = 'No providers configured';
-    } else {
-      // All providers healthy
-      level = 'healthy';
-      message = 'All providers operational';
+      message =
+        unavailable.length > 0
+          ? `Some ${unavailable.join(', ')} providers unavailable`
+          : 'System degraded';
     }
 
     return {

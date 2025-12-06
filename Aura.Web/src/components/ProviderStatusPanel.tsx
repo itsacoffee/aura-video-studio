@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Card,
   Text,
@@ -196,6 +197,37 @@ export function ProviderStatusPanel({
     lastUpdated,
   } = useProviderStatus();
 
+  // Get the full status response to access health and flags
+  const [fullStatus, setFullStatus] = React.useState<{
+    overallHealth: 'Green' | 'Yellow' | 'Red';
+    ollamaActive: boolean;
+  }>({ overallHealth: 'Yellow', ollamaActive: false });
+
+  React.useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch('/api/provider-status');
+        if (response.ok) {
+          const data = await response.json();
+          const healthStr = data.overallHealth?.toString().toLowerCase() || 'yellow';
+          let health: 'Green' | 'Yellow' | 'Red' = 'Yellow';
+          if (healthStr === 'green' || healthStr === 'healthy') {
+            health = 'Green';
+          } else if (healthStr === 'red' || healthStr === 'unhealthy') {
+            health = 'Red';
+          }
+          setFullStatus({
+            overallHealth: health,
+            ollamaActive: data.ollamaActive ?? false,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch provider status:', err);
+      }
+    };
+    void fetchStatus();
+  }, [llmProviders, ttsProviders, imageProviders]);
+
   // Show loading spinner during initial load (no cached data yet)
   if (isLoading && llmProviders.length === 0 && !hasFetchError && !error) {
     return (
@@ -229,10 +261,29 @@ export function ProviderStatusPanel({
     );
   }
 
+  // Get health badge color
+  const getHealthBadgeColor = (health: string) => {
+    if (health === 'Green') return 'success';
+    if (health === 'Red') return 'danger';
+    return 'warning';
+  };
+
+  // Get health message
+  const getHealthMessage = (health: string) => {
+    if (health === 'Green') return 'All providers operational';
+    if (health === 'Red') return 'Critical: Missing required providers';
+    return 'Some features may be limited';
+  };
+
   return (
     <Card className={styles.container}>
       <div className={styles.header}>
-        <Title3>AI Provider Status</Title3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+          <Title3>AI Provider Status</Title3>
+          <Badge appearance="filled" color={getHealthBadgeColor(fullStatus.overallHealth)}>
+            {fullStatus.overallHealth}
+          </Badge>
+        </div>
         <Button
           appearance="subtle"
           icon={<ArrowClockwise24Regular />}
@@ -242,6 +293,12 @@ export function ProviderStatusPanel({
           Refresh
         </Button>
       </div>
+
+      {fullStatus.overallHealth !== 'Green' && (
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+          {getHealthMessage(fullStatus.overallHealth)}
+        </Text>
+      )}
 
       {isLoading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
@@ -259,7 +316,13 @@ export function ProviderStatusPanel({
       )}
 
       {showRecommendations && (
-        <ProviderRecommendations llm={llmProviders} tts={ttsProviders} images={imageProviders} />
+        <ProviderRecommendations
+          llm={llmProviders}
+          tts={ttsProviders}
+          images={imageProviders}
+          overallHealth={fullStatus.overallHealth}
+          ollamaActive={fullStatus.ollamaActive}
+        />
       )}
     </Card>
   );
