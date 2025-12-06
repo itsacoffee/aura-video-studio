@@ -356,6 +356,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     // CRITICAL FIX: Detect Ollama provider and use direct path with proper timeout handling
                     // This fixes timeout issues where LlmStageAdapter may have shorter timeouts
                     bool isOllamaProvider = providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase);
+                    bool useDirectOllama = false;
 
                     if (isOllamaProvider)
                     {
@@ -370,17 +371,17 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                                 request,
                                 ct).ConfigureAwait(false);
                             providerUsed = "Ollama";
+                            useDirectOllama = true;
                             _logger.LogInformation("Successfully generated ideation response via direct Ollama API call");
                         }
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Direct Ollama call failed for ideation, falling back to LlmStageAdapter");
                             // Fall back to LlmStageAdapter if direct call fails
-                            isOllamaProvider = false;
                         }
                     }
 
-                    if (!isOllamaProvider)
+                    if (!useDirectOllama)
                     {
                         // Use LlmStageAdapter for unified orchestration (same path as script generation)
                         // This ensures proper provider selection, fallback logic, and timeout configuration
