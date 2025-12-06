@@ -25,6 +25,7 @@ import { ResizablePanel } from './ResizablePanel';
 import { TemplatesPanel } from './Templates';
 import { Timeline } from './Timeline';
 import { TransitionsPanel } from './Transitions';
+import { ToastContainer } from './ui';
 
 const useStyles = makeStyles({
   root: {
@@ -149,6 +150,9 @@ export function OpenCutEditor() {
 
   return (
     <div className={styles.root}>
+      {/* Toast notifications container */}
+      <ToastContainer position="top-right" />
+
       {/* Main Content Area */}
       <div className={styles.mainContent}>
         {/* Left Panel - Media/Effects/Transitions (Resizable) */}
