@@ -244,41 +244,49 @@ function getInitializationMessage(pollAttempts: number): string {
 
 /**
  * Checks job status and throws if job failed or was cancelled.
- * Returns true if job completed successfully.
- * Also checks for outputPath as a fallback indicator of completion.
+ * Returns true if job completed successfully WITH a valid outputPath.
+ * 
+ * ARCHITECTURAL FIX: No longer accepts "completed" status without outputPath.
+ * This prevents the bug where jobs at 72% appear complete but have no output file.
  */
 function checkJobCompletion(jobData: JobStatusData): boolean {
   const status = (jobData.status || '').toLowerCase().trim();
-  if (status === 'completed') {
-    return true;
-  }
-
-  // Check if job has outputPath or artifacts even if status isn't "completed"
-  // This handles cases where the job finished but status wasn't updated
-  const hasOutput =
-    jobData.outputPath ||
-    (jobData.artifacts && Array.isArray(jobData.artifacts) && jobData.artifacts.length > 0);
-
-  // If job is at 100% or has output, consider it completed even if status isn't updated
-  const percent = jobData.percent ?? 0;
-  if ((percent >= 100 || hasOutput) && status === 'running') {
-    console.warn(
-      '[FinalExport] Job appears completed (has output or 100%) but status is still "running"'
-    );
-    return true;
-  }
-
+  
+  // Check for failure states first
   if (status === 'failed') {
     throw new Error(jobData.errorMessage || 'Video generation failed');
   }
   if (status === 'cancelled' || status === 'canceled') {
     throw new Error('Video generation was cancelled');
   }
+
+  // CRITICAL FIX: Only consider job completed if BOTH conditions are met:
+  // 1. Status is "completed"
+  // 2. We have a valid outputPath or artifacts
+  if (status === 'completed') {
+    const hasOutput =
+      jobData.outputPath ||
+      (jobData.artifacts && Array.isArray(jobData.artifacts) && jobData.artifacts.length > 0);
+    
+    if (!hasOutput) {
+      // Job says it's completed but no output - this is a backend bug
+      // Don't treat as completed, let polling continue or timeout
+      console.error(
+        '[FinalExport] Job status is "completed" but outputPath is missing. This indicates a backend bug. Continuing to poll...'
+      );
+      return false; // NOT completed - missing output
+    }
+    
+    return true; // Truly completed with output
+  }
+
+  // For any other status (queued, running, rendering, etc.), not yet completed
   return false;
 }
 
 // SSE connection timing constants
-const JOB_REGISTRATION_DELAY_MS = 2000; // Wait for job to be registered in JobRunner
+// ARCHITECTURAL FIX: Removed JOB_REGISTRATION_DELAY_MS (race condition fix)
+// Instead, SSE endpoint will send initial state immediately even if job isn't running yet
 const SSE_CONNECTION_TIMEOUT_MS = 30000; // Timeout for SSE connection establishment
 const JOB_TIMEOUT_MS = 10 * 60 * 1000; // Overall job timeout (10 minutes)
 
@@ -520,12 +528,9 @@ export const FinalExport: FC<FinalExportProps> = ({
           setExportStage('Starting video generation...');
           setExportProgress(1); // Show some progress so user knows something is happening
 
-          // Wait for job to be registered in JobRunner before attempting SSE connection
-          // This helps prevent race condition where SSE connection is attempted before job is available
-          console.info(
-            `[FinalExport] Waiting ${JOB_REGISTRATION_DELAY_MS}ms for job registration...`
-          );
-          await new Promise((resolve) => setTimeout(resolve, JOB_REGISTRATION_DELAY_MS));
+          // ARCHITECTURAL FIX: Connect to SSE immediately (removed 2-second delay)
+          // The backend SSE endpoint now handles jobs that haven't started yet
+          console.info('[FinalExport] Connecting to SSE immediately (no registration delay)');
           setExportStage('Connecting to job progress stream...');
 
           // Use SSE for real-time progress updates with polling fallback
@@ -759,6 +764,7 @@ export const FinalExport: FC<FinalExportProps> = ({
           });
 
           // Fallback polling function for when SSE fails
+          // ARCHITECTURAL FIX: Implemented exponential backoff for more efficient polling
           const fallbackToPolling = async (
             pollJobId: string,
             formatIdx: number,
@@ -770,22 +776,27 @@ export const FinalExport: FC<FinalExportProps> = ({
 
             let jobCompleted = false;
             let lastJobData: JobStatusData | null = null;
-            const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
+            const maxPollAttempts = 600; // 10 minutes max
             let pollAttempts = 0;
             let consecutiveErrors = 0;
             let total404Errors = 0;
             const maxConsecutiveErrors = 5;
 
+            // Exponential backoff configuration
+            let pollDelay = 500; // Start with 500ms
+            const maxPollDelay = 5000; // Cap at 5 seconds
+            const backoffMultiplier = 1.5;
+
             // Stuck job detection: track if progress/stage hasn't changed
-            // Reduced threshold to 60 seconds for faster stuck detection
             let lastProgress = -1;
             let lastStage = '';
             let stuckStartTime: number | null = null;
-            const STUCK_THRESHOLD_MS = 60 * 1000; // 60 seconds for faster stuck detection
-            const STUCK_CHECK_INTERVAL = 5; // Check every 5 polls (5 seconds) for more responsive detection
+            const STUCK_THRESHOLD_MS = 60 * 1000; // 60 seconds
+            const STUCK_CHECK_INTERVAL = 5; // Check every 5 polls
 
             while (!jobCompleted && pollAttempts < maxPollAttempts) {
-              await new Promise((res) => setTimeout(res, 1000));
+              // EXPONENTIAL BACKOFF: Increase delay between polls
+              await new Promise((res) => setTimeout(res, pollDelay));
               pollAttempts++;
 
               try {
@@ -825,6 +836,15 @@ export const FinalExport: FC<FinalExportProps> = ({
                 // Extract progress with proper fallbacks and update UI
                 const jobProgress = Math.max(0, Math.min(100, typedJobData.percent ?? 0));
                 const currentStage = typedJobData.stage || 'Processing';
+
+                // EXPONENTIAL BACKOFF: Adjust poll delay based on job activity
+                if (jobProgress === lastProgress && currentStage === lastStage) {
+                  // No progress - increase delay (backoff)
+                  pollDelay = Math.min(pollDelay * backoffMultiplier, maxPollDelay);
+                } else {
+                  // Progress detected - reset to faster polling
+                  pollDelay = 500;
+                }
 
                 // Check for stuck job (same progress/stage for too long)
                 if (pollAttempts % STUCK_CHECK_INTERVAL === 0) {

@@ -331,7 +331,9 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
     };
 
     const handleTimeUpdate = () => {
-      if (!playbackStore.isPlaying) return;
+      // ARCHITECTURAL FIX: Always sync time updates, not just when playing
+      // This was causing the bug where seeking while paused didn't update the preview
+      // The check for isPlaying prevented video preview from updating during playhead drag
       playbackStore.setCurrentTime(video.currentTime);
     };
 
@@ -358,6 +360,19 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
       video.pause();
     }
   }, [playbackStore.isPlaying, videoSrc, playbackStore]);
+
+  // ARCHITECTURAL FIX: Sync video position from playback store (for seek/playhead drag)
+  // This ensures the video element updates when the playhead is dragged while paused
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+    
+    // Only sync if there's a significant difference (avoid feedback loop)
+    // Use 0.1 second threshold to avoid excessive updates
+    if (Math.abs(video.currentTime - playbackStore.currentTime) > 0.1) {
+      video.currentTime = playbackStore.currentTime;
+    }
+  }, [playbackStore.currentTime, videoSrc]);
 
   // Sync seek events to video element
   useEffect(() => {
