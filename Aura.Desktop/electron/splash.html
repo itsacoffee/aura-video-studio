@@ -200,21 +200,7 @@
       to { left: 100%; }
     }
 
-    .spinner {
-      display: inline-block;
-      width: 36px;
-      height: 36px;
-      border: 3px solid transparent;
-      border-radius: 50%;
-      border-top-color: #FF6B35;
-      border-right-color: #6366F1;
-      border-bottom-color: #3B82F6;
-      animation: spin 1.5s linear infinite, fadeIn 0.3s ease-out 1.3s both;
-    }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
   </style>
 </head>
 <body>
@@ -233,8 +219,6 @@
     <div class="progress-bar">
       <div class="progress-fill" id="progress"></div>
     </div>
-
-    <div class="spinner"></div>
   </div>
 
   <script>
