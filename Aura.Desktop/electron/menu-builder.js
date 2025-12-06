@@ -271,7 +271,7 @@ class MenuBuilder {
         },
         {
           label: 'Zoom In',
-          accelerator: 'CmdOrCtrl+Plus',
+          accelerator: 'CmdOrCtrl+=',
           click: () => {
             const window = this.windowManager.getMainWindow();
             if (window) {
