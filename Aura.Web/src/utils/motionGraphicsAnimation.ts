@@ -8,6 +8,23 @@
 import type { EasingPreset } from '../types/motionGraphics';
 
 /**
+ * Bounce out easing function - defined separately to avoid circular reference
+ */
+function bounceOut(t: number): number {
+  const n1 = 7.5625;
+  const d1 = 2.75;
+  if (t < 1 / d1) {
+    return n1 * t * t;
+  } else if (t < 2 / d1) {
+    return n1 * (t -= 1.5 / d1) * t + 0.75;
+  } else if (t < 2.5 / d1) {
+    return n1 * (t -= 2.25 / d1) * t + 0.9375;
+  } else {
+    return n1 * (t -= 2.625 / d1) * t + 0.984375;
+  }
+}
+
+/**
  * Standard easing functions
  */
 const easingFunctions: Record<string, (t: number) => number> = {
@@ -95,25 +112,11 @@ const easingFunctions: Record<string, (t: number) => number> = {
       : (Math.pow(2, -20 * t + 10) * Math.sin((20 * t - 11.125) * c5)) / 2 + 1;
   },
 
-  // Bounce
-  easeInBounce: (t) => 1 - easingFunctions.easeOutBounce(1 - t),
-  easeOutBounce: (t) => {
-    const n1 = 7.5625;
-    const d1 = 2.75;
-    if (t < 1 / d1) {
-      return n1 * t * t;
-    } else if (t < 2 / d1) {
-      return n1 * (t -= 1.5 / d1) * t + 0.75;
-    } else if (t < 2.5 / d1) {
-      return n1 * (t -= 2.25 / d1) * t + 0.9375;
-    } else {
-      return n1 * (t -= 2.625 / d1) * t + 0.984375;
-    }
-  },
+  // Bounce - using standalone bounceOut function to avoid circular reference
+  easeInBounce: (t) => 1 - bounceOut(1 - t),
+  easeOutBounce: bounceOut,
   easeInOutBounce: (t) =>
-    t < 0.5
-      ? (1 - easingFunctions.easeOutBounce(1 - 2 * t)) / 2
-      : (1 + easingFunctions.easeOutBounce(2 * t - 1)) / 2,
+    t < 0.5 ? (1 - bounceOut(1 - 2 * t)) / 2 : (1 + bounceOut(2 * t - 1)) / 2,
 
   // Spring physics presets
   springGentle: (t) => {
