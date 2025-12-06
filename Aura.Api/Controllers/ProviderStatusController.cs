@@ -56,7 +56,21 @@ public class ProviderStatusController : ControllerBase
                 AvailableFeatures = status.AvailableFeatures,
                 DegradedFeatures = status.DegradedFeatures,
                 LastUpdated = status.LastUpdated,
-                Message = status.Message
+                Message = status.Message,
+                OverallHealth = status.OverallHealth.ToString(),
+                CategoryHealth = status.CategoryHealth.ConvertAll(c => new CategoryHealthDto
+                {
+                    Category = c.Category,
+                    Required = c.Required,
+                    ConfiguredCount = c.ConfiguredCount,
+                    HealthyCount = c.HealthyCount,
+                    ActiveProviders = c.ActiveProviders,
+                    Message = c.Message
+                }),
+                OllamaActive = status.OllamaActive,
+                HasAnyLlm = status.HasAnyLlm,
+                HasAnyTts = status.HasAnyTts,
+                HasAnyImageProvider = status.HasAnyImageProvider
             };
 
             return Ok(dto);
@@ -160,6 +174,25 @@ public class SystemProviderStatusDto
     public List<string> AvailableFeatures { get; set; } = new();
     public List<string> DegradedFeatures { get; set; } = new();
     public DateTime LastUpdated { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string OverallHealth { get; set; } = "Yellow";
+    public List<CategoryHealthDto> CategoryHealth { get; set; } = new();
+    public bool OllamaActive { get; set; }
+    public bool HasAnyLlm { get; set; }
+    public bool HasAnyTts { get; set; }
+    public bool HasAnyImageProvider { get; set; }
+}
+
+/// <summary>
+/// Category health DTO
+/// </summary>
+public class CategoryHealthDto
+{
+    public string Category { get; set; } = string.Empty;
+    public bool Required { get; set; }
+    public int ConfiguredCount { get; set; }
+    public int HealthyCount { get; set; }
+    public List<string> ActiveProviders { get; set; } = new();
     public string Message { get; set; } = string.Empty;
 }
 

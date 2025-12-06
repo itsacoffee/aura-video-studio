@@ -15,6 +15,11 @@ export interface ProviderStatusResponse {
   tts: ProviderStatus[];
   images: ProviderStatus[];
   timestamp: string;
+  overallHealth: 'Green' | 'Yellow' | 'Red';
+  ollamaActive: boolean;
+  hasAnyLlm: boolean;
+  hasAnyTts: boolean;
+  hasAnyImageProvider: boolean;
 }
 
 /** Maximum number of retry attempts for failed fetch requests */
@@ -37,6 +42,18 @@ interface BackendProviderStatusDto {
 }
 
 /**
+ * Backend DTO for category health
+ */
+interface BackendCategoryHealthDto {
+  category: string;
+  required: boolean;
+  configuredCount: number;
+  healthyCount: number;
+  activeProviders: string[];
+  message: string;
+}
+
+/**
  * Backend DTO for system provider status response
  */
 interface BackendSystemProviderStatusDto {
@@ -48,6 +65,12 @@ interface BackendSystemProviderStatusDto {
   degradedFeatures: string[];
   lastUpdated: string;
   message: string;
+  overallHealth: 'Green' | 'Yellow' | 'Red' | 'Healthy' | 'Degraded' | 'Unhealthy' | 'Unknown';
+  categoryHealth: BackendCategoryHealthDto[];
+  ollamaActive: boolean;
+  hasAnyLlm: boolean;
+  hasAnyTts: boolean;
+  hasAnyImageProvider: boolean;
 }
 
 /**
@@ -102,11 +125,29 @@ function transformBackendResponse(
     .filter((p) => normalizeCategory(p.category) === 'images')
     .map(transformProvider);
 
+  // Map health status to Green/Yellow/Red
+  let overallHealth: 'Green' | 'Yellow' | 'Red' = 'Yellow';
+  if (backendData.overallHealth) {
+    const healthStr = backendData.overallHealth.toString().toLowerCase();
+    if (healthStr === 'green' || healthStr === 'healthy') {
+      overallHealth = 'Green';
+    } else if (healthStr === 'red' || healthStr === 'unhealthy') {
+      overallHealth = 'Red';
+    } else {
+      overallHealth = 'Yellow';
+    }
+  }
+
   return {
     llm: llmProviders,
     tts: ttsProviders,
     images: imageProviders,
     timestamp: backendData.lastUpdated || now.toISOString(),
+    overallHealth,
+    ollamaActive: backendData.ollamaActive ?? false,
+    hasAnyLlm: backendData.hasAnyLlm ?? false,
+    hasAnyTts: backendData.hasAnyTts ?? false,
+    hasAnyImageProvider: backendData.hasAnyImageProvider ?? false,
   };
 }
 

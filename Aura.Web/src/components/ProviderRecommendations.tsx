@@ -61,6 +61,8 @@ export interface ProviderRecommendationsProps {
   llm: ProviderStatus[];
   tts: ProviderStatus[];
   images: ProviderStatus[];
+  overallHealth?: 'Green' | 'Yellow' | 'Red';
+  ollamaActive?: boolean;
 }
 
 interface Recommendation {
@@ -72,15 +74,20 @@ interface Recommendation {
   category: string;
 }
 
-export function ProviderRecommendations({ llm, tts, images }: ProviderRecommendationsProps) {
+export function ProviderRecommendations({
+  llm,
+  tts,
+  images,
+  overallHealth = 'Yellow',
+  ollamaActive = false,
+}: ProviderRecommendationsProps) {
   const styles = useStyles();
   const navigate = useNavigate();
 
   const recommendations: Recommendation[] = [];
 
-  // Check for Ollama
-  const ollamaAvailable = llm.find((p) => p.name === 'Ollama')?.available;
-  if (!ollamaAvailable) {
+  // Check for Ollama - only recommend if NOT active
+  if (!ollamaActive) {
     recommendations.push({
       priority: 'high',
       title: 'Enable Local AI with Ollama',
@@ -95,7 +102,7 @@ export function ProviderRecommendations({ llm, tts, images }: ProviderRecommenda
   // Check for better TTS
   const hasElevenLabs = tts.find((p) => p.name === 'ElevenLabs')?.available;
   const hasPaidTts = tts.some((p) => p.tier === 'paid' && p.available);
-  if (!hasPaidTts) {
+  if (!hasPaidTts && overallHealth === 'Green') {
     recommendations.push({
       priority: 'medium',
       title: 'Upgrade Voice Quality',
@@ -109,7 +116,7 @@ export function ProviderRecommendations({ llm, tts, images }: ProviderRecommenda
 
   // Check for Stable Diffusion
   const sdAvailable = images.find((p) => p.name === 'StableDiffusion')?.available;
-  if (!sdAvailable) {
+  if (!sdAvailable && overallHealth === 'Green') {
     recommendations.push({
       priority: 'medium',
       title: 'Enable Local Image Generation',
@@ -157,7 +164,7 @@ export function ProviderRecommendations({ llm, tts, images }: ProviderRecommenda
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'danger';
+        return overallHealth === 'Green' ? 'warning' : 'danger';
       case 'medium':
         return 'warning';
       default:
@@ -195,9 +202,11 @@ export function ProviderRecommendations({ llm, tts, images }: ProviderRecommenda
                 color={getPriorityColor(rec.priority)}
               >
                 {rec.priority === 'high'
-                  ? 'High Priority'
+                  ? overallHealth === 'Green'
+                    ? 'Optional'
+                    : 'High Priority'
                   : rec.priority === 'medium'
-                    ? 'Medium'
+                    ? 'Recommended'
                     : 'Low'}
               </Badge>
             </div>
