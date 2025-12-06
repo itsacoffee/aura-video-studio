@@ -27,6 +27,13 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
     private readonly Dictionary<string, ILlmProvider> _providers;
     private readonly ProviderMixer _providerMixer;
     private readonly ProviderSettings? _providerSettings;
+    
+    /// <summary>
+    /// Tracks if the current operation is a translation request.
+    /// Used to prevent RuleBased provider from being used for translation.
+    /// ThreadLocal ensures thread safety for concurrent operations.
+    /// </summary>
+    private readonly ThreadLocal<bool> _isTranslationOperation = new(() => false);
 
     public LlmStageAdapter(
         ILogger<LlmStageAdapter> logger,
@@ -148,6 +155,14 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
         LlmParameters? llmParameters = null,
         CancellationToken ct = default)
     {
+        // Detect if this is a translation operation based on system prompt
+        // This is used to prevent RuleBased provider from being used for translation
+        _isTranslationOperation.Value = systemPrompt.Contains("translator", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("translation", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("source language", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("target language", StringComparison.OrdinalIgnoreCase);
+
         var request = new LlmStageRequest
         {
             StageType = LlmStageType.ChatCompletion,
@@ -217,16 +232,38 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
             }
         }
 
-        // Always ensure RuleBased fallback is available if no providers were found
-        if (providerInfos.Count == 0 && _providers.TryGetValue("RuleBased", out var ruleBasedProvider))
+        // Only add RuleBased fallback for non-translation operations
+        // RuleBased provider cannot perform translations - it requires an actual LLM
+        if (providerInfos.Count == 0)
         {
-            Logger.LogInformation("No providers available from ProviderMixer decision, falling back to RuleBased provider");
-            providerInfos.Add(new ProviderInfo(
-                "RuleBased",
-                "default",
-                0,
-                ruleBasedProvider));
+            if (_isTranslationOperation.Value)
+            {
+                Logger.LogError(
+                    "No LLM providers available for translation. " +
+                    "Translation requires Ollama or another LLM provider. " +
+                    "Please ensure Ollama is running: ollama serve");
+                
+                // Reset the flag before throwing
+                _isTranslationOperation.Value = false;
+                
+                throw new InvalidOperationException(
+                    "Translation requires an LLM provider (Ollama). " +
+                    "RuleBased provider cannot perform translations. " +
+                    "Please ensure Ollama is running and configured.");
+            }
+            else if (_providers.TryGetValue("RuleBased", out var ruleBasedProvider))
+            {
+                Logger.LogInformation("No providers available from ProviderMixer decision, falling back to RuleBased provider");
+                providerInfos.Add(new ProviderInfo(
+                    "RuleBased",
+                    "default",
+                    0,
+                    ruleBasedProvider));
+            }
         }
+
+        // Reset the flag after use
+        _isTranslationOperation.Value = false;
 
         return providerInfos.ToArray();
     }

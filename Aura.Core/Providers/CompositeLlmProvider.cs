@@ -697,8 +697,10 @@ public class CompositeLlmProvider : ILlmProvider
                                 // These operations may require model loading which can take significant time
                                 var isIdeation = operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase);
                                 var isTranslation = operationName.Contains("translation", StringComparison.OrdinalIgnoreCase);
-                                // 15 seconds for critical operations (translation/ideation), 5 seconds for others
-                                var availabilityTimeout = (isIdeation || isTranslation) ? TimeSpan.FromSeconds(15) : TimeSpan.FromSeconds(5);
+                                // 30 seconds for translation (model loading can be slow), 15 seconds for ideation, 5 seconds for others
+                                var availabilityTimeout = isTranslation ? TimeSpan.FromSeconds(30) : 
+                                                          isIdeation ? TimeSpan.FromSeconds(15) : 
+                                                          TimeSpan.FromSeconds(5);
 
                                 using var availabilityCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                                 availabilityCts.CancelAfter(availabilityTimeout);

@@ -348,11 +348,21 @@ public class TranslationService
         var translatedLines = new List<TranslatedScriptLine>();
         
         // Build LLM parameters with model override if specified
+        // CRITICAL: ResponseFormat must be null for translation to get plain text output
+        // JSON format causes Ollama to return structured data instead of the translation
         LlmParameters? llmParameters = null;
         if (!string.IsNullOrWhiteSpace(request.ModelId))
         {
-            llmParameters = new LlmParameters(ModelOverride: request.ModelId);
+            llmParameters = new LlmParameters(
+                ModelOverride: request.ModelId,
+                ResponseFormat: null  // Must be null for translation
+            );
             _logger.LogInformation("Using model override for translation: {ModelId}", request.ModelId);
+        }
+        else
+        {
+            // Even without model override, ensure ResponseFormat is null for plain text output
+            llmParameters = new LlmParameters(ResponseFormat: null);
         }
 
         if (request.ScriptLines.Count != 0)
@@ -513,13 +523,31 @@ public class TranslationService
 
             if (string.IsNullOrWhiteSpace(response))
             {
+                // Get provider info for better diagnostics
+                var providerName = "Unknown";
+                try
+                {
+                    var capabilities = _llmProvider.GetCapabilities();
+                    providerName = capabilities.ProviderName;
+                }
+                catch { /* Ignore capability check failures */ }
+
                 _logger.LogError(
                     "LLM returned empty response for translation {SourceLang} -> {TargetLang}. " +
-                    "Duration: {Duration}ms. " +
-                    "If using Ollama, ensure it's running and the model is loaded.",
-                    sourceLanguage, targetLanguage, translationDuration.TotalMilliseconds);
+                    "Provider: {Provider}. Duration: {Duration}ms. " +
+                    "This typically indicates: " +
+                    "(1) Model is still loading - wait and retry, " +
+                    "(2) Model ran out of memory - try smaller model, " +
+                    "(3) Prompt caused model to produce no output, " +
+                    "(4) Ollama service crashed - restart with 'ollama serve'",
+                    sourceLanguage, targetLanguage, providerName, translationDuration.TotalMilliseconds);
+                
                 throw new InvalidOperationException(
-                    $"LLM returned empty response. If using Ollama, ensure it's running and the model is available.");
+                    $"LLM provider '{providerName}' returned empty response for translation. " +
+                    $"If using Ollama: (1) Check if model is loaded with 'ollama list', " +
+                    $"(2) Test model directly with 'ollama run <model>', " +
+                    $"(3) Check Ollama logs for errors, " +
+                    $"(4) Try restarting Ollama with 'ollama serve'");
             }
 
             _logger.LogInformation(
@@ -583,13 +611,16 @@ public class TranslationService
             _logger.LogWarning(ex, "Translation operation was cancelled for {SourceLang} -> {TargetLang}. " +
                 "This may be user-initiated or due to timeout. Check controller logs for details.",
                 sourceLanguage, targetLanguage);
-            return $"[Translation was cancelled or timed out. If this persists, try with shorter text or check if Ollama is responsive.]";
+            throw; // Re-throw to let caller handle cancellation properly
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Translation failed for {SourceLang} -> {TargetLang}: {Error}",
                 sourceLanguage, targetLanguage, ex.Message);
-            return $"[Translation unavailable: {ex.Message}]";
+            
+            // Re-throw to let caller handle failure properly instead of returning placeholder
+            throw new InvalidOperationException(
+                $"Translation from {sourceLanguage} to {targetLanguage} failed: {ex.Message}", ex);
         }
     }
 

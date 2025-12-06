@@ -22,6 +22,7 @@ import {
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
+  MessageBarActions,
 } from '@fluentui/react-components';
 import {
   LocalLanguage24Regular,
@@ -32,9 +33,10 @@ import {
   Search24Regular,
   Sparkle24Regular,
   Warning24Regular,
+  ArrowClockwise24Regular,
+  Dismiss24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ErrorState } from '../../components/Loading';
 import {
   translateScript,
   batchTranslate,
@@ -266,11 +268,21 @@ const useStyles = makeStyles({
 
 type TabValue = 'translate' | 'batch' | 'glossary';
 
+// Error types for better error handling
+type ErrorType = 'timeout' | 'circuit_breaker' | 'provider' | 'network' | 'general';
+
+interface TranslationError {
+  message: string;
+  type: ErrorType;
+  isRetryable: boolean;
+  suggestions?: string[];
+}
+
 export const TranslationPage: React.FC = () => {
   const styles = useStyles();
   const [activeTab, setActiveTab] = useState<TabValue>('translate');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<TranslationError | null>(null);
 
   // Form state
   const [sourceText, setSourceText] = useState('');
@@ -399,9 +411,127 @@ export const TranslationPage: React.FC = () => {
     return trimmed;
   };
 
+  // Parse error responses into structured error objects
+  const parseTranslationError = useCallback((err: unknown): TranslationError => {
+    // Handle axios/fetch errors with response data
+    if (err && typeof err === 'object' && 'response' in err) {
+      const axiosError = err as {
+        response?: {
+          status?: number;
+          data?: { errorCode?: string; detail?: string; message?: string };
+        };
+      };
+      const status = axiosError.response?.status;
+      const errorCode = axiosError.response?.data?.errorCode;
+      const detail = axiosError.response?.data?.detail || axiosError.response?.data?.message;
+
+      // Timeout error (408)
+      if (status === 408 || errorCode === 'TIMEOUT') {
+        return {
+          message:
+            detail ||
+            'The translation request timed out. This is common when the AI model is loading for the first time.',
+          type: 'timeout',
+          isRetryable: true,
+          suggestions: [
+            'Wait a moment and try again - the AI model may still be loading',
+            'Try with shorter text first to test if the connection works',
+            'If using Ollama, check that it is running with "ollama list"',
+          ],
+        };
+      }
+
+      // Circuit breaker open (503 with specific error code)
+      if (errorCode === 'CIRCUIT_BREAKER_OPEN') {
+        return {
+          message:
+            detail || 'The translation service is temporarily unavailable due to repeated errors.',
+          type: 'circuit_breaker',
+          isRetryable: true,
+          suggestions: [
+            'Wait 15-30 seconds for the circuit breaker to reset',
+            'Check if your AI provider (Ollama/OpenAI) is running',
+            'Try using a different provider in settings',
+          ],
+        };
+      }
+
+      // Provider error
+      if (
+        status === 503 ||
+        errorCode === 'PROVIDER_ERROR' ||
+        errorCode === 'PROVIDER_UNAVAILABLE'
+      ) {
+        return {
+          message: detail || 'The AI provider is not available. Please check your configuration.',
+          type: 'provider',
+          isRetryable: true,
+          suggestions: [
+            'If using Ollama, start it with: ollama run llama3.1',
+            'Check your API key if using OpenAI or Anthropic',
+            'Verify your network connection',
+          ],
+        };
+      }
+
+      // Network error
+      if (!status || status >= 500) {
+        return {
+          message: detail || 'A network or server error occurred.',
+          type: 'network',
+          isRetryable: true,
+          suggestions: ['Check your network connection', 'Try again in a few moments'],
+        };
+      }
+    }
+
+    // Handle Error objects
+    if (err instanceof Error) {
+      const message = err.message.toLowerCase();
+      if (message.includes('timeout') || message.includes('aborted')) {
+        return {
+          message:
+            'The translation request timed out. This commonly happens when the AI model is loading.',
+          type: 'timeout',
+          isRetryable: true,
+          suggestions: [
+            'Wait a moment and try again',
+            'Try with shorter text',
+            'Check if Ollama is running if using local AI',
+          ],
+        };
+      }
+      if (message.includes('network') || message.includes('fetch')) {
+        return {
+          message: 'Network connection error. Please check your connection.',
+          type: 'network',
+          isRetryable: true,
+          suggestions: ['Check your internet connection', 'Verify the backend server is running'],
+        };
+      }
+    }
+
+    // Default error
+    return {
+      message: err instanceof Error ? err.message : 'Translation failed',
+      type: 'general',
+      isRetryable: true,
+      suggestions: ['Try the operation again', 'Contact support if the problem persists'],
+    };
+  }, []);
+
+  // Clear error state
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const handleTranslate = useCallback(async () => {
     if (!sourceText) {
-      setError('Please enter text to translate');
+      setError({
+        message: 'Please enter text to translate',
+        type: 'general',
+        isRetryable: false,
+      });
       return;
     }
 
@@ -411,7 +541,11 @@ export const TranslationPage: React.FC = () => {
     const targetLangDescription = preserveLanguageDescription(targetLanguageInput);
 
     if (!sourceLangDescription || !targetLangDescription) {
-      setError('Please specify source and target languages');
+      setError({
+        message: 'Please specify source and target languages',
+        type: 'general',
+        isRetryable: false,
+      });
       return;
     }
 
@@ -462,7 +596,12 @@ export const TranslationPage: React.FC = () => {
         const message =
           responseData?.message ||
           'Please complete the first-run wizard before using this feature.';
-        setError(message);
+        setError({
+          message,
+          type: 'general',
+          isRetryable: false,
+          suggestions: ['Complete the first-run setup wizard'],
+        });
         console.error('Translation blocked - setup not completed:', err);
         // Optionally redirect to onboarding if redirectTo is provided
         if (responseData?.redirectTo) {
@@ -471,8 +610,8 @@ export const TranslationPage: React.FC = () => {
           }, 2000);
         }
       } else {
-        const errorMsg = err instanceof Error ? err.message : 'Translation failed';
-        setError(errorMsg);
+        const translationError = parseTranslationError(err);
+        setError(translationError);
         console.error('Translation error:', err);
       }
     } finally {
@@ -486,17 +625,25 @@ export const TranslationPage: React.FC = () => {
     enableBackTranslation,
     adjustTimings,
     transcreationContext,
-    languages,
+    parseTranslationError,
   ]);
 
   const handleBatchTranslate = useCallback(async () => {
     if (!sourceText) {
-      setError('Please enter text to translate');
+      setError({
+        message: 'Please enter text to translate',
+        type: 'general',
+        isRetryable: false,
+      });
       return;
     }
 
     if (targetLanguages.length === 0) {
-      setError('Please select at least one target language');
+      setError({
+        message: 'Please select at least one target language',
+        type: 'general',
+        isRetryable: false,
+      });
       return;
     }
 
@@ -520,8 +667,8 @@ export const TranslationPage: React.FC = () => {
       const result = await batchTranslate(request);
       setBatchResults(result.translations);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Batch translation failed';
-      setError(errorMsg);
+      const translationError = parseTranslationError(err);
+      setError(translationError);
       console.error('Batch translation error:', err);
     } finally {
       setLoading(false);
@@ -533,6 +680,7 @@ export const TranslationPage: React.FC = () => {
     translationMode,
     enableBackTranslation,
     adjustTimings,
+    parseTranslationError,
   ]);
 
   return (
@@ -564,7 +712,70 @@ export const TranslationPage: React.FC = () => {
         </Tab>
       </TabList>
 
-      {error && <ErrorState message={error} />}
+      {/* Enhanced error display with retry button and suggestions */}
+      {error && (
+        <MessageBar
+          intent={
+            error.type === 'timeout' || error.type === 'circuit_breaker' ? 'warning' : 'error'
+          }
+          style={{ marginBottom: tokens.spacingVerticalL }}
+        >
+          <MessageBarBody>
+            <MessageBarTitle>
+              {error.type === 'timeout' && 'Translation Timeout'}
+              {error.type === 'circuit_breaker' && 'Service Temporarily Unavailable'}
+              {error.type === 'provider' && 'AI Provider Error'}
+              {error.type === 'network' && 'Connection Error'}
+              {error.type === 'general' && 'Translation Error'}
+            </MessageBarTitle>
+            <Text>{error.message}</Text>
+            {error.suggestions && error.suggestions.length > 0 && (
+              <div style={{ marginTop: tokens.spacingVerticalS }}>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  <Info24Regular style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                  Suggestions:
+                </Text>
+                <ul style={{ margin: `${tokens.spacingVerticalXS} 0`, paddingLeft: '20px' }}>
+                  {error.suggestions.map((suggestion, idx) => (
+                    <li
+                      key={idx}
+                      style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}
+                    >
+                      {suggestion}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </MessageBarBody>
+          <MessageBarActions>
+            {error.isRetryable && (
+              <Button
+                icon={<ArrowClockwise24Regular />}
+                onClick={() => {
+                  clearError();
+                  if (activeTab === 'translate') {
+                    handleTranslate();
+                  } else if (activeTab === 'batch') {
+                    handleBatchTranslate();
+                  }
+                }}
+                size="small"
+              >
+                Retry
+              </Button>
+            )}
+            <Button
+              icon={<Dismiss24Regular />}
+              onClick={clearError}
+              size="small"
+              appearance="subtle"
+            >
+              Dismiss
+            </Button>
+          </MessageBarActions>
+        </MessageBar>
+      )}
 
       {/* Provider health warning banner */}
       {providerHealth && (!providerHealth.isAvailable || !providerHealth.supportsTranslation) && (
