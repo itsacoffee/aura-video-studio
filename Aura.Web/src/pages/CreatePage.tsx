@@ -67,7 +67,7 @@ function formatDuration(minutes: number): string {
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: container.formMaxWidth,
+    maxWidth: container.wideMaxWidth,
     margin: '0 auto',
   },
   header: {

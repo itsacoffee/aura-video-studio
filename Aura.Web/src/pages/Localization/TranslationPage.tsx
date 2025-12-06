@@ -59,7 +59,7 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXL,
     paddingLeft: tokens.spacingHorizontalXXL,
     paddingRight: tokens.spacingHorizontalXXL,
-    maxWidth: '1400px',
+    maxWidth: '1440px',
     margin: '0 auto',
   },
   header: {

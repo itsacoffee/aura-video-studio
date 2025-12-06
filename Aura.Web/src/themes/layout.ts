@@ -110,10 +110,10 @@ export const touchTargets = {
  * or the useAdaptiveLayout hook which provides viewport-relative values.
  */
 export const pageLayout = {
-  /** Maximum content width - increased for better space utilization on larger displays */
-  maxContentWidth: '1920px',
-  /** Standard page padding (desktop) - adequate breathing room */
-  pagePadding: '20px',
+  /** Maximum content width - tuned for 16:9 desktops for better space utilization */
+  maxContentWidth: '1440px',
+  /** Standard page padding (desktop) - tighter for better space utilization with responsive scaling */
+  pagePadding: 'clamp(16px, 3vw, 28px)',
   /** Page padding for smaller screens */
   pagePaddingMobile: tokens.spacingVerticalM,
   /** Minimum page padding to ensure content is not flush with edges */
@@ -131,10 +131,10 @@ export const pageLayout = {
  * Or the useAdaptiveLayout hook for JavaScript access.
  */
 export const panelLayout = {
-  /** Standard sidebar width - balanced for content and navigation */
-  sidebarWidth: '240px',
+  /** Standard sidebar width - tighter for better content space utilization */
+  sidebarWidth: '232px',
   /** Collapsed sidebar width - comfortable for icon-only navigation */
-  sidebarWidthCollapsed: '64px',
+  sidebarWidthCollapsed: '72px',
   /** Inspector/detail panel width */
   inspectorWidth: '320px',
   /** Minimum panel width for resizable panels */
@@ -149,8 +149,8 @@ export const panelLayout = {
 export const container = {
   /** Standard max-width for forms and content flows */
   formMaxWidth: '800px',
-  /** Wide content (dashboards, grids) */
-  wideMaxWidth: '1400px',
+  /** Wide content (dashboards, grids) - increased for better space utilization */
+  wideMaxWidth: '1440px',
   /** Full-width content with padding */
   fullWidth: '100%',
 } as const;
