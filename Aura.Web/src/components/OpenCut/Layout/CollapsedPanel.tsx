@@ -5,7 +5,7 @@
  * Used when a panel is minimized to save screen space.
  */
 
-import { makeStyles, tokens, Tooltip, Button } from '@fluentui/react-components';
+import { makeStyles, tokens, Tooltip, Button, mergeClasses } from '@fluentui/react-components';
 import {
   Folder24Regular,
   Settings24Regular,
@@ -30,12 +30,21 @@ export interface CollapsedPanelProps {
   className?: string;
 }
 
+/**
+ * Get the collapsed width for a panel type.
+ * Both panels use the same collapsed width for visual consistency.
+ */
+function getCollapsedWidth(type: CollapsedPanelType): number {
+  return type === 'media'
+    ? LAYOUT_CONSTANTS.leftPanel.collapsedWidth
+    : LAYOUT_CONSTANTS.rightPanel.collapsedWidth;
+}
+
 const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    width: `${LAYOUT_CONSTANTS.leftPanel.collapsedWidth}px`,
     height: '100%',
     backgroundColor: tokens.colorNeutralBackground2,
     borderRight: `1px solid ${tokens.colorNeutralStroke3}`,
@@ -93,10 +102,16 @@ const PROPERTIES_PANEL_ICONS = [
 export const CollapsedPanel: FC<CollapsedPanelProps> = ({ type, onExpand, className }) => {
   const styles = useStyles();
   const icons = type === 'media' ? MEDIA_PANEL_ICONS : PROPERTIES_PANEL_ICONS;
+  const collapsedWidth = getCollapsedWidth(type);
 
   return (
     <div
-      className={`${styles.container} ${type === 'properties' ? styles.containerRight : ''} ${className || ''}`}
+      className={mergeClasses(
+        styles.container,
+        type === 'properties' && styles.containerRight,
+        className
+      )}
+      style={{ width: collapsedWidth }}
     >
       {icons.map((item) => (
         <Tooltip key={item.id} content={item.label} relationship="label" positioning="after">
