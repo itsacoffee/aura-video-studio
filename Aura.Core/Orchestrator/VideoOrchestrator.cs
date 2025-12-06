@@ -1983,8 +1983,10 @@ public class VideoOrchestrator
                     state.FinalVideoPath = outputPath;
 
                     // CRITICAL FIX: Log the output path being returned to ensure it's captured
-                    _logger.LogInformation("[Composition Task Result] Returning output path from composition task: {Path}, File exists: {FileExists}", 
-                        outputPath, File.Exists(outputPath));
+                    // The return value should automatically be stored in TaskResults["composition"]
+                    _logger.LogInformation(
+                        "[Composition Complete] Output path: {Path}, Exists: {Exists}, Length: {Length} bytes",
+                        outputPath, File.Exists(outputPath), File.Exists(outputPath) ? new FileInfo(outputPath).Length : 0);
 
                     return outputPath;
 

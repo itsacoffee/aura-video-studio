@@ -878,6 +878,66 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     };
   }, [isDraggingPlayhead, duration, pixelsPerSecond, playbackStore]);
 
+  // Context menu handlers - MUST be defined before useEffect that references them
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenuOpen(false);
+    setContextMenuTarget(null);
+  }, []);
+
+  const handleContextMenu = useCallback(
+    (e: ReactMouseEvent, type: 'timeline' | 'clip', clipId?: string, trackId?: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Calculate time at cursor position if on timeline
+      let time: number | undefined;
+      if (type === 'timeline' && trackId) {
+        const trackElement = e.currentTarget as HTMLElement;
+        const rect = trackElement.getBoundingClientRect();
+        const relativeX = e.clientX - rect.left;
+        time = Math.max(0, relativeX / pixelsPerSecond);
+      }
+
+      setContextMenuPosition({ x: e.clientX, y: e.clientY });
+      setContextMenuTarget({ type, clipId, trackId, time });
+      setContextMenuOpen(true);
+    },
+    [pixelsPerSecond]
+  );
+
+  const handleContextMenuAction = useCallback(
+    (action: string) => {
+      if (!contextMenuTarget) return;
+
+      switch (action) {
+        case 'split':
+          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
+            timelineStore.splitClip(contextMenuTarget.clipId, currentTime);
+          }
+          break;
+        case 'delete':
+          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
+            timelineStore.removeClip(contextMenuTarget.clipId);
+          }
+          break;
+        case 'duplicate':
+          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
+            timelineStore.selectClips([contextMenuTarget.clipId]);
+            timelineStore.duplicateSelectedClips();
+          }
+          break;
+        case 'addMarker':
+          if (contextMenuTarget.time !== undefined) {
+            markersStore.addMarker(contextMenuTarget.time);
+          }
+          break;
+      }
+
+      handleCloseContextMenu();
+    },
+    [contextMenuTarget, currentTime, timelineStore, markersStore, handleCloseContextMenu]
+  );
+
   // Close context menu when clicking outside
   useEffect(() => {
     if (!contextMenuOpen) return;
@@ -985,66 +1045,6 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
       playbackStore.seek(time);
     },
     [playbackStore]
-  );
-
-  // Context menu handlers
-  const handleContextMenu = useCallback(
-    (e: ReactMouseEvent, type: 'timeline' | 'clip', clipId?: string, trackId?: string) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      // Calculate time at cursor position if on timeline
-      let time: number | undefined;
-      if (type === 'timeline' && trackId) {
-        const trackElement = e.currentTarget as HTMLElement;
-        const rect = trackElement.getBoundingClientRect();
-        const relativeX = e.clientX - rect.left;
-        time = Math.max(0, relativeX / pixelsPerSecond);
-      }
-
-      setContextMenuPosition({ x: e.clientX, y: e.clientY });
-      setContextMenuTarget({ type, clipId, trackId, time });
-      setContextMenuOpen(true);
-    },
-    [pixelsPerSecond]
-  );
-
-  const handleCloseContextMenu = useCallback(() => {
-    setContextMenuOpen(false);
-    setContextMenuTarget(null);
-  }, []);
-
-  const handleContextMenuAction = useCallback(
-    (action: string) => {
-      if (!contextMenuTarget) return;
-
-      switch (action) {
-        case 'split':
-          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
-            timelineStore.splitClip(contextMenuTarget.clipId, currentTime);
-          }
-          break;
-        case 'delete':
-          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
-            timelineStore.deleteClip(contextMenuTarget.clipId);
-          }
-          break;
-        case 'duplicate':
-          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
-            timelineStore.selectClips([contextMenuTarget.clipId]);
-            timelineStore.duplicateSelectedClips();
-          }
-          break;
-        case 'addMarker':
-          if (contextMenuTarget.time !== undefined) {
-            markersStore.addMarker(contextMenuTarget.time);
-          }
-          break;
-      }
-
-      handleCloseContextMenu();
-    },
-    [contextMenuTarget, currentTime, timelineStore, markersStore, handleCloseContextMenu]
   );
 
   // Magnetic timeline handlers
