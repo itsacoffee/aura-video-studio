@@ -414,10 +414,15 @@ const useStyles = makeStyles({
     boxShadow: openCutTokens.shadows.sm,
     pointerEvents: 'auto',
     cursor: 'ew-resize',
+    userSelect: 'none',
     transition: `transform ${openCutTokens.animation.duration.fast} ${openCutTokens.animation.easing.easeOut}`,
     ':hover': {
       transform: 'scale(1.1)',
     },
+  },
+  playheadDragging: {
+    cursor: 'ew-resize',
+    transform: 'scale(1.2)',
   },
   controlButton: {
     minWidth: openCutTokens.layout.controlButtonSizeCompact,
@@ -517,6 +522,19 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const [isDraggingMedia, setIsDraggingMedia] = useState(false);
   const [dragOverTrackId, setDragOverTrackId] = useState<string | null>(null);
   const [dropIndicatorPosition, setDropIndicatorPosition] = useState<number | null>(null);
+
+  // Playhead drag state
+  const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
+
+  // Context menu state
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuTarget, setContextMenuTarget] = useState<{
+    type: 'timeline' | 'clip';
+    clipId?: string;
+    trackId?: string;
+    time?: number;
+  } | null>(null);
 
   const {
     tracks,
@@ -816,6 +834,60 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     };
   }, [isResizing, onResize, layoutStore]);
 
+  // Playhead drag handlers
+  const handlePlayheadDragStart = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingPlayhead(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isDraggingPlayhead) return;
+
+    const handleMouseMove = (e: globalThis.MouseEvent) => {
+      const rulerScrollable = containerRef.current?.querySelector('[class*="rulerScrollable"]');
+      if (!rulerScrollable) return;
+
+      const rect = rulerScrollable.getBoundingClientRect();
+      const relativeX = e.clientX - rect.left;
+      const newTime = Math.max(0, Math.min(duration, relativeX / pixelsPerSecond));
+
+      playbackStore.seek(newTime);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingPlayhead(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    // Prevent text selection while dragging
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ew-resize';
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [isDraggingPlayhead, duration, pixelsPerSecond, playbackStore]);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    if (!contextMenuOpen) return;
+
+    const handleClickOutside = () => {
+      handleCloseContextMenu();
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [contextMenuOpen, handleCloseContextMenu]);
+
   const handleZoomIn = useCallback(() => {
     timelineStore.zoomIn();
   }, [timelineStore]);
@@ -909,6 +981,66 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
       playbackStore.seek(time);
     },
     [playbackStore]
+  );
+
+  // Context menu handlers
+  const handleContextMenu = useCallback(
+    (e: ReactMouseEvent, type: 'timeline' | 'clip', clipId?: string, trackId?: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Calculate time at cursor position if on timeline
+      let time: number | undefined;
+      if (type === 'timeline' && trackId) {
+        const trackElement = e.currentTarget as HTMLElement;
+        const rect = trackElement.getBoundingClientRect();
+        const relativeX = e.clientX - rect.left;
+        time = Math.max(0, relativeX / pixelsPerSecond);
+      }
+
+      setContextMenuPosition({ x: e.clientX, y: e.clientY });
+      setContextMenuTarget({ type, clipId, trackId, time });
+      setContextMenuOpen(true);
+    },
+    [pixelsPerSecond]
+  );
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenuOpen(false);
+    setContextMenuTarget(null);
+  }, []);
+
+  const handleContextMenuAction = useCallback(
+    (action: string) => {
+      if (!contextMenuTarget) return;
+
+      switch (action) {
+        case 'split':
+          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
+            timelineStore.splitClip(contextMenuTarget.clipId, currentTime);
+          }
+          break;
+        case 'delete':
+          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
+            timelineStore.deleteClip(contextMenuTarget.clipId);
+          }
+          break;
+        case 'duplicate':
+          if (contextMenuTarget.type === 'clip' && contextMenuTarget.clipId) {
+            timelineStore.selectClips([contextMenuTarget.clipId]);
+            timelineStore.duplicateSelectedClips();
+          }
+          break;
+        case 'addMarker':
+          if (contextMenuTarget.time !== undefined) {
+            markersStore.addMarker(contextMenuTarget.time);
+          }
+          break;
+      }
+
+      handleCloseContextMenu();
+    },
+    [contextMenuTarget, currentTime, timelineStore, markersStore, handleCloseContextMenu]
   );
 
   // Magnetic timeline handlers
@@ -1250,6 +1382,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
         }}
         onClick={(e) => handleClipClick(clip.id, e)}
         onMouseDown={(e) => handleClipDragStart(clip.id, e)}
+        onContextMenu={(e) => handleContextMenu(e, 'clip', clip.id)}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: isBeingDragged ? 0.8 : 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
@@ -1513,7 +1646,13 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                 animate={{ left: playheadPosition }}
                 transition={{ type: 'tween', duration: 0.05 }}
               >
-                <div className={styles.playheadHandle} />
+                <div
+                  className={mergeClasses(
+                    styles.playheadHandle,
+                    isDraggingPlayhead && styles.playheadDragging
+                  )}
+                  onMouseDown={handlePlayheadDragStart}
+                />
               </motion.div>
             </div>
           </div>
@@ -1599,6 +1738,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                     onDragEnter={(e) => handleTrackDragEnter(track.id, e)}
                     onDragLeave={handleTrackDragLeave}
                     onDrop={(e) => handleTrackDrop(track.id, e)}
+                    onContextMenu={(e) => handleContextMenu(e, 'timeline', undefined, track.id)}
                   >
                     {trackClips.map(renderClip)}
 
@@ -1667,6 +1807,65 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
           })}
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenuOpen && contextMenuTarget && (
+        <Menu
+          open={contextMenuOpen}
+          onOpenChange={(e, data) => {
+            if (!data.open) {
+              handleCloseContextMenu();
+            }
+          }}
+        >
+          <MenuTrigger disableButtonEnhancement>
+            <div
+              style={{
+                position: 'fixed',
+                left: contextMenuPosition.x,
+                top: contextMenuPosition.y,
+                width: 1,
+                height: 1,
+                pointerEvents: 'none',
+              }}
+            />
+          </MenuTrigger>
+          <MenuPopover>
+            <MenuList>
+              {contextMenuTarget.type === 'clip' && (
+                <>
+                  <MenuItem
+                    icon={<Cut24Regular />}
+                    onClick={() => handleContextMenuAction('split')}
+                  >
+                    Split at Playhead
+                  </MenuItem>
+                  <MenuItem
+                    icon={<Copy24Regular />}
+                    onClick={() => handleContextMenuAction('duplicate')}
+                  >
+                    Duplicate
+                  </MenuItem>
+                  <Divider />
+                  <MenuItem
+                    icon={<Delete24Regular />}
+                    onClick={() => handleContextMenuAction('delete')}
+                  >
+                    Delete
+                  </MenuItem>
+                </>
+              )}
+              {contextMenuTarget.type === 'timeline' && (
+                <>
+                  <MenuItem onClick={() => handleContextMenuAction('addMarker')}>
+                    Add Marker
+                  </MenuItem>
+                </>
+              )}
+            </MenuList>
+          </MenuPopover>
+        </Menu>
+      )}
     </div>
   );
 };
