@@ -29,6 +29,7 @@ import {
 } from '@fluentui/react-icons';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { LlmModelSelector, type LlmSelection } from '../../components/ModelSelection';
+import { timeoutConfig } from '../../config/timeouts';
 import {
   parseLocalizationError,
   getUserFriendlyMessage,
@@ -163,6 +164,19 @@ const useStyles = makeStyles({
   },
   modelSelectorSection: {
     marginBottom: tokens.spacingVerticalXL,
+  },
+  providerInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    marginTop: tokens.spacingVerticalXS,
+  },
+  estimatedTime: {
+    fontSize: tokens.fontSizeBase200,
+    color: tokens.colorNeutralForeground3,
+    fontStyle: 'italic',
   },
 });
 
@@ -309,14 +323,25 @@ export const LocalizationPage: React.FC = () => {
 
     setLoading(true);
     setParsedError(null);
-    setLoadingMessage('Translating...');
+    setLoadingMessage(
+      llmSelection.provider ? `Translating with ${llmSelection.provider}...` : 'Translating...'
+    );
     setLastOperation('translate');
     startElapsedTimer();
 
-    // Create new AbortController for user-initiated cancellation only
-    // Backend manages its own timeout and returns appropriate error codes
+    // Create new AbortController for user-initiated cancellation
+    // Set a frontend timeout that's slightly longer than the backend timeout
+    // to allow the backend to properly handle and return timeout errors
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+
+    // Use the localization timeout from config (default 5 minutes)
+    const localizationTimeout = timeoutConfig.getTimeout('localization');
+
+    // Set up a timeout that will abort the request
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, localizationTimeout);
 
     try {
       const response = await fetch('/api/localization/translate/simple', {
@@ -332,6 +357,8 @@ export const LocalizationPage: React.FC = () => {
         signal: abortController.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         const error = await handleRequestError(response);
         setParsedError(error);
@@ -341,6 +368,7 @@ export const LocalizationPage: React.FC = () => {
       const data = await response.json();
       setTranslatedText(data.translatedText || '');
     } catch (err: unknown) {
+      clearTimeout(timeoutId);
       const error = parseLocalizationError(err);
       setParsedError(error);
     } finally {
@@ -417,14 +445,25 @@ export const LocalizationPage: React.FC = () => {
 
     setLoading(true);
     setParsedError(null);
-    setLoadingMessage('Analyzing cultural context...');
+    setLoadingMessage(
+      llmSelection.provider
+        ? `Analyzing cultural context with ${llmSelection.provider}...`
+        : 'Analyzing cultural context...'
+    );
     setLastOperation('analyze');
     startElapsedTimer();
 
-    // Create new AbortController for user-initiated cancellation only
-    // Backend manages its own timeout and returns appropriate error codes
+    // Create new AbortController for user-initiated cancellation
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
+
+    // Use the localization timeout from config (default 5 minutes)
+    const localizationTimeout = timeoutConfig.getTimeout('localization');
+
+    // Set up a timeout that will abort the request
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, localizationTimeout);
 
     try {
       const response = await fetch('/api/localization/analyze-culture', {
@@ -441,6 +480,8 @@ export const LocalizationPage: React.FC = () => {
         }),
         signal: abortController.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const error = await handleRequestError(response);
@@ -467,6 +508,7 @@ export const LocalizationPage: React.FC = () => {
       ].join('\n');
       setTranslatedText(analysisResult || 'No analysis results available');
     } catch (err: unknown) {
+      clearTimeout(timeoutId);
       const error = parseLocalizationError(err);
       setParsedError(error);
     } finally {
@@ -670,6 +712,15 @@ export const LocalizationPage: React.FC = () => {
                   {loadingMessage}
                   {elapsedSeconds > 0 && ` (${elapsedSeconds}s elapsed)`}
                 </Text>
+                {llmSelection.provider && (
+                  <Text className={styles.providerInfo}>
+                    Using: {llmSelection.provider}
+                    {llmSelection.modelId && ` / ${llmSelection.modelId}`}
+                  </Text>
+                )}
+                <Text className={styles.estimatedTime}>
+                  Local AI models may take 1-3 minutes on first request while loading
+                </Text>
               </div>
             )}
           </div>
@@ -827,6 +878,15 @@ export const LocalizationPage: React.FC = () => {
                 <Text className={styles.progressText}>
                   {loadingMessage}
                   {elapsedSeconds > 0 && ` (${elapsedSeconds}s elapsed)`}
+                </Text>
+                {llmSelection.provider && (
+                  <Text className={styles.providerInfo}>
+                    Using: {llmSelection.provider}
+                    {llmSelection.modelId && ` / ${llmSelection.modelId}`}
+                  </Text>
+                )}
+                <Text className={styles.estimatedTime}>
+                  Local AI models may take 1-3 minutes on first request while loading
                 </Text>
               </div>
             )}

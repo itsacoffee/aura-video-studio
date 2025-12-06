@@ -67,10 +67,13 @@ public class LocalizationService : ILocalizationService
             })
             .AddCircuitBreaker(new CircuitBreakerStrategyOptions<TranslationResult>
             {
+                // Require 50% failure ratio across minimum 5 requests before opening
                 FailureRatio = 0.5,
                 MinimumThroughput = 5,
-                SamplingDuration = TimeSpan.FromMinutes(1),
-                BreakDuration = TimeSpan.FromSeconds(30),
+                // Increased sampling window to 2 minutes to avoid false positives from slow LLM responses
+                SamplingDuration = TimeSpan.FromMinutes(2),
+                // Reduced break duration to 15 seconds for faster recovery attempts
+                BreakDuration = TimeSpan.FromSeconds(15),
                 ShouldHandle = new PredicateBuilder<TranslationResult>()
                     .Handle<ProviderException>()
                     .Handle<TimeoutException>(),
@@ -118,13 +121,33 @@ public class LocalizationService : ILocalizationService
             })
             .AddCircuitBreaker(new CircuitBreakerStrategyOptions<CulturalAnalysisResult>
             {
+                // Require 50% failure ratio across minimum 5 requests before opening
                 FailureRatio = 0.5,
                 MinimumThroughput = 5,
-                SamplingDuration = TimeSpan.FromMinutes(1),
-                BreakDuration = TimeSpan.FromSeconds(30),
+                // Increased sampling window to 2 minutes to avoid false positives from slow LLM responses
+                SamplingDuration = TimeSpan.FromMinutes(2),
+                // Reduced break duration to 15 seconds for faster recovery attempts
+                BreakDuration = TimeSpan.FromSeconds(15),
                 ShouldHandle = new PredicateBuilder<CulturalAnalysisResult>()
                     .Handle<ProviderException>()
-                    .Handle<TimeoutException>()
+                    .Handle<TimeoutException>(),
+                OnOpened = args =>
+                {
+                    _logger.LogError(
+                        "Cultural analysis circuit breaker opened for {Duration}s due to repeated failures",
+                        args.BreakDuration.TotalSeconds);
+                    return ValueTask.CompletedTask;
+                },
+                OnClosed = _ =>
+                {
+                    _logger.LogInformation("Cultural analysis circuit breaker closed - service recovered");
+                    return ValueTask.CompletedTask;
+                },
+                OnHalfOpened = _ =>
+                {
+                    _logger.LogInformation("Cultural analysis circuit breaker half-open - testing service");
+                    return ValueTask.CompletedTask;
+                }
             })
             .Build();
     }
