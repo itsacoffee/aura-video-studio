@@ -123,7 +123,11 @@ function ProviderSection({ title, providers }: ProviderSectionProps) {
                     <Text
                       size={200}
                       weight="semibold"
-                      style={{ color: tokens.colorNeutralForeground2, display: 'block', marginBottom: tokens.spacingVerticalXXS }}
+                      style={{
+                        color: tokens.colorNeutralForeground2,
+                        display: 'block',
+                        marginBottom: tokens.spacingVerticalXXS,
+                      }}
                     >
                       How to fix:
                     </Text>
@@ -181,10 +185,19 @@ export function ProviderStatusPanel({
   compact = false,
 }: ProviderStatusPanelProps) {
   const styles = useStyles();
-  const { llmProviders, ttsProviders, imageProviders, isLoading, error, refresh, lastUpdated } =
-    useProviderStatus();
+  const {
+    llmProviders,
+    ttsProviders,
+    imageProviders,
+    isLoading,
+    error,
+    hasFetchError,
+    refresh,
+    lastUpdated,
+  } = useProviderStatus();
 
-  if (isLoading && llmProviders.length === 0) {
+  // Show loading spinner during initial load (no cached data yet)
+  if (isLoading && llmProviders.length === 0 && !hasFetchError && !error) {
     return (
       <Card>
         <div className={styles.loadingContainer}>
@@ -195,7 +208,8 @@ export function ProviderStatusPanel({
     );
   }
 
-  if (error) {
+  // Show error state if there's an error OR fetch failed with no cached data
+  if (error || (hasFetchError && llmProviders.length === 0)) {
     return (
       <Card>
         <div className={styles.section}>
@@ -204,7 +218,8 @@ export function ProviderStatusPanel({
             <Text>Failed to load provider status</Text>
           </div>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            {error.message}
+            {error?.message ||
+              'Unable to connect to the provider status API. Please ensure the backend is running.'}
           </Text>
           <Button onClick={refresh} icon={<ArrowClockwise24Regular />}>
             Retry
@@ -240,19 +255,12 @@ export function ProviderStatusPanel({
       <ProviderSection title="Images" providers={imageProviders} />
 
       {lastUpdated && (
-        <Text className={styles.lastUpdated}>
-          Last updated: {lastUpdated.toLocaleTimeString()}
-        </Text>
+        <Text className={styles.lastUpdated}>Last updated: {lastUpdated.toLocaleTimeString()}</Text>
       )}
 
       {showRecommendations && (
-        <ProviderRecommendations
-          llm={llmProviders}
-          tts={ttsProviders}
-          images={imageProviders}
-        />
+        <ProviderRecommendations llm={llmProviders} tts={ttsProviders} images={imageProviders} />
       )}
     </Card>
   );
 }
-

@@ -48,6 +48,7 @@ public class FirstRunMiddleware
             path.StartsWith("/api/ffmpeg", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/ideation", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/offline-providers", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/provider-status", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/visuals", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/tts", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/wizard-projects", StringComparison.OrdinalIgnoreCase) ||
