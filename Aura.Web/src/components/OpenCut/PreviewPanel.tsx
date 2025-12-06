@@ -178,6 +178,24 @@ const useStyles = makeStyles({
     objectFit: 'contain',
     borderRadius: openCutTokens.radius.lg,
   },
+  videoElementFit: {
+    objectFit: 'contain',
+    maxWidth: '100%',
+    maxHeight: '100%',
+    width: 'auto',
+    height: 'auto',
+  },
+  videoElement50: {
+    objectFit: 'none',
+    transform: 'scale(0.5)',
+  },
+  videoElement100: {
+    objectFit: 'none',
+  },
+  videoElement200: {
+    objectFit: 'none',
+    transform: 'scale(2)',
+  },
   placeholder: {
     display: 'flex',
     flexDirection: 'column',
@@ -565,7 +583,13 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
               /* eslint-disable-next-line jsx-a11y/media-has-caption */
               <video
                 ref={videoRef}
-                className={styles.videoElement}
+                className={mergeClasses(
+                  styles.videoElement,
+                  zoom === 'fit' && styles.videoElementFit,
+                  zoom === '50' && styles.videoElement50,
+                  zoom === '100' && styles.videoElement100,
+                  zoom === '200' && styles.videoElement200
+                )}
                 src={videoSrc}
                 loop={loopPlayback}
               />
