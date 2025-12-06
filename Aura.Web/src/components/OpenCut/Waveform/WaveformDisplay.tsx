@@ -8,9 +8,8 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { useEffect, useRef } from 'react';
 import type { FC } from 'react';
-
-import { openCutTokens } from '../../../styles/designTokens';
 import type { WaveformData } from '../../../stores/opencutWaveforms';
+import { openCutTokens } from '../../../styles/designTokens';
 
 /** Height scale factor for waveform bars (0-1) */
 const WAVEFORM_HEIGHT_SCALE = 0.8;

@@ -6,8 +6,8 @@ import type {
   ValidateProviderConnectionResponse,
   ValidateProviderKeyRequest,
 } from '../../types/api-v1';
-import type { SystemProviderStatus } from './providerStatusApi';
 import { get, post } from './apiClient';
+import type { SystemProviderStatus } from './providerStatusApi';
 
 export interface HealthCheckEntry {
   name: string;

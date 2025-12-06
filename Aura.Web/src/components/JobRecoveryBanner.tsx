@@ -3,7 +3,6 @@
  * Shows a notification when there is a recent job that the user can recover
  */
 
-import { useEffect, useState } from 'react';
 import {
   MessageBar,
   MessageBarBody,
@@ -11,6 +10,7 @@ import {
   Button,
   Link,
 } from '@fluentui/react-components';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 interface LastJob {
