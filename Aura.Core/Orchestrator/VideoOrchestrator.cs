@@ -1972,6 +1972,10 @@ public class VideoOrchestrator
                     // Store final video path in state for reliable fallback extraction
                     state.FinalVideoPath = outputPath;
 
+                    // CRITICAL FIX: Log the output path being returned to ensure it's captured
+                    _logger.LogInformation("[Composition Task Result] Returning output path from composition task: {Path}, File exists: {FileExists}", 
+                        outputPath, File.Exists(outputPath));
+
                     return outputPath;
 
                 default:

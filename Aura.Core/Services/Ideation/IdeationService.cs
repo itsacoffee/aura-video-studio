@@ -353,26 +353,56 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     // Log progress: generating concepts
                     _logger.LogInformation("Generating concepts for topic: {Topic}...", request.Topic);
 
-                    // Use LlmStageAdapter for unified orchestration (same path as script generation)
-                    // This ensures proper provider selection, fallback logic, and timeout configuration
-                    _logger.LogInformation("Using LlmStageAdapter for ideation (unified orchestration path)");
-                    var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
-                        currentSystemPrompt,
-                        currentUserPrompt,
-                        "Free", // Use Free tier for ideation (works with Ollama)
-                        false,  // Allow online providers
-                        ideationParams,
-                        ct).ConfigureAwait(false);
+                    // CRITICAL FIX: Detect Ollama provider and use direct path with proper timeout handling
+                    // This fixes timeout issues where LlmStageAdapter may have shorter timeouts
+                    bool isOllamaProvider = providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase);
 
-                    if (!orchestrationResult.IsSuccess)
+                    if (isOllamaProvider)
                     {
-                        ThrowOrchestrationError(orchestrationResult);
+                        _logger.LogInformation("Detected Ollama provider - using direct Ollama path with 3-minute timeout and heartbeat logging for ideation");
+                        try
+                        {
+                            // Use direct Ollama API call like OllamaScriptProvider does
+                            jsonResponse = await GenerateWithOllamaDirectAsync(
+                                currentSystemPrompt,
+                                currentUserPrompt,
+                                ideationParams,
+                                request,
+                                ct).ConfigureAwait(false);
+                            providerUsed = "Ollama";
+                            _logger.LogInformation("Successfully generated ideation response via direct Ollama API call");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Direct Ollama call failed for ideation, falling back to LlmStageAdapter");
+                            // Fall back to LlmStageAdapter if direct call fails
+                            isOllamaProvider = false;
+                        }
                     }
 
-                    jsonResponse = orchestrationResult.Data;
-                    providerUsed = orchestrationResult.ProviderUsed;
-                    _logger.LogInformation("Successfully generated ideation response via LlmStageAdapter (Provider: {Provider})",
-                        orchestrationResult.ProviderUsed ?? "Unknown");
+                    if (!isOllamaProvider)
+                    {
+                        // Use LlmStageAdapter for unified orchestration (same path as script generation)
+                        // This ensures proper provider selection, fallback logic, and timeout configuration
+                        _logger.LogInformation("Using LlmStageAdapter for ideation (unified orchestration path)");
+                        var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                            currentSystemPrompt,
+                            currentUserPrompt,
+                            "Free", // Use Free tier for ideation (works with Ollama)
+                            false,  // Allow online providers
+                            ideationParams,
+                            ct).ConfigureAwait(false);
+
+                        if (!orchestrationResult.IsSuccess)
+                        {
+                            ThrowOrchestrationError(orchestrationResult);
+                        }
+
+                        jsonResponse = orchestrationResult.Data;
+                        providerUsed = orchestrationResult.ProviderUsed;
+                        _logger.LogInformation("Successfully generated ideation response via LlmStageAdapter (Provider: {Provider})",
+                            orchestrationResult.ProviderUsed ?? "Unknown");
+                    }
 
                     var callDuration = DateTime.UtcNow - callStartTime;
 

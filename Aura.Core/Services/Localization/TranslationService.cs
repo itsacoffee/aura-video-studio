@@ -476,7 +476,7 @@ public class TranslationService
 
                 if (isOllamaProvider)
                 {
-                    _logger.LogInformation("Detected Ollama provider - using direct Ollama path with 15-minute timeout and heartbeat logging");
+                    _logger.LogInformation("Detected Ollama provider - using direct Ollama path with 10-minute timeout and heartbeat logging");
                     try
                     {
                         response = await GenerateWithOllamaDirectAsync(
@@ -1149,7 +1149,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         System.Net.Http.HttpClient? httpClient = null;
         string baseUrl = "http://127.0.0.1:11434";
         string? defaultModel = null; // No hardcoded fallback - must get from provider configuration
-        TimeSpan timeout = TimeSpan.FromMinutes(15); // CRITICAL FIX: Use 15 minutes to match OllamaScriptProvider (allows for slow local models)
+        TimeSpan timeout = TimeSpan.FromMinutes(10); // Use 10 minutes for translations (longer than ideation but shorter than full script generation)
         int maxRetries = 3;
         ILlmProvider? ollamaProvider = null;
 
