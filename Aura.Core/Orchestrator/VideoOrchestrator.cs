@@ -521,29 +521,103 @@ public class VideoOrchestrator
                     elapsedBeforeFailure: elapsedTime);
             }
 
-            // Extract final video path from composition task result
-            if (!result.TaskResults.TryGetValue("composition", out var compositionTask) || compositionTask.Result == null)
+            // Extract final video path from composition task result with multiple fallback strategies
+            string? outputPath = null;
+            string extractionMethod = "unknown";
+
+            // Strategy 1: Try primary "composition" task result key
+            if (result.TaskResults.TryGetValue("composition", out var compositionTask) && 
+                compositionTask.Result is string compositionPath && 
+                !string.IsNullOrEmpty(compositionPath))
             {
-                throw new InvalidOperationException("Composition task did not produce output path");
+                outputPath = compositionPath;
+                extractionMethod = "composition_task_result";
+                _logger.LogInformation("Extracted output path from composition task result: {Path}", outputPath);
             }
 
-            var outputPath = compositionTask.Result as string
-                ?? throw new InvalidOperationException("Composition result is not a valid path");
-
-            // Validate output file exists before returning (critical for job completion)
+            // Strategy 2: Try alternate task result keys
             if (string.IsNullOrEmpty(outputPath))
             {
-                throw new InvalidOperationException(
-                    $"Video render failed: output path is empty. Expected a valid file path from composition task.");
+                string[] alternateKeys = { "render", "video_output", "final_video", "output" };
+                foreach (var key in alternateKeys)
+                {
+                    if (result.TaskResults.TryGetValue(key, out var taskResult) && 
+                        taskResult.Result is string altPath && 
+                        !string.IsNullOrEmpty(altPath))
+                    {
+                        outputPath = altPath;
+                        extractionMethod = $"{key}_task_result";
+                        _logger.LogInformation("Extracted output path from alternate task result key '{Key}': {Path}", key, outputPath);
+                        break;
+                    }
+                }
             }
 
+            // Strategy 3: Check TaskExecutorState.FinalVideoPath
+            if (string.IsNullOrEmpty(outputPath) && !string.IsNullOrEmpty(executorContext.FinalVideoPath))
+            {
+                outputPath = executorContext.FinalVideoPath;
+                extractionMethod = "executor_state_final_video_path";
+                _logger.LogInformation("Extracted output path from executor state: {Path}", outputPath);
+            }
+
+            // Strategy 4: Scan output directory for recently created .mp4 files
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                try
+                {
+                    var outputDir = Path.Combine(Path.GetTempPath(), "AuraVideoStudio", "Output");
+                    if (Directory.Exists(outputDir))
+                    {
+                        var recentFiles = Directory.GetFiles(outputDir, "*.mp4")
+                            .Select(f => new FileInfo(f))
+                            .Where(fi => (DateTime.UtcNow - fi.CreationTimeUtc).TotalMinutes < 10)
+                            .OrderByDescending(fi => fi.CreationTimeUtc)
+                            .ToList();
+
+                        if (recentFiles.Count > 0)
+                        {
+                            outputPath = recentFiles[0].FullName;
+                            extractionMethod = "directory_scan_fallback";
+                            _logger.LogWarning(
+                                "Output path extracted via directory scan fallback. Found {Count} recent .mp4 files, using: {Path}",
+                                recentFiles.Count, outputPath);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to scan output directory for video files");
+                }
+            }
+
+            // If still no path found, provide detailed error with available task keys
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                var availableKeys = string.Join(", ", result.TaskResults.Keys);
+                var errorMessage = $"Video generation completed but output path not returned. " +
+                    $"Checked all extraction strategies but found no valid path. " +
+                    $"Available task result keys: [{availableKeys}]. " +
+                    $"Job ID: {jobId ?? "unknown"}. " +
+                    $"Check backend logs for the actual file location.";
+                
+                _logger.LogError(
+                    "Output path extraction failed. TaskResults keys: {Keys}, ExecutorState.FinalVideoPath: {FinalVideoPath}",
+                    availableKeys, executorContext.FinalVideoPath ?? "(null)");
+                
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            // Validate output file exists before returning (critical for job completion)
             if (!File.Exists(outputPath))
             {
                 throw new InvalidOperationException(
-                    $"Video render failed: output file not created. Expected path: {outputPath}");
+                    $"Video render completed but output file not found. Expected path: {outputPath}. Extraction method: {extractionMethod}");
             }
 
-            _logger.LogInformation("Smart orchestration completed. Video at: {Path} (verified exists)", outputPath);
+            _logger.LogInformation(
+                "Smart orchestration completed. Video at: {Path} (verified exists). Extraction method: {Method}",
+                outputPath, extractionMethod);
 
             var providerTimeline = executorContext.Timeline;
             if (providerTimeline == null)
@@ -1841,6 +1915,9 @@ public class VideoOrchestrator
                     progress?.Report("Video rendering complete");
                     detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(100, "Video rendering complete", correlationId: correlationId));
 
+                    // Store final video path in state for reliable fallback extraction
+                    state.FinalVideoPath = outputPath;
+
                     return outputPath;
 
                 default:
@@ -1856,6 +1933,7 @@ public class VideoOrchestrator
         public Func<GenerationNode, CancellationToken, Task<object>> Executor { get; set; } = default!;
         public Providers.Timeline? Timeline { get; set; }
         public string? NarrationPath { get; set; }
+        public string? FinalVideoPath { get; set; }
     }
 
     /// <summary>
