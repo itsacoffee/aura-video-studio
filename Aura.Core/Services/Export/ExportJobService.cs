@@ -112,17 +112,40 @@ public class ExportJobService : IExportJobService
         {
             var isTerminal = status is "completed" or "failed" or "cancelled";
 
+            // CRITICAL FIX: Ensure outputPath is REQUIRED when status is "completed"
+            // This prevents the "job completes but outputPath is null" bug
+            if (status == "completed" && string.IsNullOrWhiteSpace(outputPath))
+            {
+                _logger.LogError(
+                    "CRITICAL: Job {JobId} attempted to transition to 'completed' without outputPath. " +
+                    "This will cause frontend polling to fail. Rejecting status update.", 
+                    jobId);
+                return Task.CompletedTask; // Don't update - force caller to provide outputPath
+            }
+
             var updatedJob = job with
             {
                 Status = status,
                 Progress = Math.Clamp(percent, 0, 100),
+                // ATOMIC UPDATE: Set outputPath at the same time as status change
                 OutputPath = outputPath ?? job.OutputPath,
                 ErrorMessage = errorMessage,
                 CompletedAt = isTerminal ? DateTime.UtcNow : job.CompletedAt
             };
             _jobs[jobId] = updatedJob;
 
-            _logger.LogInformation("Updated export job {JobId} status to {Status}", jobId, status);
+            // Enhanced logging for state transitions
+            if (isTerminal)
+            {
+                _logger.LogInformation(
+                    "Export job {JobId} reached terminal state: {Status} (OutputPath: {OutputPath}, Error: {Error})", 
+                    jobId, status, outputPath ?? "none", errorMessage ?? "none");
+            }
+            else
+            {
+                _logger.LogInformation("Updated export job {JobId} status to {Status} ({Percent}%)", 
+                    jobId, status, percent);
+            }
 
             // Notify subscribers of status update
             NotifySubscribers(jobId, updatedJob);

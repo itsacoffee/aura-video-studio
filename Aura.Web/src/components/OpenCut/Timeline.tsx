@@ -515,6 +515,9 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const [dragCurrentTime, setDragCurrentTime] = useState<number>(0);
   const dragStartXRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  // ARCHITECTURAL FIX: Add ref for rulerScrollable to avoid Fluent UI class name hashing issues
+  // Using querySelector with hashed class names breaks between builds
+  const rulerScrollableRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
   const startHeightRef = useRef(0);
 
@@ -845,7 +848,8 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     if (!isDraggingPlayhead) return;
 
     const handleMouseMove = (e: globalThis.MouseEvent) => {
-      const rulerScrollable = containerRef.current?.querySelector('[class*="rulerScrollable"]');
+      // ARCHITECTURAL FIX: Use ref instead of querySelector to avoid Fluent UI class name issues
+      const rulerScrollable = rulerScrollableRef.current;
       if (!rulerScrollable) return;
 
       const rect = rulerScrollable.getBoundingClientRect();
@@ -1624,7 +1628,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
               Tracks
             </Text>
           </div>
-          <div className={styles.rulerScrollable}>
+          <div className={styles.rulerScrollable} ref={rulerScrollableRef}>
             <div className={styles.ruler} style={{ width: totalWidth }}>
               {rulerMarks.map((mark) => (
                 <div key={mark.time} className={styles.rulerMark} style={{ left: mark.position }}>

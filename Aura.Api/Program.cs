@@ -619,6 +619,24 @@ builder.Services.AddSingleton<Aura.Core.Services.Providers.OllamaHealthCheckServ
     return new Aura.Core.Services.Providers.OllamaHealthCheckService(logger, httpClient, cache, baseUrl);
 });
 
+// ARCHITECTURAL FIX: Register OllamaDirectClient with proper DI instead of using reflection
+// This provides a clean, testable interface to Ollama without accessing private fields
+builder.Services.Configure<Aura.Core.Providers.OllamaSettings>(options =>
+{
+    var providerSettings = builder.Configuration.GetSection("ProviderSettings").Get<Aura.Core.Configuration.ProviderSettings>();
+    if (providerSettings != null)
+    {
+        options.BaseUrl = providerSettings.GetOllamaUrl();
+        options.Timeout = TimeSpan.FromMinutes(3); // 3 minute timeout for ideation
+        options.MaxRetries = 3;
+    }
+});
+builder.Services.AddHttpClient<Aura.Core.Providers.IOllamaDirectClient, Aura.Core.Providers.OllamaDirectClient>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5); // Outer timeout (allow for retries)
+});
+
+
 // Configure Circuit Breaker options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
     builder.Configuration.GetSection("CircuitBreaker"));
