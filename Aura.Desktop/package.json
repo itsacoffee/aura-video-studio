@@ -147,10 +147,12 @@
         }
       ],
       "icon": "assets/icons/icon.ico",
-      "publisherName": "Coffee285",
       "requestedExecutionLevel": "asInvoker",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "sign": "./scripts/sign-windows.js",
+      "signtoolOptions": {
+        "sign": "./scripts/sign-windows.js",
+        "publisherName": "Coffee285"
+      },
       "verifyUpdateCodeSignature": false,
       "fileAssociations": [
         {
