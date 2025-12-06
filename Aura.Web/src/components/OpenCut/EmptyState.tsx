@@ -8,6 +8,7 @@
 import { makeStyles, tokens, Text, Button, mergeClasses } from '@fluentui/react-components';
 import { motion } from 'framer-motion';
 import type { FC, ReactNode, JSX } from 'react';
+import { openCutTokens } from '../../styles/designTokens';
 
 export interface EmptyStateProps {
   icon: ReactNode;
@@ -34,19 +35,19 @@ const useStyles = makeStyles({
     justifyContent: 'center',
     textAlign: 'center',
     height: '100%',
-    minHeight: '160px',
+    minHeight: '140px',
   },
   containerSmall: {
-    padding: tokens.spacingVerticalL,
-    gap: tokens.spacingVerticalM,
+    padding: openCutTokens.spacing.md,
+    gap: openCutTokens.spacing.sm,
   },
   containerMedium: {
-    padding: tokens.spacingVerticalXL,
-    gap: tokens.spacingVerticalL,
+    padding: openCutTokens.spacing.lg,
+    gap: openCutTokens.spacing.md,
   },
   containerLarge: {
-    padding: tokens.spacingVerticalXXL,
-    gap: tokens.spacingVerticalXL,
+    padding: openCutTokens.spacing.xxl,
+    gap: openCutTokens.spacing.lg,
   },
   iconWrapper: {
     display: 'flex',
@@ -55,54 +56,54 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusCircular,
     backgroundColor: tokens.colorNeutralBackground3,
     color: tokens.colorNeutralForeground3,
-    transition: 'transform 300ms ease-out, background-color 200ms ease-out',
+    transition: `transform ${openCutTokens.animation.duration.normal} ${openCutTokens.animation.easing.easeOut}, background-color ${openCutTokens.animation.duration.normal} ${openCutTokens.animation.easing.easeOut}`,
     ':hover': {
       backgroundColor: tokens.colorNeutralBackground4,
     },
   },
   iconSmall: {
-    width: '48px',
-    height: '48px',
+    width: '40px',
+    height: '40px',
     '& svg': {
-      width: '24px',
-      height: '24px',
+      width: '20px',
+      height: '20px',
     },
   },
   iconMedium: {
-    width: '72px',
-    height: '72px',
+    width: '56px',
+    height: '56px',
     '& svg': {
-      width: '32px',
-      height: '32px',
+      width: '28px',
+      height: '28px',
     },
   },
   iconLarge: {
-    width: '96px',
-    height: '96px',
+    width: '80px',
+    height: '80px',
     '& svg': {
-      width: '48px',
-      height: '48px',
+      width: '40px',
+      height: '40px',
     },
   },
   textContainer: {
     display: 'flex',
     flexDirection: 'column',
-    gap: tokens.spacingVerticalXS,
-    maxWidth: '280px',
+    gap: openCutTokens.spacing.xs,
+    maxWidth: '240px',
   },
   title: {
     color: tokens.colorNeutralForeground1,
   },
   description: {
     color: tokens.colorNeutralForeground3,
-    lineHeight: tokens.lineHeightBase300,
+    lineHeight: openCutTokens.typography.lineHeight.normal.toString(),
   },
   actionsContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: tokens.spacingVerticalS,
-    marginTop: tokens.spacingVerticalS,
+    gap: openCutTokens.spacing.sm,
+    marginTop: openCutTokens.spacing.sm,
   },
 });
 

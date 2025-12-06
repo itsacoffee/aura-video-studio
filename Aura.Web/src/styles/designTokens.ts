@@ -37,6 +37,33 @@ export const openCutTokens = {
   },
 
   /**
+   * Layout constants for panels and components.
+   * Ensures consistent sizing across the editor.
+   */
+  layout: {
+    /** Panel header minimum height - provides comfortable touch target */
+    panelHeaderHeight: '48px',
+    /** Panel toolbar height - compact but accessible */
+    toolbarHeight: '40px',
+    /** Standard control button size - 36px for comfortable interaction */
+    controlButtonSize: '36px',
+    /** Compact control button size - 32px for dense UIs */
+    controlButtonSizeCompact: '32px',
+    /** Small icon button size - 28px for inline actions */
+    iconButtonSize: '28px',
+    /** Standard hit target size for touch - matches Apple HIG 44px */
+    hitTargetSize: '44px',
+    /** Track label width in timeline */
+    trackLabelWidth: '160px',
+    /** Sidebar minimum width */
+    sidebarMinWidth: '220px',
+    /** Sidebar maximum width */
+    sidebarMaxWidth: '380px',
+    /** Default sidebar width as viewport percentage */
+    sidebarDefaultPercent: 0.15,
+  },
+
+  /**
    * Typography system for professional video editing interface.
    * Uses system fonts for optimal rendering and familiarity.
    */
