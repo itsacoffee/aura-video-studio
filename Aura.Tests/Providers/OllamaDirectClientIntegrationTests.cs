@@ -532,6 +532,13 @@ public class OllamaDirectClientIntegrationTests : IDisposable
 
         public void AddResponse(string method, string uri, HttpStatusCode statusCode, string content, int delayMs = 0)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(method);
+            ArgumentException.ThrowIfNullOrWhiteSpace(uri);
+            if (delayMs < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(delayMs), "Delay must be non-negative");
+            }
+
             _responses.Enqueue(new MockResponse
             {
                 Method = method,
@@ -548,20 +555,27 @@ public class OllamaDirectClientIntegrationTests : IDisposable
         {
             RequestCount++;
 
+            var requestUri = request.RequestUri?.ToString() ?? string.Empty;
+            var requestMethod = request.Method.Method;
+
             if (_responses.Count == 0)
             {
                 return new HttpResponseMessage(HttpStatusCode.NotFound)
                 {
-                    Content = new StringContent("No mock response configured")
+                    Content = new StringContent(
+                        $"No mock response configured for {requestMethod} {requestUri}")
                 };
             }
 
             var mockResponse = _responses.Dequeue();
 
-            // Validate that the request matches expected method and URI
-            var requestUri = request.RequestUri?.ToString() ?? string.Empty;
-            var requestMethod = request.Method.Method;
+            // Apply delay first to simulate real network behavior
+            if (mockResponse.DelayMs > 0)
+            {
+                await Task.Delay(mockResponse.DelayMs, cancellationToken);
+            }
 
+            // Validate that the request matches expected method and URI
             if (!string.IsNullOrEmpty(mockResponse.Method) && 
                 !mockResponse.Method.Equals(requestMethod, StringComparison.OrdinalIgnoreCase))
             {
@@ -580,11 +594,6 @@ public class OllamaDirectClientIntegrationTests : IDisposable
                 };
             }
 
-            if (mockResponse.DelayMs > 0)
-            {
-                await Task.Delay(mockResponse.DelayMs, cancellationToken);
-            }
-
             return new HttpResponseMessage(mockResponse.StatusCode)
             {
                 Content = new StringContent(mockResponse.Content, Encoding.UTF8, "application/json")
@@ -593,11 +602,11 @@ public class OllamaDirectClientIntegrationTests : IDisposable
 
         private class MockResponse
         {
-            public string Method { get; set; } = string.Empty;
-            public string Uri { get; set; } = string.Empty;
-            public HttpStatusCode StatusCode { get; set; }
-            public string Content { get; set; } = string.Empty;
-            public int DelayMs { get; set; }
+            public required string Method { get; init; }
+            public required string Uri { get; init; }
+            public required HttpStatusCode StatusCode { get; init; }
+            public required string Content { get; init; }
+            public int DelayMs { get; init; }
         }
     }
 }
