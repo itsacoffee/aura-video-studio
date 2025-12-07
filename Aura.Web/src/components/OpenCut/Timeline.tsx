@@ -15,38 +15,38 @@
  */
 
 import {
-    Badge,
-    Button,
-    Divider,
-    makeStyles,
-    Menu,
-    MenuItem,
-    MenuList,
-    MenuPopover,
-    MenuTrigger,
-    mergeClasses,
-    Text,
-    tokens,
-    Tooltip,
+  Badge,
+  Button,
+  Divider,
+  makeStyles,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
+  mergeClasses,
+  Text,
+  tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
-    Add24Regular,
-    ArrowRedo24Regular,
-    ArrowUndo24Regular,
-    ChevronDown16Regular,
-    Copy24Regular,
-    Cut24Regular,
-    Delete24Regular,
-    Image24Regular,
-    LockClosed24Regular,
-    LockOpen24Regular,
-    MusicNote224Regular,
-    Speaker224Regular,
-    SpeakerMute24Regular,
-    TextT24Regular,
-    Video24Regular,
-    ZoomIn24Regular,
-    ZoomOut24Regular,
+  Add24Regular,
+  ArrowRedo24Regular,
+  ArrowUndo24Regular,
+  ChevronDown16Regular,
+  Copy24Regular,
+  Cut24Regular,
+  Delete24Regular,
+  Image24Regular,
+  LockClosed24Regular,
+  LockOpen24Regular,
+  MusicNote224Regular,
+  Speaker224Regular,
+  SpeakerMute24Regular,
+  TextT24Regular,
+  Video24Regular,
+  ZoomIn24Regular,
+  ZoomOut24Regular,
 } from '@fluentui/react-icons';
 import { motion } from 'framer-motion';
 import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
@@ -58,22 +58,22 @@ import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import {
-    useOpenCutTimelineStore,
-    type ClipType,
-    type TimelineClip,
-    type TimelineGap,
+  useOpenCutTimelineStore,
+  type ClipType,
+  type TimelineClip,
+  type TimelineGap,
 } from '../../stores/opencutTimeline';
 import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
 import { openCutTokens } from '../../styles/designTokens';
 import type { MarkerType } from '../../types/opencut';
 import { MarkerTrack } from './Markers';
 import {
-    GapIndicator,
-    RipplePreview,
-    SnapIndicator,
-    TimelineToolbar,
-    type RippleClipPreview,
-    type RippleDirection,
+  GapIndicator,
+  RipplePreview,
+  SnapIndicator,
+  TimelineToolbar,
+  type RippleClipPreview,
+  type RippleDirection,
 } from './Timeline/index';
 import { TransitionHandle } from './Transitions';
 import { ClipWaveform } from './Waveform';
@@ -896,6 +896,14 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
     };
   }, [isDraggingPlayhead, duration, pixelsPerSecond, playbackStore]);
 
+  // Track management handlers - MUST be defined before handleContextMenuAction
+  const handleAddTrack = useCallback(
+    (type: ClipType) => {
+      timelineStore.addTrack(type);
+    },
+    [timelineStore]
+  );
+
   // Context menu handlers - MUST be defined before useEffect that references them
   const handleCloseContextMenu = useCallback(() => {
     setContextMenuOpen(false);
@@ -903,7 +911,12 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   }, []);
 
   const handleContextMenu = useCallback(
-    (e: ReactMouseEvent, targetType: ContextMenuTarget['type'], clipId?: string, trackId?: string) => {
+    (
+      e: ReactMouseEvent,
+      targetType: ContextMenuTarget['type'],
+      clipId?: string,
+      trackId?: string
+    ) => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -988,7 +1001,10 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
           if (contextClip) {
             const targetTime = Math.max(
               contextClip.startTime + MIN_TIME_SHIFT_THRESHOLD,
-              Math.min(contextTime, contextClip.startTime + contextClip.duration + MIN_TIME_SHIFT_THRESHOLD)
+              Math.min(
+                contextTime,
+                contextClip.startTime + contextClip.duration + MIN_TIME_SHIFT_THRESHOLD
+              )
             );
             rippleTrimEnd(contextClip.id, targetTime);
           }
@@ -1180,13 +1196,6 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
   const handleDelete = useCallback(() => {
     timelineStore.deleteSelectedClips();
   }, [timelineStore]);
-
-  const handleAddTrack = useCallback(
-    (type: ClipType) => {
-      timelineStore.addTrack(type);
-    },
-    [timelineStore]
-  );
 
   const handleUndo = useCallback(() => {
     timelineStore.undo();
@@ -2104,10 +2113,14 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                     Remove Transitions
                   </MenuItem>
                   <Divider />
-                  <MenuItem onClick={() => handleContextMenuAction('speed-0.5')}>Speed 50%</MenuItem>
+                  <MenuItem onClick={() => handleContextMenuAction('speed-0.5')}>
+                    Speed 50%
+                  </MenuItem>
                   <MenuItem onClick={() => handleContextMenuAction('speed-1')}>Speed 100%</MenuItem>
                   <MenuItem onClick={() => handleContextMenuAction('speed-2')}>Speed 200%</MenuItem>
-                  <MenuItem onClick={() => handleContextMenuAction('reverse')}>Reverse Clip</MenuItem>
+                  <MenuItem onClick={() => handleContextMenuAction('reverse')}>
+                    Reverse Clip
+                  </MenuItem>
                   <MenuItem
                     onClick={() => handleContextMenuAction('freeze-frame')}
                     disabled={!contextMenuTarget.time}
@@ -2115,7 +2128,9 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                     Add Freeze Frame at Cursor
                   </MenuItem>
                   <MenuItem onClick={() => handleContextMenuAction('toggle-time-remap')}>
-                    {contextClip?.timeRemapEnabled ? 'Disable Time Remapping' : 'Enable Time Remapping'}
+                    {contextClip?.timeRemapEnabled
+                      ? 'Disable Time Remapping'
+                      : 'Enable Time Remapping'}
                   </MenuItem>
                   {contextClip?.audio && (
                     <>
@@ -2132,7 +2147,9 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                     </>
                   )}
                   <Divider />
-                  <MenuItem onClick={() => handleContextMenuAction('select-track')}>Select Track</MenuItem>
+                  <MenuItem onClick={() => handleContextMenuAction('select-track')}>
+                    Select Track
+                  </MenuItem>
                   <MenuItem onClick={() => handleContextMenuAction('select-track-clips')}>
                     Select All Clips on Track
                   </MenuItem>
@@ -2163,11 +2180,18 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                     {snapToClips ? 'Disable Clip Snapping' : 'Enable Clip Snapping'}
                   </MenuItem>
                   <MenuItem onClick={() => handleContextMenuAction('toggle-magnetic')}>
-                    {magneticTimelineEnabled ? 'Disable Magnetic Timeline' : 'Enable Magnetic Timeline'}
+                    {magneticTimelineEnabled
+                      ? 'Disable Magnetic Timeline'
+                      : 'Enable Magnetic Timeline'}
                   </MenuItem>
-                  <MenuItem onClick={() => handleContextMenuAction('fit-to-window')}>Zoom to Fit</MenuItem>
+                  <MenuItem onClick={() => handleContextMenuAction('fit-to-window')}>
+                    Zoom to Fit
+                  </MenuItem>
                   <Divider />
-                  <MenuItem icon={<Video24Regular />} onClick={() => handleContextMenuAction('add-track-video')}>
+                  <MenuItem
+                    icon={<Video24Regular />}
+                    onClick={() => handleContextMenuAction('add-track-video')}
+                  >
                     Add Video Track
                   </MenuItem>
                   <MenuItem
@@ -2176,10 +2200,16 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                   >
                     Add Audio Track
                   </MenuItem>
-                  <MenuItem icon={<Image24Regular />} onClick={() => handleContextMenuAction('add-track-image')}>
+                  <MenuItem
+                    icon={<Image24Regular />}
+                    onClick={() => handleContextMenuAction('add-track-image')}
+                  >
                     Add Image Track
                   </MenuItem>
-                  <MenuItem icon={<TextT24Regular />} onClick={() => handleContextMenuAction('add-track-text')}>
+                  <MenuItem
+                    icon={<TextT24Regular />}
+                    onClick={() => handleContextMenuAction('add-track-text')}
+                  >
                     Add Text Track
                   </MenuItem>
                 </>
