@@ -1,13 +1,21 @@
 using Aura.Core.Artifacts;
+using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
+using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Export;
 using Aura.Api.Models.ApiModels.V1;
+using Aura.Providers.Images;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
+using System.Collections.Generic;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Aura.Api.Controllers;
 
@@ -175,6 +183,28 @@ public class JobsController : ControllerBase
                 EnableSceneCut: request.RenderSpec.EnableSceneCut
             );
 
+            IImageProvider? imageProviderOverride = null;
+
+            if (!string.IsNullOrWhiteSpace(request.ImageProvider))
+            {
+                if (!TryResolveImageProvider(
+                        request.ImageProvider,
+                        correlationId,
+                        out imageProviderOverride,
+                        out var providerError))
+                {
+                    return BadRequest(new
+                    {
+                        type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                        title = "Invalid Request",
+                        status = 400,
+                        detail = providerError,
+                        correlationId,
+                        provider = request.ImageProvider
+                    });
+                }
+            }
+
             var job = await _jobRunner.CreateAndStartJobAsync(
                 brief,
                 planSpec,
@@ -182,7 +212,8 @@ public class JobsController : ControllerBase
                 renderSpec,
                 correlationId,
                 isQuickDemo: false,
-                ct
+                ct,
+                imageProviderOverride
             ).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Job created successfully with ID: {JobId}, Status: {Status}", correlationId, job.Id, job.Status);
@@ -317,6 +348,89 @@ public class JobsController : ControllerBase
                 }
             });
         }
+    }
+
+    private bool TryResolveImageProvider(
+        string providerId,
+        string correlationId,
+        out IImageProvider? imageProvider,
+        out string? errorMessage)
+    {
+        imageProvider = null;
+        errorMessage = null;
+
+        var services = HttpContext.RequestServices;
+        var providerSettings = services.GetRequiredService<ProviderSettings>();
+        var httpClientFactory = services.GetRequiredService<IHttpClientFactory>();
+        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+        var placeholderProvider = services.GetRequiredService<PlaceholderImageProvider>();
+
+        var normalized = providerId.Trim().ToLowerInvariant();
+        var primaryProviders = new List<IStockProvider>();
+
+        switch (normalized)
+        {
+            case "pexels":
+            {
+                var apiKey = providerSettings.GetPexelsApiKey();
+                if (string.IsNullOrWhiteSpace(apiKey))
+                {
+                    errorMessage = "Pexels API key is not configured. Add it in Settings to use Pexels for visuals.";
+                    return false;
+                }
+
+                primaryProviders.Add(new PexelsStockProvider(
+                    loggerFactory.CreateLogger<PexelsStockProvider>(),
+                    httpClientFactory.CreateClient(),
+                    apiKey));
+                break;
+            }
+            case "pixabay":
+            {
+                var apiKey = providerSettings.GetPixabayApiKey();
+                if (string.IsNullOrWhiteSpace(apiKey))
+                {
+                    errorMessage = "Pixabay API key is not configured. Add it in Settings to use Pixabay for visuals.";
+                    return false;
+                }
+
+                primaryProviders.Add(new PixabayStockProvider(
+                    loggerFactory.CreateLogger<PixabayStockProvider>(),
+                    httpClientFactory.CreateClient(),
+                    apiKey));
+                break;
+            }
+            case "unsplash":
+            {
+                var accessKey = providerSettings.GetUnsplashAccessKey();
+                if (string.IsNullOrWhiteSpace(accessKey))
+                {
+                    errorMessage = "Unsplash access key is not configured. Add it in Settings to use Unsplash for visuals.";
+                    return false;
+                }
+
+                primaryProviders.Add(new UnsplashStockProvider(
+                    loggerFactory.CreateLogger<UnsplashStockProvider>(),
+                    httpClientFactory.CreateClient(),
+                    accessKey));
+                break;
+            }
+            case "placeholder":
+                break;
+            default:
+                errorMessage = $"Unknown image provider '{providerId}'.";
+                return false;
+        }
+
+        var fallbackLogger = loggerFactory.CreateLogger<FallbackImageProvider>();
+        imageProvider = new FallbackImageProvider(fallbackLogger, primaryProviders, placeholderProvider);
+
+        Log.Information(
+            "[{CorrelationId}] Using image provider override: {Provider}",
+            correlationId,
+            normalized);
+
+        return true;
     }
 
     /// <summary>
@@ -667,7 +781,7 @@ public class JobsController : ControllerBase
                 else
                 {
                     var timeSinceLastProgress = (DateTime.UtcNow - lastProgressChangeTime).TotalSeconds;
-                    
+
                     // Warning at 2 minutes
                     if (timeSinceLastProgress >= stallWarningThresholdSeconds && !stallWarningEmitted)
                     {
@@ -694,9 +808,9 @@ public class JobsController : ControllerBase
                             "[{CorrelationId}] Job {JobId} stalled for {Seconds:F0}s at {Percent}% ({Stage}), emitting failure event",
                             correlationId, jobId, timeSinceLastProgress, job.Percent, job.Stage);
 
-                        var stallError = new JobStepError 
-                        { 
-                            Code = "STALL_TIMEOUT", 
+                        var stallError = new JobStepError
+                        {
+                            Code = "STALL_TIMEOUT",
                             Message = $"Job stalled at {job.Stage} stage ({job.Percent}%) with no progress for {(int)timeSinceLastProgress} seconds",
                             Remediation = "Cancel and retry the job, or check the logs for potential issues"
                         };
@@ -714,7 +828,7 @@ public class JobsController : ControllerBase
                         }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
 
                         stallFailureEmitted = true;
-                        // Note: We emit the event but don't break the loop, allowing the job to 
+                        // Note: We emit the event but don't break the loop, allowing the job to
                         // potentially recover. The frontend should handle the job-failed event.
                     }
                 }
@@ -1439,7 +1553,7 @@ public class JobsController : ControllerBase
 
             if (job != null)
             {
-                Log.Information("[{CorrelationId}] Streaming video generation job {JobId} via SSE (found after {WaitAttempts} attempts)", 
+                Log.Information("[{CorrelationId}] Streaming video generation job {JobId} via SSE (found after {WaitAttempts} attempts)",
                     correlationId, jobId, waitAttempts);
 
                 // Send initial state with normalized status
@@ -1471,8 +1585,8 @@ public class JobsController : ControllerBase
                     if (job == null) break;
 
                     // Send updates when something changed OR every 10 polls (5 seconds) as heartbeat
-                    var shouldSendUpdate = job.Percent != lastPercent || 
-                                           job.Status != lastStatus || 
+                    var shouldSendUpdate = job.Percent != lastPercent ||
+                                           job.Status != lastStatus ||
                                            job.Stage != lastStage ||
                                            heartbeatCounter >= 10;
 
@@ -1505,7 +1619,7 @@ public class JobsController : ControllerBase
                         var videoArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4");
                         Log.Information(
                             "[{CorrelationId}] Job {JobId} completed. Status={Status}, OutputPath={OutputPath}, Artifacts={ArtifactCount}",
-                            correlationId, jobId, job.Status, 
+                            correlationId, jobId, job.Status,
                             job.OutputPath ?? "NULL", job.Artifacts?.Count ?? 0);
 
                         var finalData = JsonSerializer.Serialize(new

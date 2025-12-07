@@ -28,13 +28,13 @@ public class SystemResourceMonitor
     private readonly object _metricsLock = new();
     private SystemResourceMetrics? _lastSystemMetrics;
     private ProcessMetrics? _lastProcessMetrics;
-    
+
     // CPU tracking for delta-based calculation (used for WMI fallback and Linux)
     private DateTime _lastCpuUpdate = DateTime.MinValue;
     private long _lastCpuTotal;
     private long _lastCpuIdle;
     private double _lastCpuUsagePercent;
-    
+
     // Track if performance counters initialized successfully
     private bool _cpuCounterInitialized;
     private bool _cpuCounterPrimed;
@@ -164,7 +164,7 @@ public class SystemResourceMonitor
             {
                 // Try performance counter first (most accurate)
                 var cpuUsage = await TryGetCpuFromPerformanceCounterAsync(cancellationToken).ConfigureAwait(false);
-                
+
                 if (cpuUsage.HasValue)
                 {
                     metrics.OverallUsagePercent = cpuUsage.Value;
@@ -181,8 +181,18 @@ public class SystemResourceMonitor
                     }
                     else
                     {
-                        _logger.LogDebug("All CPU collection methods failed, using last known value");
-                        metrics.OverallUsagePercent = _lastCpuUsagePercent;
+                        // Last-resort fallback using system times (works when perf counters/WMI are blocked)
+                        cpuUsage = TryGetCpuFromSystemTimes();
+                        if (cpuUsage.HasValue)
+                        {
+                            metrics.OverallUsagePercent = cpuUsage.Value;
+                            _logger.LogTrace("CPU usage from GetSystemTimes fallback: {Usage}%", cpuUsage.Value);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("All CPU collection methods failed, using last known value");
+                            metrics.OverallUsagePercent = _lastCpuUsagePercent;
+                        }
                     }
                 }
 
@@ -202,11 +212,11 @@ public class SystemResourceMonitor
             if (elapsedTime > 0 && metrics.LogicalCores > 0)
             {
                 metrics.ProcessUsagePercent = Math.Clamp(
-                    (totalTime / (elapsedTime * metrics.LogicalCores)) * 100.0, 
-                    0.0, 
+                    (totalTime / (elapsedTime * metrics.LogicalCores)) * 100.0,
+                    0.0,
                     100.0);
             }
-            
+
             // Update last known good value
             if (metrics.OverallUsagePercent > 0)
             {
@@ -240,15 +250,15 @@ public class SystemResourceMonitor
                 await Task.Delay(100, cancellationToken).ConfigureAwait(false);
                 _cpuCounterPrimed = true;
             }
-            
+
             var value = _cpuCounter.NextValue();
-            
+
             // Validate the value is reasonable
             if (value >= 0 && value <= 100)
             {
                 return value;
             }
-            
+
             _logger.LogDebug("Performance counter returned invalid CPU value: {Value}", value);
             return null;
         }
@@ -263,6 +273,61 @@ public class SystemResourceMonitor
             _logger.LogDebug(ex, "Failed to read CPU from performance counter");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Last-resort CPU usage calculation using GetSystemTimes (Windows).
+    /// Helps when performance counters and WMI are unavailable due to policy/permissions.
+    /// </summary>
+    private double? TryGetCpuFromSystemTimes()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return null;
+        }
+
+        try
+        {
+            if (!GetSystemTimes(out var idleTime, out var kernelTime, out var userTime))
+            {
+                return null;
+            }
+
+            var idle = FileTimeToUInt64(idleTime);
+            var kernel = FileTimeToUInt64(kernelTime);
+            var user = FileTimeToUInt64(userTime);
+
+            // Kernel time includes idle; subtract idle to get active kernel time
+            var system = kernel + user;
+
+            if (_lastCpuTotal > 0 && _lastCpuIdle > 0)
+            {
+                var systemDelta = system - (ulong)_lastCpuTotal;
+                var idleDelta = idle - (ulong)_lastCpuIdle;
+
+                if (systemDelta > 0)
+                {
+                    var usage = ((double)(systemDelta - idleDelta) / systemDelta) * 100.0;
+                    usage = Math.Clamp(usage, 0.0, 100.0);
+
+                    _lastCpuTotal = (long)system;
+                    _lastCpuIdle = (long)idle;
+                    _lastCpuUsagePercent = usage;
+
+                    return usage;
+                }
+            }
+
+            // Prime baseline for next calculation
+            _lastCpuTotal = (long)system;
+            _lastCpuIdle = (long)idle;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "GetSystemTimes CPU fallback failed");
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -282,11 +347,11 @@ public class SystemResourceMonitor
             return await Task.Run(() =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                
+
                 // Try Win32_PerfFormattedData_PerfOS_Processor first (more accurate)
                 using var searcher = new ManagementObjectSearcher(
                     "SELECT PercentProcessorTime FROM Win32_PerfFormattedData_PerfOS_Processor WHERE Name='_Total'");
-                
+
                 foreach (ManagementObject obj in searcher.Get())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -304,10 +369,10 @@ public class SystemResourceMonitor
                 // Fallback to Win32_Processor.LoadPercentage
                 using var processorSearcher = new ManagementObjectSearcher(
                     "SELECT LoadPercentage FROM Win32_Processor");
-                
+
                 double totalLoad = 0;
                 int processorCount = 0;
-                
+
                 foreach (ManagementObject obj in processorSearcher.Get())
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -362,10 +427,10 @@ public class SystemResourceMonitor
                     // Ignore priming failures
                 }
             }
-            
+
             // Single delay for all counters (instead of per-core delay)
             await Task.Delay(50, cancellationToken).ConfigureAwait(false);
-            
+
             // Read values from all counters
             var perCoreUsage = new List<double>();
             foreach (var counter in _perCoreCounters.Values)
@@ -381,7 +446,7 @@ public class SystemResourceMonitor
                     // Skip failed cores
                 }
             }
-            
+
             return perCoreUsage.ToArray();
         }
         catch (OperationCanceledException)
@@ -417,28 +482,28 @@ public class SystemResourceMonitor
                         var irq = parts.Length > 6 && long.TryParse(parts[6], out var q) ? q : 0;
                         var softirq = parts.Length > 7 && long.TryParse(parts[7], out var sq) ? sq : 0;
                         var steal = parts.Length > 8 && long.TryParse(parts[8], out var st) ? st : 0;
-                        
+
                         var totalIdle = idle + iowait;
                         var total = user + nice + system + idle + iowait + irq + softirq + steal;
-                        
+
                         // Calculate CPU usage based on delta since last reading
                         if (_lastCpuUpdate != DateTime.MinValue && _lastCpuTotal > 0)
                         {
                             var deltaTotal = total - _lastCpuTotal;
                             var deltaIdle = totalIdle - _lastCpuIdle;
-                            
+
                             if (deltaTotal > 0)
                             {
                                 _lastCpuUsagePercent = ((double)(deltaTotal - deltaIdle) / deltaTotal) * 100.0;
                                 _lastCpuUsagePercent = Math.Max(0, Math.Min(100, _lastCpuUsagePercent));
                             }
                         }
-                        
+
                         // Store current values for next calculation
                         _lastCpuTotal = total;
                         _lastCpuIdle = totalIdle;
                         _lastCpuUpdate = DateTime.UtcNow;
-                        
+
                         return _lastCpuUsagePercent;
                     }
                 }
@@ -471,7 +536,7 @@ public class SystemResourceMonitor
                     {
                         metrics.UsagePercent = ((double)metrics.UsedBytes / metrics.TotalBytes) * 100.0;
                     }
-                    _logger.LogTrace("Memory metrics from GlobalMemoryStatusEx: Total={Total}, Used={Used}, Usage={Usage}%", 
+                    _logger.LogTrace("Memory metrics from GlobalMemoryStatusEx: Total={Total}, Used={Used}, Usage={Usage}%",
                         metrics.TotalBytes, metrics.UsedBytes, metrics.UsagePercent);
                 }
                 else
@@ -485,7 +550,7 @@ public class SystemResourceMonitor
                         metrics.AvailableBytes = wmiMemory.Value.available;
                         metrics.UsedBytes = wmiMemory.Value.used;
                         metrics.UsagePercent = wmiMemory.Value.usagePercent;
-                        _logger.LogTrace("Memory metrics from WMI: Total={Total}, Used={Used}, Usage={Usage}%", 
+                        _logger.LogTrace("Memory metrics from WMI: Total={Total}, Used={Used}, Usage={Usage}%",
                             metrics.TotalBytes, metrics.UsedBytes, metrics.UsagePercent);
                     }
                     else
@@ -515,7 +580,7 @@ public class SystemResourceMonitor
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to collect memory metrics");
-            
+
             // Last resort fallback: use GC info for process memory
             try
             {
@@ -546,19 +611,19 @@ public class SystemResourceMonitor
         {
             using var searcher = new ManagementObjectSearcher(
                 "SELECT TotalVisibleMemorySize, FreePhysicalMemory FROM Win32_OperatingSystem");
-            
+
             foreach (ManagementObject obj in searcher.Get())
             {
                 var totalKb = obj["TotalVisibleMemorySize"];
                 var freeKb = obj["FreePhysicalMemory"];
-                
+
                 if (totalKb != null && freeKb != null)
                 {
                     var total = Convert.ToInt64(totalKb) * 1024; // KB to bytes
                     var available = Convert.ToInt64(freeKb) * 1024; // KB to bytes
                     var used = total - available;
                     var usagePercent = total > 0 ? ((double)used / total) * 100.0 : 0.0;
-                    
+
                     return (total, available, used, usagePercent);
                 }
             }
@@ -671,8 +736,8 @@ public class SystemResourceMonitor
             {
                 metrics.UsagePercent = nvidiaSmiMetrics.Value.usage;
                 metrics.UsedMemoryBytes = nvidiaSmiMetrics.Value.usedMemory;
-                metrics.TotalMemoryBytes = nvidiaSmiMetrics.Value.totalMemory > 0 
-                    ? nvidiaSmiMetrics.Value.totalMemory 
+                metrics.TotalMemoryBytes = nvidiaSmiMetrics.Value.totalMemory > 0
+                    ? nvidiaSmiMetrics.Value.totalMemory
                     : adapterRam;
                 metrics.AvailableMemoryBytes = metrics.TotalMemoryBytes - metrics.UsedMemoryBytes;
                 metrics.MemoryUsagePercent = metrics.TotalMemoryBytes > 0
@@ -823,7 +888,7 @@ public class SystemResourceMonitor
     {
         try
         {
-            var output = await Task.Run(() => 
+            var output = await Task.Run(() =>
                 ExecuteCommand("nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader,nounits"),
                 cancellationToken).ConfigureAwait(false);
 
@@ -1002,6 +1067,11 @@ public class SystemResourceMonitor
         return Array.Empty<ProviderConnectionMetrics>();
     }
 
+    private static ulong FileTimeToUInt64(FILETIME fileTime)
+    {
+        return ((ulong)fileTime.dwHighDateTime << 32) + (uint)fileTime.dwLowDateTime;
+    }
+
     private string ExecuteCommand(string command, string arguments)
     {
         try
@@ -1047,4 +1117,14 @@ public class SystemResourceMonitor
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX lpBuffer);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FILETIME
+    {
+        public uint dwLowDateTime;
+        public uint dwHighDateTime;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetSystemTimes(out FILETIME idleTime, out FILETIME kernelTime, out FILETIME userTime);
 }

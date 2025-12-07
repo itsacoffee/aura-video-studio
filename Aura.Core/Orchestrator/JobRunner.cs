@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -25,7 +26,7 @@ public partial class JobRunner
     // Compiled regex patterns for performance (used in progress message parsing)
     [GeneratedRegex(@"(\d+(?:\.\d+)?)\s*%", RegexOptions.Compiled)]
     private static partial Regex PercentageRegex();
-    
+
     [GeneratedRegex(@"(\d+)/(\d+)\s*tasks", RegexOptions.Compiled)]
     private static partial Regex TaskProgressRegex();
 
@@ -42,13 +43,14 @@ public partial class JobRunner
     private readonly Dictionary<string, Job> _activeJobs = new();
     private readonly Dictionary<string, CancellationTokenSource> _jobCancellationTokens = new();
     private readonly Dictionary<string, Guid> _jobProjectIds = new();
+    private readonly ConcurrentDictionary<string, IImageProvider?> _jobImageProviders = new();
     private readonly Services.ProgressAggregatorService? _progressAggregator;
     private readonly Services.CancellationOrchestrator? _cancellationOrchestrator;
-    
+
     // Stuck job detection: tracks last progress update for each job
     private readonly Dictionary<string, JobProgressTracking> _jobProgressTracking = new();
     private readonly object _trackingLock = new();
-    
+
     /// <summary>
     /// Default threshold in seconds after which a job is considered stuck if no progress is made.
     /// Can be configured via OrchestratorOptions.StuckDetectionThresholdSeconds.
@@ -101,7 +103,8 @@ public partial class JobRunner
         RenderSpec renderSpec,
         string? correlationId = null,
         bool isQuickDemo = false,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IImageProvider? imageProvider = null)
     {
         await Task.CompletedTask;
         ArgumentNullException.ThrowIfNull(brief);
@@ -131,6 +134,11 @@ public partial class JobRunner
 
         _activeJobs[job.Id] = job;
         _artifactManager.SaveJob(job);
+
+        if (imageProvider != null)
+        {
+            _jobImageProviders[job.Id] = imageProvider;
+        }
 
         _logger.LogInformation("Job {JobId} saved to active jobs and artifact storage", jobId);
 
@@ -162,7 +170,7 @@ public partial class JobRunner
 
         return _artifactManager.LoadJob(jobId);
     }
-    
+
     /// <summary>
     /// Checks if a job appears to be stuck (no progress for a specified threshold).
     /// Can be used by SSE streaming or monitoring to detect and warn about stalled jobs.
@@ -171,11 +179,11 @@ public partial class JobRunner
     /// <param name="thresholdSeconds">Number of seconds without progress to consider stuck (default: 60)</param>
     /// <returns>A tuple of (isStuck, stuckDuration, lastPercent, lastStage)</returns>
     public (bool IsStuck, TimeSpan StuckDuration, int LastPercent, string? LastStage) CheckJobStuckStatus(
-        string jobId, 
+        string jobId,
         int thresholdSeconds = DefaultStuckThresholdSeconds)
     {
         var (isStuck, stuckDuration) = CheckIfJobIsStuck(jobId, thresholdSeconds);
-        
+
         lock (_trackingLock)
         {
             if (_jobProgressTracking.TryGetValue(jobId, out var tracking))
@@ -188,11 +196,11 @@ public partial class JobRunner
                         jobId, stuckDuration.TotalSeconds, tracking.LastStage ?? "Unknown", tracking.LastPercent);
                     MarkStuckWarningEmitted(jobId);
                 }
-                
+
                 return (isStuck, stuckDuration, tracking.LastPercent, tracking.LastStage);
             }
         }
-        
+
         return (false, TimeSpan.Zero, 0, null);
     }
 
@@ -438,7 +446,7 @@ public partial class JobRunner
 
                 // Record progress for ETA calculation
                 _progressEstimator.RecordProgress(jobId, percent, DateTime.UtcNow);
-                
+
                 // Update stuck task detection tracking
                 UpdateProgressTracking(jobId, percent, stage);
 
@@ -468,7 +476,7 @@ public partial class JobRunner
 
                 // Update job with detailed progress
                 job = UpdateJobWithProgress(job, generationProgress);
-                
+
                 // Update stuck task detection tracking
                 UpdateProgressTracking(jobId, (int)Math.Round(generationProgress.OverallPercent), generationProgress.Stage);
 
@@ -485,6 +493,8 @@ public partial class JobRunner
             });
 
             // Execute orchestrator with system profile and detailed progress
+        _jobImageProviders.TryRemove(jobId, out var imageProviderOverride);
+
             var generationResult = await _orchestrator.GenerateVideoResultAsync(
                 job.Brief!,
                 job.PlanSpec!,
@@ -496,7 +506,8 @@ public partial class JobRunner
                 jobId,
                 job.CorrelationId,
                 job.IsQuickDemo,
-                detailedProgress
+            detailedProgress,
+            imageProviderOverride
             ).ConfigureAwait(false);
 
             // Add final artifact
@@ -761,7 +772,7 @@ public partial class JobRunner
                 cts.Dispose();
                 _jobCancellationTokens.Remove(jobId);
             }
-            
+
             // Clean up progress tracking for stuck detection
             CleanupProgressTracking(jobId);
         }
@@ -884,7 +895,7 @@ public partial class JobRunner
         {
             _logger.LogInformation(
                 "[Job {JobId}] Terminal state: Status={Status}, Stage={Stage}, Percent={Percent}%, OutputPath={OutputPath}, Artifacts={ArtifactCount}",
-                updated.Id, updated.Status, updated.Stage, updated.Percent, 
+                updated.Id, updated.Status, updated.Stage, updated.Percent,
                 updated.OutputPath ?? "NULL", updated.Artifacts?.Count ?? 0);
         }
         else
@@ -1208,8 +1219,8 @@ public partial class JobRunner
             formattedMessage = "Video composition complete";
         }
         else if (message.Contains("Stage 5/5", StringComparison.OrdinalIgnoreCase) ||
-                 (message.Contains("render", StringComparison.OrdinalIgnoreCase) && 
-                  !message.Contains("Rendering:") && 
+                 (message.Contains("render", StringComparison.OrdinalIgnoreCase) &&
+                  !message.Contains("Rendering:") &&
                   !message.Contains("composing")))
         {
             stage = "Rendering";
@@ -1246,14 +1257,14 @@ public partial class JobRunner
         {
             // Extract batch progress from message using compiled regex
             var match = TaskProgressRegex().Match(message);
-            if (match.Success && 
-                int.TryParse(match.Groups[1].Value, out int completed) && 
+            if (match.Success &&
+                int.TryParse(match.Groups[1].Value, out int completed) &&
                 int.TryParse(match.Groups[2].Value, out int total) &&
                 total > 0)
             {
                 // Map task progress (0/N to N/N) to overall progress (5-95%)
                 percent = 5 + (int)((double)completed / total * 90);
-                
+
                 // When all batch tasks are complete, transition to PostProcess stage
                 if (completed == total)
                 {
@@ -1310,7 +1321,7 @@ public partial class JobRunner
 
         return (stage, percent, formattedMessage);
     }
-    
+
     /// <summary>
     /// Updates stuck task detection tracking when progress is made.
     /// Called by progress handlers to track when tasks make progress.
@@ -1325,7 +1336,7 @@ public partial class JobRunner
                 _jobProgressTracking[jobId] = tracking;
                 return;
             }
-            
+
             // Only update if progress or stage has changed
             if (tracking.LastPercent != percent || tracking.LastStage != stage)
             {
@@ -1339,7 +1350,7 @@ public partial class JobRunner
             }
         }
     }
-    
+
     /// <summary>
     /// Checks if a job is stuck based on time since last progress.
     /// Returns true if stuck, along with the duration stuck.
@@ -1352,14 +1363,14 @@ public partial class JobRunner
             {
                 return (false, TimeSpan.Zero);
             }
-            
+
             var stuckDuration = DateTime.UtcNow - tracking.LastProgressTime;
             var isStuck = stuckDuration.TotalSeconds >= thresholdSeconds;
-            
+
             return (isStuck, stuckDuration);
         }
     }
-    
+
     /// <summary>
     /// Marks that a stuck warning has been emitted for a job to avoid duplicate warnings.
     /// </summary>
@@ -1373,7 +1384,7 @@ public partial class JobRunner
             }
         }
     }
-    
+
     /// <summary>
     /// Cleans up progress tracking for a completed job.
     /// </summary>

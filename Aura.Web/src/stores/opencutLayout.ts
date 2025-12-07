@@ -21,20 +21,20 @@ export const LAYOUT_CONSTANTS = {
     minWidth: 200,
     maxWidth: 600,
     collapsedWidth: 48,
-    defaultWidth: 280,
+    defaultWidth: 320,
   },
   /** Right panel (Properties) constraints */
   rightPanel: {
     minWidth: 250,
     maxWidth: 700,
     collapsedWidth: 48,
-    defaultWidth: 300,
+    defaultWidth: 340,
   },
   /** Timeline constraints */
   timeline: {
-    minHeight: 180,
-    maxHeight: 600,
-    defaultHeight: 320,
+    minHeight: 200,
+    maxHeight: 640,
+    defaultHeight: 380,
   },
   /** Animation settings */
   animation: {
