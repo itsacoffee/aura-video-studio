@@ -59,6 +59,11 @@ public class IdeationService
         _ragContextBuilder = ragContextBuilder;
         _webSearchService = webSearchService;
         _ollamaDirectClient = ollamaDirectClient;
+        
+        _logger.LogInformation("IdeationService constructed:");
+        _logger.LogInformation("  ILlmProvider: {Type}", _llmProvider.GetType().Name);
+        _logger.LogInformation("  IOllamaDirectClient: {Status}", 
+            _ollamaDirectClient != null ? "✓ Injected" : "✗ NULL");
     }
 
     /// <summary>

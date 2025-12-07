@@ -214,27 +214,40 @@ public class FfmpegVideoComposer : IVideoComposer
         // Track FFmpeg activity for watchdog timer
         DateTime lastFfmpegActivity = DateTime.UtcNow;
         float lastProgressPercent = 0f;
+        string? lastStderrLine = null;
 
         // Watchdog timer to detect FFmpeg hanging (no output for 90 seconds)
         var watchdogTimer = new System.Timers.Timer(10000); // Check every 10 seconds
         watchdogTimer.Elapsed += (sender, args) =>
         {
-            var inactivityDuration = DateTime.UtcNow - lastFfmpegActivity;
-            if (inactivityDuration.TotalSeconds > 90 && !process.HasExited)
+            if (!process.HasExited)
             {
-                _logger.LogError(
-                    "FFmpeg WATCHDOG TRIGGERED: No stderr output for {Seconds}s at {Progress}%. " +
-                    "FFmpeg may be hung. Terminating process. (JobId: {JobId})",
-                    inactivityDuration.TotalSeconds, lastProgressPercent, jobId);
+                var inactivityDuration = DateTime.UtcNow - lastFfmpegActivity;
                 
-                try
+                if (inactivityDuration.TotalSeconds > 30 && inactivityDuration.TotalSeconds < 90)
                 {
-                    process.Kill(entireProcessTree: true);
-                    watchdogTimer.Stop();
+                    _logger.LogWarning(
+                        "DIAGNOSTIC: FFmpeg no output for {Sec}s at {Prog}%. Memory: {Mem}MB",
+                        (int)inactivityDuration.TotalSeconds, lastProgressPercent,
+                        process.WorkingSet64 / 1024 / 1024);
                 }
-                catch (Exception ex)
+                
+                if (inactivityDuration.TotalSeconds > 90)
                 {
-                    _logger.LogError(ex, "Failed to kill hung FFmpeg process");
+                    _logger.LogError(
+                        "WATCHDOG: No output for {Sec}s at {Prog}%. Last line: {Line}",
+                        (int)inactivityDuration.TotalSeconds, lastProgressPercent, 
+                        lastStderrLine ?? "N/A");
+                    
+                    try
+                    {
+                        process.Kill(entireProcessTree: true);
+                        watchdogTimer.Stop();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to kill hung FFmpeg process");
+                    }
                 }
             }
         };
@@ -271,6 +284,7 @@ public class FfmpegVideoComposer : IVideoComposer
 
             // Reset watchdog timer on any stderr output
             lastFfmpegActivity = DateTime.UtcNow;
+            lastStderrLine = args.Data;
 
             // Capture for error reporting
             stderrBuilder.AppendLine(args.Data);
@@ -1056,83 +1070,89 @@ public class FfmpegVideoComposer : IVideoComposer
         }
 
         var filterParts = new List<string>();
-        var currentOffset = 0.0;
 
-        // Process each visual asset with Ken Burns effect for images
+        // Phase 1: Process each visual asset (Ken Burns for images, scale for videos)
         for (int i = 0; i < assets.Count; i++)
         {
             var asset = assets[i];
             var durationSeconds = asset.Duration.TotalSeconds;
 
-            // Build Ken Burns filter for static images, scale for videos
             if (asset.IsImage)
             {
-                // Apply Ken Burns effect: subtle zoom from 1.0 to 1.1 with centered pan
                 var kenBurnsFilter = EffectBuilder.BuildKenBurns(
                     duration: durationSeconds,
                     fps: fps,
                     zoomStart: DefaultKenBurnsZoomStart,
                     zoomEnd: DefaultKenBurnsZoomEnd,
-                    panX: 0.0,  // Centered pan
-                    panY: 0.0,  // Centered pan
+                    panX: 0.0,
+                    panY: 0.0,
                     width: width,
                     height: height);
 
                 filterParts.Add($"[{i}:v]{kenBurnsFilter}[v{i}]");
-                _logger.LogDebug("Applied Ken Burns effect to scene {SceneIndex} image: zoom {Start} to {End} over {Duration}s",
-                    asset.SceneIndex, DefaultKenBurnsZoomStart, DefaultKenBurnsZoomEnd, durationSeconds);
             }
             else
             {
-                // Scale video to target resolution
                 filterParts.Add($"[{i}:v]scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1[v{i}]");
             }
         }
 
-        // Build transition chain between processed clips
+        // Phase 2: Build transition chain with SAFE offset calculation
         if (assets.Count == 1)
         {
-            // Single asset - just output it
             filterParts.Add("[v0]null[vout]");
         }
         else
         {
-            // Multiple assets - add fade transitions between them
-            string lastLabel = "v0";
-            currentOffset = assets[0].Duration.TotalSeconds;
+            double currentOffset = 0.0;
 
             for (int i = 0; i < assets.Count - 1; i++)
             {
-                var nextLabel = $"v{i + 1}";
-                var outputLabel = i == assets.Count - 2 ? "vout" : $"vt{i}";
-                var transitionOffset = currentOffset - DefaultFadeTransitionDuration;
+                // FIX: Accumulate offset BEFORE calculating transition
+                currentOffset += assets[i].Duration.TotalSeconds;
+                
+                // FIX: Ensure transition offset is never negative
+                var transitionDuration = DefaultFadeTransitionDuration;
+                var safeTransitionOffset = Math.Max(0, currentOffset - transitionDuration);
+                
+                // FIX: If scene is too short, reduce transition duration
+                if (assets[i].Duration.TotalSeconds < transitionDuration)
+                {
+                    transitionDuration = Math.Max(0.1, assets[i].Duration.TotalSeconds * 0.5);
+                    safeTransitionOffset = currentOffset - transitionDuration;
+                    _logger.LogWarning(
+                        "Scene {Index} duration ({Duration}s) shorter than default transition. " +
+                        "Reduced transition to {Adjusted}s",
+                        i, assets[i].Duration.TotalSeconds, transitionDuration);
+                }
 
-                // Build fade transition using TransitionBuilder
                 var fadeTransition = TransitionBuilder.BuildCrossfade(
-                    DefaultFadeTransitionDuration,
-                    transitionOffset,
+                    transitionDuration,
+                    safeTransitionOffset,
                     TransitionBuilder.TransitionType.Fade);
 
-                filterParts.Add($"[{lastLabel}][{nextLabel}]{fadeTransition}[{outputLabel}]");
-                _logger.LogDebug("Applied fade transition between scenes at offset {Offset}s with duration {Duration}s",
-                    transitionOffset, DefaultFadeTransitionDuration);
+                var inputLabel1 = i == 0 ? "v0" : $"vt{i - 1}";
+                var inputLabel2 = $"v{i + 1}";
+                var outputLabel = i == assets.Count - 2 ? "vout" : $"vt{i}";
 
-                lastLabel = outputLabel;
-                if (i + 1 < assets.Count)
-                {
-                    currentOffset += assets[i + 1].Duration.TotalSeconds;
-                }
+                filterParts.Add($"[{inputLabel1}][{inputLabel2}]{fadeTransition}[{outputLabel}]");
             }
         }
 
-        // Add audio mixing if music is present
+        // Phase 3: Audio mixing (AFTER video chain is complete)
         if (musicInputIndex >= 0)
         {
-            // Mix narration with background music (music at 30% volume)
             filterParts.Add($"[{narrationInputIndex}:a]volume=1.0[voice];[{musicInputIndex}:a]volume=0.3[music];[voice][music]amix=inputs=2:duration=shortest[aout]");
         }
 
-        return string.Join(";", filterParts);
+        var filterGraph = string.Join(";", filterParts);
+        
+        // FIX: Log the full filter graph for debugging
+        _logger.LogDebug("Generated filter graph ({Length} chars): {Graph}",
+            filterGraph.Length,
+            filterGraph.Length > 500 ? filterGraph.Substring(0, 500) + "..." : filterGraph);
+
+        return filterGraph;
     }
 
     /// <summary>

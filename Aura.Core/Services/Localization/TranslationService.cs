@@ -47,6 +47,11 @@ public class TranslationService
         _timingAdjuster = new TimingAdjuster(logger);
         _visualAnalyzer = new VisualLocalizationAnalyzer(logger, llmProvider);
         _ollamaDirectClient = ollamaDirectClient;
+        
+        _logger.LogInformation("TranslationService constructed:");
+        _logger.LogInformation("  ILlmProvider: {Type}", _llmProvider.GetType().Name);
+        _logger.LogInformation("  IOllamaDirectClient: {Status}", 
+            _ollamaDirectClient != null ? "✓ Injected" : "✗ NULL");
     }
 
     /// <summary>
