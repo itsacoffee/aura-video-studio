@@ -90,8 +90,9 @@ public class ProviderHealthInitializer
                                         return await task;
                                     }
                                 }
-                                catch
+                                catch (Exception ex)
                                 {
+                                    _logger.LogDebug(ex, "Ollama health check failed for provider {ProviderName}", providerName);
                                     return false;
                                 }
                             }
