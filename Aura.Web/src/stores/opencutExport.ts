@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createSafeJSONStorage } from './opencutPersist';
 import type {
   ExportPreset as BaseExportPreset,
   ExportSettings as BaseExportSettings,
@@ -369,6 +370,7 @@ export const useExportStore = create<OpenCutExportStore>()(
     }),
     {
       name: 'opencut-export',
+      storage: createSafeJSONStorage<OpenCutExportStore>('opencut-export'),
       partialize: (state) => ({
         customPresets: state.customPresets,
       }),

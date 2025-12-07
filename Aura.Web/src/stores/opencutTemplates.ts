@@ -8,6 +8,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createSafeJSONStorage } from './opencutPersist';
 
 /** Track type in template */
 export type TemplateTrackType = 'video' | 'audio' | 'image' | 'text';
@@ -630,6 +631,7 @@ export const useTemplatesStore = create<OpenCutTemplatesStore>()(
     }),
     {
       name: 'opencut-templates',
+      storage: createSafeJSONStorage<OpenCutTemplatesStore>('opencut-templates'),
       partialize: (state) => ({
         userTemplates: state.userTemplates,
         selectedTemplateId: state.selectedTemplateId,

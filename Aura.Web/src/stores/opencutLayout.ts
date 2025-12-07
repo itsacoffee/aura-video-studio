@@ -9,7 +9,8 @@
  */
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { createSafeJSONStorage } from './opencutPersist';
 
 /**
  * Layout sizing constants following the design specification.
@@ -167,7 +168,7 @@ export const useOpenCutLayoutStore = create<LayoutState>()(
     }),
     {
       name: 'opencut-layout',
-      storage: createJSONStorage(() => localStorage),
+      storage: createSafeJSONStorage<LayoutState>('opencut-layout'),
       partialize: (state) => ({
         leftPanelWidth: state.leftPanelWidth,
         leftPanelCollapsed: state.leftPanelCollapsed,

@@ -8,6 +8,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createSafeJSONStorage } from './opencutPersist';
 
 /**
  * Modifier keys for keybindings
@@ -564,6 +565,7 @@ export const useOpenCutKeybindingsStore = create<OpenCutKeybindingsStore>()(
     }),
     {
       name: 'opencut-keybindings',
+      storage: createSafeJSONStorage<OpenCutKeybindingsStore>('opencut-keybindings'),
       // Only persist keybindings, not transient JKL state
       partialize: (state) => ({ keybindings: state.keybindings }),
     }

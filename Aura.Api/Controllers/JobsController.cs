@@ -1575,6 +1575,11 @@ public class JobsController : ControllerBase
                 var lastStage = job.Stage;
                 var pollIntervalMs = 500; // Poll every 500ms for responsiveness
                 var heartbeatCounter = 0;
+                var lastProgressChangeTime = DateTime.UtcNow;
+                var stallWarningThresholdSeconds = 120; // Warn after 2 minutes without progress
+                var stallFailureThresholdSeconds = 180; // Fail after 3 minutes without progress
+                var stallWarningEmitted = false;
+                var stallFailureEmitted = false;
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
@@ -1583,6 +1588,62 @@ public class JobsController : ControllerBase
 
                     job = _jobRunner.GetJob(jobId);
                     if (job == null) break;
+
+                    // Detect stalled jobs and emit warning/failure events so the client can react
+                    if (job.Percent != lastPercent)
+                    {
+                        lastProgressChangeTime = DateTime.UtcNow;
+                        stallWarningEmitted = false;
+                        stallFailureEmitted = false;
+                    }
+                    else
+                    {
+                        var timeSinceLastProgress = (DateTime.UtcNow - lastProgressChangeTime).TotalSeconds;
+
+                        if (timeSinceLastProgress >= stallWarningThresholdSeconds && !stallWarningEmitted)
+                        {
+                            Log.Warning(
+                                "[{CorrelationId}] Job {JobId} appears stalled at {Percent}% (stage: {Stage}) - no progress for {Seconds:F0}s",
+                                correlationId, jobId, job.Percent, job.Stage, timeSinceLastProgress);
+
+                            var warningData = JsonSerializer.Serialize(new
+                            {
+                                message = $"Job progress appears stalled at {job.Percent}% ({job.Stage}). If this persists, consider cancelling and retrying.",
+                                step = job.Stage,
+                                percent = job.Percent,
+                                stallDurationSeconds = (int)timeSinceLastProgress,
+                                correlationId
+                            });
+
+                            await Response.WriteAsync("event: warning\n", cancellationToken).ConfigureAwait(false);
+                            await Response.WriteAsync($"data: {warningData}\n\n", cancellationToken).ConfigureAwait(false);
+                            await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                            stallWarningEmitted = true;
+                        }
+
+                        if (timeSinceLastProgress >= stallFailureThresholdSeconds && !stallFailureEmitted)
+                        {
+                            Log.Error(
+                                "[{CorrelationId}] Job {JobId} stalled for {Seconds:F0}s at {Percent}% ({Stage}), emitting failure event",
+                                correlationId, jobId, timeSinceLastProgress, job.Percent, job.Stage);
+
+                            var failureData = JsonSerializer.Serialize(new
+                            {
+                                status = "Failed",
+                                jobId = job.Id,
+                                stage = job.Stage,
+                                percent = job.Percent,
+                                errorMessage = $"Job stalled at {job.Stage} stage with no progress for over {stallFailureThresholdSeconds / 60.0:F0} minutes",
+                                stallDurationSeconds = (int)timeSinceLastProgress,
+                                correlationId
+                            });
+
+                            await Response.WriteAsync("event: job-failed\n", cancellationToken).ConfigureAwait(false);
+                            await Response.WriteAsync($"data: {failureData}\n\n", cancellationToken).ConfigureAwait(false);
+                            await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                            stallFailureEmitted = true;
+                        }
+                    }
 
                     // Send updates when something changed OR every 10 polls (5 seconds) as heartbeat
                     var shouldSendUpdate = job.Percent != lastPercent ||
