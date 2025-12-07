@@ -19,6 +19,7 @@ public static class RemainingServicesExtensions
         });
         services.AddSingleton<Aura.Core.Services.Health.ProviderHealthService>();
         services.AddSingleton<Aura.Core.Services.Health.SystemHealthChecker>();
+        services.AddSingleton<Aura.Api.Services.ProviderHealthInitializer>();
         return services;
     }
 

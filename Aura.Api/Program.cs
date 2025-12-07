@@ -5824,13 +5824,29 @@ lifetime.ApplicationStarted.Register(() =>
         }
     });
 
-    // Start Provider Health Monitoring after a slight delay to ensure engine manager initializes first
+    // Initialize and register all providers with health monitor before starting periodic checks
+    _ = Task.Run(() =>
+    {
+        try
+        {
+            Log.Information("Initializing provider health registration...");
+            var healthInitializer = app.Services.GetRequiredService<Aura.Api.Services.ProviderHealthInitializer>();
+            healthInitializer.RegisterAllProviders();
+            Log.Information("Provider health registration complete");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error initializing provider health registration - health monitoring may not work correctly");
+        }
+    });
+
+    // Start Provider Health Monitoring after a slight delay to ensure providers are registered
     _ = Task.Run(async () =>
     {
         try
         {
-            // Wait briefly for engine manager to start
-            await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            // Wait briefly for provider registration to complete
+            await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
 
             Log.Information("Starting provider health monitoring...");
             await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping).ConfigureAwait(false);
