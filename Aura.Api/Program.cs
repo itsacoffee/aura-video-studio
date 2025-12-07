@@ -6395,6 +6395,64 @@ appLifetime.ApplicationStarted.Register(() =>
     });
 });
 
+// Validate provider registration
+await ValidateProviderRegistrationAsync(app.Services);
+
+static async Task ValidateProviderRegistrationAsync(IServiceProvider services)
+{
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    
+    logger.LogInformation("=== DIAGNOSTIC: Provider Validation ===");
+    
+    // Check DI registration
+    var llmProvider = services.GetService<Aura.Core.Providers.ILlmProvider>();
+    logger.LogInformation("ILlmProvider: {Status}", 
+        llmProvider != null ? $"✓ {llmProvider.GetType().Name}" : "✗ NULL");
+    
+    var ollamaClient = services.GetService<Aura.Core.Providers.IOllamaDirectClient>();
+    logger.LogInformation("IOllamaDirectClient: {Status}", 
+        ollamaClient != null ? "✓ Registered" : "✗ NULL");
+    
+    // Check ProviderHealthMonitor
+    var healthMonitor = services.GetService<Aura.Core.Services.Health.ProviderHealthMonitor>();
+    if (healthMonitor != null)
+    {
+        var providers = healthMonitor.GetAllProviderHealth();
+        logger.LogInformation("ProviderHealthMonitor: {Count} providers", providers.Count);
+        
+        if (providers.Count == 0)
+        {
+            logger.LogCritical("CRITICAL: Zero providers in ProviderHealthMonitor!");
+        }
+        
+        foreach (var kvp in providers)
+        {
+            logger.LogInformation("  - {Name}: {Healthy}", kvp.Key, kvp.Value.IsHealthy);
+        }
+    }
+    else
+    {
+        logger.LogError("CRITICAL: ProviderHealthMonitor is NULL");
+    }
+    
+    // Test Ollama connectivity
+    if (ollamaClient != null)
+    {
+        try
+        {
+            var available = await ollamaClient.IsAvailableAsync(CancellationToken.None);
+            logger.LogInformation("Ollama connectivity: {Status}", 
+                available ? "✓ AVAILABLE" : "✗ UNAVAILABLE");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Ollama test failed");
+        }
+    }
+    
+    logger.LogInformation("=== Validation Complete ===");
+}
+
 try
 {
     // Use RunAsync instead of Run to allow proper cancellation during shutdown

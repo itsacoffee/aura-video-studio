@@ -496,28 +496,38 @@ public class ExportOrchestrationService : IExportOrchestrationService
                     // Update linked VideoJob if exists
                     if (_exportJobService != null && _jobIdMapping.TryGetValue(jobId, out var videoJobId))
                     {
-                        if (result.Success)
-                        {
-                            await _exportJobService.UpdateJobStatusAsync(
-                                videoJobId,
-                                "completed",
-                                100,
-                                outputPath: result.OutputFile).ConfigureAwait(false);
-                            _logger.LogInformation("Updated video job {VideoJobId} with export result: {OutputPath}", videoJobId, result.OutputFile);
-                        }
-                        else
-                        {
-                            await _exportJobService.UpdateJobStatusAsync(
-                                videoJobId,
-                                "failed",
-                                100,
-                                outputPath: null,
-                                errorMessage: result.ErrorMessage).ConfigureAwait(false);
-                            _logger.LogWarning("Updated video job {VideoJobId} with export failure: {Error}", videoJobId, result.ErrorMessage);
-                        }
+                        _logger.LogInformation("DIAGNOSTIC: Updating VideoJob {Id} with outputPath: {Path}",
+                            videoJobId, result.OutputFile);
                         
-                        // Remove mapping after update
-                        _jobIdMapping.Remove(jobId);
+                        try
+                        {
+                            if (result.Success)
+                            {
+                                await _exportJobService.UpdateJobStatusAsync(
+                                    videoJobId,
+                                    "completed",
+                                    100,
+                                    outputPath: result.OutputFile).ConfigureAwait(false);
+                                _logger.LogInformation("✓ VideoJob updated successfully with export result: {OutputPath}", result.OutputFile);
+                            }
+                            else
+                            {
+                                await _exportJobService.UpdateJobStatusAsync(
+                                    videoJobId,
+                                    "failed",
+                                    100,
+                                    outputPath: null,
+                                    errorMessage: result.ErrorMessage).ConfigureAwait(false);
+                                _logger.LogWarning("✓ VideoJob updated successfully with export failure: {Error}", result.ErrorMessage);
+                            }
+                            
+                            // Remove mapping after update
+                            _jobIdMapping.Remove(jobId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "✗ Failed to update VideoJob");
+                        }
                     }
                 }
             }
