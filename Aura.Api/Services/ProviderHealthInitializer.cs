@@ -76,12 +76,19 @@ public class ProviderHealthInitializer
 
                         if (providerName == "Ollama")
                         {
-                            var ollamaProvider = provider as dynamic;
-                            if (ollamaProvider != null)
+                            var providerType = provider.GetType();
+                            var method = providerType.GetMethod("IsServiceAvailableAsync", 
+                                new[] { typeof(CancellationToken), typeof(bool) });
+                            
+                            if (method != null)
                             {
                                 try
                                 {
-                                    return await ollamaProvider.IsServiceAvailableAsync(ct, false);
+                                    var task = method.Invoke(provider, new object[] { ct, false }) as Task<bool>;
+                                    if (task != null)
+                                    {
+                                        return await task;
+                                    }
                                 }
                                 catch
                                 {
