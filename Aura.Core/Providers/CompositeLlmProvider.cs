@@ -262,13 +262,27 @@ public class CompositeLlmProvider : ILlmProvider
     }
 
     /// <summary>
-    /// Get capabilities from the first available provider in the chain
+    /// Get capabilities from the first available provider in the chain.
+    /// Prefers providers that explicitly support translation to avoid false
+    /// negatives (e.g., when a non-translation provider is first in the chain).
     /// </summary>
     public Models.Providers.ProviderCapabilities GetCapabilities()
     {
         var providers = GetProviders();
-        var chain = BuildProviderChain(providers, DefaultPreferredTier, "get capabilities");
+        var chain = BuildProviderChain(providers, DefaultPreferredTier, "get capabilities").ToList();
 
+        // Prefer a provider that supports translation when available
+        foreach (var providerName in chain)
+        {
+            if (providers.TryGetValue(providerName, out var provider) &&
+                provider != null &&
+                provider.GetCapabilities().SupportsTranslation)
+            {
+                return provider.GetCapabilities();
+            }
+        }
+
+        // Fallback to the first available provider in the chain
         foreach (var providerName in chain)
         {
             if (providers.TryGetValue(providerName, out var provider) && provider != null)
@@ -657,14 +671,14 @@ public class CompositeLlmProvider : ILlmProvider
             var providers = GetProviders(forceRefresh);
             if (providers == null || providers.Count == 0)
             {
-                const string criticalError = 
+                const string criticalError =
                     "CRITICAL: No LLM providers are registered in DI container. " +
                     "This indicates a system-level provider registration failure. " +
                     "Check application startup logs for provider registration errors.";
-                    
+
                 _logger.LogError("{Error} Operation: {Operation}, Attempt: {Attempt}",
                     criticalError, operationName, attempt + 1);
-                
+
                 // After both attempts fail, throw a clear error
                 if (attempt == 1)
                 {
@@ -713,8 +727,8 @@ public class CompositeLlmProvider : ILlmProvider
                                 var isIdeation = operationName.Contains("ideation", StringComparison.OrdinalIgnoreCase);
                                 var isTranslation = operationName.Contains("translation", StringComparison.OrdinalIgnoreCase);
                                 // 30 seconds for translation (model loading can be slow), 15 seconds for ideation, 5 seconds for others
-                                var availabilityTimeout = isTranslation ? TimeSpan.FromSeconds(30) : 
-                                                          isIdeation ? TimeSpan.FromSeconds(15) : 
+                                var availabilityTimeout = isTranslation ? TimeSpan.FromSeconds(30) :
+                                                          isIdeation ? TimeSpan.FromSeconds(15) :
                                                           TimeSpan.FromSeconds(5);
 
                                 using var availabilityCts = CancellationTokenSource.CreateLinkedTokenSource(ct);

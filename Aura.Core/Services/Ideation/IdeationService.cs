@@ -59,10 +59,10 @@ public class IdeationService
         _ragContextBuilder = ragContextBuilder;
         _webSearchService = webSearchService;
         _ollamaDirectClient = ollamaDirectClient;
-        
+
         _logger.LogInformation("IdeationService constructed:");
         _logger.LogInformation("  ILlmProvider: {Type}", _llmProvider.GetType().Name);
-        _logger.LogInformation("  IOllamaDirectClient: {Status}", 
+        _logger.LogInformation("  IOllamaDirectClient: {Status}",
             _ollamaDirectClient != null ? "✓ Injected" : "✗ NULL");
     }
 
@@ -74,13 +74,13 @@ public class IdeationService
         try
         {
             var providerTypeName = _llmProvider.GetType().Name;
-            
+
             // Check if we're using the RuleBased fallback (no real LLM)
             if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
             {
                 return (false, "No AI provider is configured. Please start Ollama or configure another AI provider in Settings.");
             }
-            
+
             // If Ollama provider, verify it's running
             if (providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase))
             {
@@ -88,20 +88,20 @@ public class IdeationService
                 {
                     return (false, "Ollama client not configured. Please check your Ollama installation.");
                 }
-                
+
                 var isAvailable = await _ollamaDirectClient.IsAvailableAsync(ct).ConfigureAwait(false);
                 if (!isAvailable)
                 {
                     return (false, "Ollama is not running. Start it with 'ollama serve' in a terminal.");
                 }
-                
+
                 var models = await _ollamaDirectClient.ListModelsAsync(ct).ConfigureAwait(false);
                 if (models.Count == 0)
                 {
                     return (false, "No Ollama models installed. Install one with 'ollama pull llama3.1' or 'ollama pull qwen2.5'.");
                 }
             }
-            
+
             return (true, null);
         }
         catch (Exception ex)
@@ -480,9 +480,9 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
                     // Clean response before parsing (remove markdown code blocks, BOM, etc.)
                     var cleanedResponse = RepairJsonResponse(jsonResponse);
-                    
-                    _logger.LogDebug("Repaired JSON response (length: {Length}): {Preview}", 
-                        cleanedResponse.Length, 
+
+                    _logger.LogDebug("Repaired JSON response (length: {Length}): {Preview}",
+                        cleanedResponse.Length,
                         cleanedResponse.Substring(0, Math.Min(500, cleanedResponse.Length)));
 
                     // CRITICAL FIX: Wrap JSON parsing in try-catch with detailed error reporting
@@ -498,11 +498,11 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     }
                     catch (JsonException jsonEx)
                     {
-                        _logger.LogError(jsonEx, 
+                        _logger.LogError(jsonEx,
                             "Failed to parse JSON response (Attempt {Attempt}). Response preview: {Preview}",
                             attempt + 1,
                             cleanedResponse.Substring(0, Math.Min(500, cleanedResponse.Length)));
-                        
+
                         // If this is not the last attempt, retry
                         if (attempt < maxRetries)
                         {
@@ -511,7 +511,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                             lastException = jsonEx;
                             continue;
                         }
-                        
+
                         // Last attempt failed - provide detailed error
                         throw new InvalidOperationException(
                             $"Failed to parse Ollama JSON response after {maxRetries + 1} attempts. " +
@@ -742,9 +742,9 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             // Determine if RuleBased provider was used (offline fallback)
             // The RuleBased provider is the offline fallback that generates basic template content
             const string RuleBasedProviderName = "RuleBased";
-            var isOfflineFallback = providerUsed != null && 
+            var isOfflineFallback = providerUsed != null &&
                 providerUsed.Contains(RuleBasedProviderName, StringComparison.OrdinalIgnoreCase);
-            
+
             string? fallbackReason = null;
             if (isOfflineFallback)
             {
@@ -3879,6 +3879,10 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             NumCtx = 4096 // Standard context window
         };
 
+        _logger.LogInformation(
+            "Ollama generation options for ideation: numGpu={NumGpu}, numCtx={NumCtx}, maxTokens={MaxTokens}",
+            options.NumGpu, options.NumCtx, options.MaxTokens);
+
         // Call Ollama with retry handled by OllamaDirectClient
         try
         {
@@ -3956,14 +3960,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
         // Remove markdown code block wrappers using regex for more robust matching
         cleaned = System.Text.RegularExpressions.Regex.Replace(
-            cleaned, 
-            @"^```(?:json)?\s*", 
-            "", 
+            cleaned,
+            @"^```(?:json)?\s*",
+            "",
             System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         cleaned = System.Text.RegularExpressions.Regex.Replace(
-            cleaned, 
-            @"\s*```$", 
-            "", 
+            cleaned,
+            @"\s*```$",
+            "",
             System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         cleaned = cleaned.Trim();
@@ -3976,7 +3980,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         if (firstBrace >= 0 && lastBrace > firstBrace)
         {
             cleaned = cleaned.Substring(firstBrace, lastBrace - firstBrace + 1);
-            
+
             // CRITICAL FIX: Try to repair incomplete JSON
             // Count braces to detect truncated JSON
             int openBraces = 0;
@@ -3986,7 +3990,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 if (c == '{') openBraces++;
                 if (c == '}') closeBraces++;
             }
-            
+
             // If we have more open braces than close braces, try to close them
             if (openBraces > closeBraces)
             {
@@ -4000,7 +4004,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             // CRITICAL FIX: Incomplete JSON - only opening brace found
             // Try to extract and complete it
             cleaned = cleaned.Substring(firstBrace);
-            
+
             // Count open and close braces in a single pass for efficiency
             int openBraces = 0;
             int closeBraces = 0;
@@ -4009,7 +4013,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 if (c == '{') openBraces++;
                 else if (c == '}') closeBraces++;
             }
-            
+
             var missingBraces = openBraces - closeBraces;
             if (missingBraces > 0)
             {

@@ -24,6 +24,7 @@ import type { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import apiClient from '../../services/api/apiClient';
 import type {
+  HealthDetailsResponse,
   ProviderHealthCheckDto,
   ProviderTypeHealthDto,
   SystemHealthDto,
@@ -136,6 +137,41 @@ const SystemHealthDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  const mapHealthDetailsToSystem = (details: HealthDetailsResponse): SystemHealthDto => {
+    const diskCheck = details.checks.find(
+      (c) => c.id === 'disk_space' || c.name.toLowerCase().includes('disk')
+    );
+    const ffmpegCheck = details.checks.find(
+      (c) => c.id?.toLowerCase().includes('ffmpeg') || c.name.toLowerCase().includes('ffmpeg')
+    );
+    const issues = details.checks
+      .filter((c) => c.status === 'fail')
+      .map((c) => c.message ?? `${c.name} failed`);
+
+    const diskSpaceGB =
+      typeof diskCheck?.data?.freeSpaceGB === 'number'
+        ? diskCheck.data.freeSpaceGB
+        : typeof diskCheck?.data?.freeSpaceGb === 'number'
+          ? // Some backends might expose different casing
+            diskCheck.data.freeSpaceGb
+          : 0;
+
+    const memoryCheck = details.checks.find((c) => c.name.toLowerCase().includes('memory'));
+    const memoryUsagePercent =
+      memoryCheck && typeof memoryCheck.data?.usagePercent === 'number'
+        ? (memoryCheck.data.usagePercent as number)
+        : 0;
+
+    return {
+      ffmpegAvailable: ffmpegCheck?.status === 'pass',
+      ffmpegVersion: (ffmpegCheck?.data?.version as string | undefined) ?? null,
+      diskSpaceGB,
+      memoryUsagePercent,
+      isHealthy: details.overallStatus === 'healthy',
+      issues,
+    };
+  };
+
   const fetchHealthData = useCallback(async () => {
     const fetchHealthEndpoint = async <T,>(url: string) => {
       try {
@@ -160,10 +196,20 @@ const SystemHealthDashboard = () => {
         fetchHealthEndpoint<SystemHealthDto>('/api/health/system'),
       ]);
 
+      let resolvedSystem = system;
+
+      // Fallback: if the legacy endpoint fails or returns null, use canonical health details endpoint
+      if (!resolvedSystem) {
+        const details = await fetchHealthEndpoint<HealthDetailsResponse>('/health/details');
+        if (details) {
+          resolvedSystem = mapHealthDetailsToSystem(details);
+        }
+      }
+
       setLlmHealth(llm);
       setTtsHealth(tts);
       setImagesHealth(images);
-      setSystemHealth(system);
+      setSystemHealth(resolvedSystem);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch health data');

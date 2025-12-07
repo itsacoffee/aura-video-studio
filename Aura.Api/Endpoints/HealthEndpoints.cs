@@ -38,7 +38,8 @@ public static class HealthEndpoints
         .Produces<object>(200);
 
         // Canonical system health endpoint - comprehensive status information
-        group.MapGet("/api/health", async (HealthCheckService healthService, HttpContext context, CancellationToken ct) =>
+        // NOTE: The group already prefixes routes with "/api", so this path must be "/health"
+        group.MapGet("/health", async (HealthCheckService healthService, HttpContext context, CancellationToken ct) =>
         {
             try
             {
@@ -50,7 +51,7 @@ public static class HealthEndpoints
             {
                 Log.Error(ex, "Error retrieving system health");
                 var correlationId = context.TraceIdentifier;
-                
+
                 // Always return 200 with error status in body, never leak exceptions
                 return Results.Ok(new
                 {
@@ -80,7 +81,7 @@ public static class HealthEndpoints
         {
             var checks = new Dictionary<string, bool>();
             var errors = new List<string>();
-            
+
             // Check database
             try
             {
@@ -101,7 +102,7 @@ public static class HealthEndpoints
                 checks["database"] = false;
                 errors.Add($"Database: {ex.Message}");
             }
-            
+
             // Check FFmpeg
             try
             {
@@ -126,7 +127,7 @@ public static class HealthEndpoints
                 checks["ffmpeg"] = false;
                 errors.Add($"FFmpeg: {ex.Message}");
             }
-            
+
             // Check settings
             try
             {
@@ -151,10 +152,10 @@ public static class HealthEndpoints
                 checks["settings"] = false;
                 errors.Add($"Settings: {ex.Message}");
             }
-            
+
             var allReady = checks.Values.All(v => v);
-            
-            return allReady 
+
+            return allReady
                 ? Results.Ok(new { ready = true, checks })
                 : Results.Json(new { ready = false, checks, errors }, statusCode: 503);
         })
@@ -414,13 +415,13 @@ public static class HealthEndpoints
                         try
                         {
                             var status = await providerStatusService.GetAllProviderStatusAsync(ct).ConfigureAwait(false);
-                            
+
                             // Configured providers: those that are available (regardless of online status)
                             configuredProviders = status.Providers
                                 .Where(p => p.IsAvailable)
                                 .Select(p => p.Name.ToLower())
                                 .ToList();
-                            
+
                             // Validated providers: those that are both available and online (validated and reachable)
                             validatedProviders = status.Providers
                                 .Where(p => p.IsOnline && p.IsAvailable)
@@ -441,14 +442,14 @@ public static class HealthEndpoints
                         {
                             var allKeys = keyStore.GetAllKeys();
                             var providerNames = new[] { "openai", "anthropic", "google", "ollama", "elevenlabs", "playht", "windows", "stabilityai", "stablediffusion", "pexels", "pixabay", "unsplash" };
-                            
+
                             foreach (var providerName in providerNames)
                             {
                                 var hasKey = allKeys.ContainsKey(providerName) && !string.IsNullOrWhiteSpace(allKeys[providerName]);
                                 var isLocalProvider = providerName.Equals("ollama", StringComparison.OrdinalIgnoreCase) ||
                                                       providerName.Equals("windows", StringComparison.OrdinalIgnoreCase) ||
                                                       providerName.Equals("stablediffusion", StringComparison.OrdinalIgnoreCase);
-                                
+
                                 if (hasKey || isLocalProvider)
                                 {
                                     configuredProviders.Add(providerName);

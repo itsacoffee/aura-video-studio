@@ -378,6 +378,9 @@ public partial class JobRunner
     /// </summary>
     private async Task ExecuteJobAsync(string jobId, CancellationToken ct)
     {
+        CancellationTokenSource? stuckMonitorCts = null;
+        Task? stuckMonitor = null;
+
         try
         {
             var job = GetJob(jobId);
@@ -428,6 +431,52 @@ public partial class JobRunner
                 stage: "Initialization",
                 progressMessage: "Initializing job execution",
                 startedUtc: DateTime.UtcNow);
+
+            // Start a background monitor to detect stalled jobs (e.g., render hang around 70-80%)
+            stuckMonitorCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            stuckMonitor = Task.Run(async () =>
+            {
+                while (!stuckMonitorCts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(30), stuckMonitorCts.Token).ConfigureAwait(false);
+
+                    var (isStuck, stuckDuration, lastPercent, lastStage) = CheckJobStuckStatus(jobId, thresholdSeconds: 180);
+                    if (!isStuck)
+                    {
+                        continue;
+                    }
+
+                    var ffmpegLog = TryReadFfmpegLog(jobId);
+                    var message = $"Job appears stuck for {stuckDuration.TotalSeconds:F0}s at {lastPercent}% ({lastStage ?? "Unknown"}).";
+                    _logger.LogError("[Job {JobId}] {Message}", jobId, message);
+
+                    var failure = new JobFailure
+                    {
+                        Stage = lastStage ?? job.Stage,
+                        Message = message,
+                        CorrelationId = job.CorrelationId ?? string.Empty,
+                        FailedAt = DateTime.UtcNow,
+                        ErrorCode = "E305-JOB_STALLED",
+                        StderrSnippet = ffmpegLog,
+                        SuggestedActions = new[]
+                        {
+                            "Retry the render with different settings (e.g., software encoding)",
+                            "Verify FFmpeg is accessible and not blocked by antivirus",
+                            "Check GPU/CPU utilization to ensure the process is not paused"
+                        }
+                    };
+
+                    job = UpdateJob(
+                        job,
+                        status: JobStatus.Failed,
+                        progressMessage: message,
+                        errorMessage: message,
+                        failureDetails: failure,
+                        finishedAt: DateTime.UtcNow);
+
+                    stuckMonitorCts.Cancel();
+                }
+            }, stuckMonitorCts.Token);
 
             // Detect system profile for orchestration
             _logger.LogInformation("[Job {JobId}] Detecting system hardware...", jobId);
@@ -493,7 +542,7 @@ public partial class JobRunner
             });
 
             // Execute orchestrator with system profile and detailed progress
-        _jobImageProviders.TryRemove(jobId, out var imageProviderOverride);
+            _jobImageProviders.TryRemove(jobId, out var imageProviderOverride);
 
             var generationResult = await _orchestrator.GenerateVideoResultAsync(
                 job.Brief!,
@@ -566,6 +615,15 @@ public partial class JobRunner
                 completedUtc: DateTime.UtcNow);
 
             _logger.LogInformation("Job {JobId} completed successfully. Output: {OutputPath}", jobId, generationResult.OutputPath);
+
+            if (stuckMonitorCts != null)
+            {
+                stuckMonitorCts.Cancel();
+                if (stuckMonitor != null)
+                {
+                    await Task.WhenAny(stuckMonitor, Task.Delay(50, CancellationToken.None)).ConfigureAwait(false);
+                }
+            }
         }
         catch (OperationCanceledException)
         {
@@ -764,6 +822,15 @@ public partial class JobRunner
         }
         finally
         {
+            if (stuckMonitorCts != null)
+            {
+                stuckMonitorCts.Cancel();
+                if (stuckMonitor != null)
+                {
+                    await Task.WhenAny(stuckMonitor, Task.Delay(50, CancellationToken.None)).ConfigureAwait(false);
+                }
+            }
+
             _activeJobs.Remove(jobId);
 
             // Clean up cancellation token
