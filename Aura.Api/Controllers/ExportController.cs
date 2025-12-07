@@ -146,13 +146,14 @@ public class ExportController : ControllerBase
                 Metadata = request.Metadata ?? new Dictionary<string, string>()
             };
 
-            // Queue the export job for final processing (the orchestration service has its own job tracking)
-            _ = await _exportService.QueueExportAsync(exportRequest).ConfigureAwait(false);
+            // Queue the export job for final processing and link it to the video job for progress updates
+            var exportJobId = await _exportService.QueueExportAsync(exportRequest, videoJobId: jobId).ConfigureAwait(false);
 
-            // Update the rendering job to completed - timeline rendering is done, export is queued
-            await _exportJobService.UpdateJobStatusAsync(jobId, "completed", 100, request.OutputFile).ConfigureAwait(false);
+            // Update the rendering job status - timeline rendering is done, export is now queued
+            // The export will update this job to "completed" when it finishes
+            await _exportJobService.UpdateJobProgressAsync(jobId, 100, "Export queued, waiting for processing").ConfigureAwait(false);
 
-            return Ok(new { jobId, message = "Export job queued successfully" });
+            return Ok(new { jobId, exportJobId, message = "Export job queued successfully" });
         }
         catch (Exception ex)
         {

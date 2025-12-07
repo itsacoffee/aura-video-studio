@@ -109,7 +109,9 @@ public interface IExportOrchestrationService
     /// <summary>
     /// Queue an export job for background processing
     /// </summary>
-    Task<string> QueueExportAsync(ExportRequest request);
+    /// <param name="request">Export request parameters</param>
+    /// <param name="videoJobId">Optional VideoJob ID to update upon completion (for timeline rendering jobs)</param>
+    Task<string> QueueExportAsync(ExportRequest request, string? videoJobId = null);
     
     /// <summary>
     /// Get status of an export job
@@ -145,7 +147,9 @@ public class ExportOrchestrationService : IExportOrchestrationService
     private readonly IBitrateOptimizationService _bitrateOptimizationService;
     private readonly ILogger<ExportOrchestrationService> _logger;
     private readonly AuraDbContext _dbContext;
+    private readonly IExportJobService? _exportJobService;
     private readonly Dictionary<string, ExportJob> _jobs = new();
+    private readonly Dictionary<string, string> _jobIdMapping = new(); // Maps ExportJob.Id -> VideoJob.Id
     private readonly SemaphoreSlim _jobLock = new(1, 1);
 
     public ExportOrchestrationService(
@@ -154,7 +158,8 @@ public class ExportOrchestrationService : IExportOrchestrationService
         IResolutionService resolutionService,
         IBitrateOptimizationService bitrateOptimizationService,
         ILogger<ExportOrchestrationService> logger,
-        AuraDbContext dbContext)
+        AuraDbContext dbContext,
+        IExportJobService? exportJobService = null)
     {
         _ffmpegService = ffmpegService ?? throw new ArgumentNullException(nameof(ffmpegService));
         _formatConversionService = formatConversionService ?? throw new ArgumentNullException(nameof(formatConversionService));
@@ -162,6 +167,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
         _bitrateOptimizationService = bitrateOptimizationService ?? throw new ArgumentNullException(nameof(bitrateOptimizationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _exportJobService = exportJobService;
     }
 
     public async Task<ExportResult> ExportAsync(
@@ -297,7 +303,7 @@ public class ExportOrchestrationService : IExportOrchestrationService
         }
     }
 
-    public async Task<string> QueueExportAsync(ExportRequest request)
+    public async Task<string> QueueExportAsync(ExportRequest request, string? videoJobId = null)
     {
         await _jobLock.WaitAsync().ConfigureAwait(false);
         try
@@ -312,6 +318,13 @@ public class ExportOrchestrationService : IExportOrchestrationService
             };
 
             _jobs[job.Id] = job;
+            
+            // Link the export job to the video job for progress updates
+            if (videoJobId != null)
+            {
+                _jobIdMapping[job.Id] = videoJobId;
+                _logger.LogInformation("Linked export job {ExportJobId} to video job {VideoJobId}", job.Id, videoJobId);
+            }
             
             // Save to database
             var historyEntity = new ExportHistoryEntity
@@ -478,6 +491,33 @@ public class ExportOrchestrationService : IExportOrchestrationService
                             entity.DurationSeconds = result.Duration.TotalSeconds;
                         }
                         await _dbContext.SaveChangesAsync().ConfigureAwait(false);
+                    }
+                    
+                    // Update linked VideoJob if exists
+                    if (_exportJobService != null && _jobIdMapping.TryGetValue(jobId, out var videoJobId))
+                    {
+                        if (result.Success)
+                        {
+                            await _exportJobService.UpdateJobStatusAsync(
+                                videoJobId,
+                                "completed",
+                                100,
+                                outputPath: result.OutputFile).ConfigureAwait(false);
+                            _logger.LogInformation("Updated video job {VideoJobId} with export result: {OutputPath}", videoJobId, result.OutputFile);
+                        }
+                        else
+                        {
+                            await _exportJobService.UpdateJobStatusAsync(
+                                videoJobId,
+                                "failed",
+                                100,
+                                outputPath: null,
+                                errorMessage: result.ErrorMessage).ConfigureAwait(false);
+                            _logger.LogWarning("Updated video job {VideoJobId} with export failure: {Error}", videoJobId, result.ErrorMessage);
+                        }
+                        
+                        // Remove mapping after update
+                        _jobIdMapping.Remove(jobId);
                     }
                 }
             }
