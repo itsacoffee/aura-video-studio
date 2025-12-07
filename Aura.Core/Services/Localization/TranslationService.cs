@@ -50,6 +50,31 @@ public class TranslationService
     }
 
     /// <summary>
+    /// Check if an LLM provider is available for translation
+    /// </summary>
+    public async Task<bool> IsProviderAvailableAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var capabilities = _llmProvider.GetCapabilities();
+            if (!capabilities.SupportsTranslation)
+                return false;
+                
+            // If Ollama, verify it's actually running
+            if (_ollamaDirectClient != null)
+            {
+                return await _ollamaDirectClient.IsAvailableAsync(ct).ConfigureAwait(false);
+            }
+            
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Validate that the current LLM provider supports translation
     /// </summary>
     private void ValidateProviderCapabilities()
@@ -58,9 +83,22 @@ public class TranslationService
 
         if (!capabilities.SupportsTranslation)
         {
-            throw new InvalidOperationException(
-                $"The current LLM provider ({capabilities.ProviderName}) does not support translation. " +
-                $"Please configure an AI provider that supports translation capabilities.");
+            var providerTypeName = _llmProvider.GetType().Name;
+            string actionableMessage;
+            
+            if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+            {
+                actionableMessage = "No AI provider is configured for translation. " +
+                    "Please start Ollama with 'ollama serve' and install a model with 'ollama pull llama3.1', " +
+                    "or configure another AI provider (OpenAI, Anthropic, Google Gemini) in Settings.";
+            }
+            else
+            {
+                actionableMessage = $"The current LLM provider ({capabilities.ProviderName}) does not support translation. " +
+                    $"Please configure an AI provider that supports translation capabilities.";
+            }
+            
+            throw new InvalidOperationException(actionableMessage);
         }
 
         if (capabilities.IsLocalModel)
@@ -94,6 +132,31 @@ public class TranslationService
         var stopwatch = Stopwatch.StartNew();
         _logger.LogInformation("Starting translation from {Source} to {Target}",
             request.SourceLanguage, request.TargetLanguage);
+
+        // Pre-flight check: Validate provider availability before attempting translation
+        var isAvailable = await IsProviderAvailableAsync(cancellationToken).ConfigureAwait(false);
+        if (!isAvailable)
+        {
+            var providerTypeName = _llmProvider.GetType().Name;
+            if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "No AI provider is configured for translation. " +
+                    "Please start Ollama with 'ollama serve' and install a model with 'ollama pull llama3.1', " +
+                    "or configure another AI provider (OpenAI, Anthropic, Google Gemini) in Settings.");
+            }
+            else if (providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Ollama is not running or no models are installed. " +
+                    "Start Ollama with 'ollama serve' and ensure you have a model installed with 'ollama list'.");
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "AI provider is not available for translation. Please check your provider configuration in Settings.");
+            }
+        }
 
         // Validate provider capabilities before attempting translation
         ValidateProviderCapabilities();

@@ -216,21 +216,31 @@ public class LocalizationController : ControllerBase
                 }
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("does not support translation"))
+        catch (InvalidOperationException ex) when (
+            ex.Message.Contains("does not support translation") || 
+            ex.Message.Contains("No AI provider is configured") ||
+            ex.Message.Contains("Ollama is not running") ||
+            ex.Message.Contains("not available"))
         {
-            _logger.LogWarning(ex, "Translation attempted with unsupported provider, CorrelationId: {CorrelationId}",
+            _logger.LogWarning(ex, "Translation provider not available, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
-            return BadRequest(new ProblemDetails
+            
+            // Return 503 for provider availability issues with clear instructions
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
             {
-                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#PROVIDER_NOT_SUPPORTED",
-                Title = "Provider Not Supported",
-                Status = StatusCodes.Status400BadRequest,
+                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#PROVIDER_NOT_AVAILABLE",
+                Title = "AI Provider Not Available",
+                Status = StatusCodes.Status503ServiceUnavailable,
                 Detail = ex.Message,
                 Extensions = 
                 { 
                     ["correlationId"] = HttpContext.TraceIdentifier,
-                    ["errorCode"] = "PROVIDER_NOT_SUPPORTED",
-                    ["recommendation"] = "Start Ollama with a model (e.g., 'ollama run llama3.1') or configure OpenAI API key"
+                    ["errorCode"] = "PROVIDER_NOT_AVAILABLE",
+                    ["suggestions"] = new[] {
+                        "Start Ollama: Run 'ollama serve' in a terminal",
+                        "Install a model: Run 'ollama pull llama3.1'",
+                        "Or configure another AI provider in Settings"
+                    }
                 }
             });
         }
