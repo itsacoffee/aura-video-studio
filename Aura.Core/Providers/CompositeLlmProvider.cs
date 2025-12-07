@@ -657,10 +657,13 @@ public class CompositeLlmProvider : ILlmProvider
             var providers = GetProviders(forceRefresh);
             if (providers == null || providers.Count == 0)
             {
-                var criticalError = $"CRITICAL: No LLM providers are registered in DI container for {operationName} (attempt {attempt + 1}). " +
+                const string criticalError = 
+                    "CRITICAL: No LLM providers are registered in DI container. " +
                     "This indicates a system-level provider registration failure. " +
                     "Check application startup logs for provider registration errors.";
-                _logger.LogError(criticalError);
+                    
+                _logger.LogError("{Error} Operation: {Operation}, Attempt: {Attempt}",
+                    criticalError, operationName, attempt + 1);
                 
                 // After both attempts fail, throw a clear error
                 if (attempt == 1)
