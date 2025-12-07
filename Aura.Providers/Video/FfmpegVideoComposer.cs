@@ -963,18 +963,29 @@ public class FfmpegVideoComposer : IVideoComposer
         _logger.LogDebug("Full command: ffmpeg {Command}", command);
         
         // Log detailed input file information
-        _logger.LogInformation(
-            "FFmpeg input files (JobId={JobId}):\n" +
-            "  Narration: {NarrationPath} ({NarrationSizeMB:F2} MB)\n" +
-            "  Music: {MusicPath}\n" +
-            "  Visual Assets: {AssetCount} files\n" +
-            "  Output: {OutputPath}",
-            Path.GetFileName(outputPath).Replace("AuraVideoStudio_", "").Replace(".mp4", ""),
-            timeline.NarrationPath, 
-            new FileInfo(timeline.NarrationPath).Length / 1024.0 / 1024.0,
-            string.IsNullOrEmpty(timeline.MusicPath) ? "None" : $"{timeline.MusicPath} ({new FileInfo(timeline.MusicPath).Length / 1024.0 / 1024.0:F2} MB)",
-            visualAssets.Count,
-            outputPath);
+        try
+        {
+            var narrationFileInfo = new FileInfo(timeline.NarrationPath);
+            var musicInfo = !string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath)
+                ? $"{timeline.MusicPath} ({new FileInfo(timeline.MusicPath).Length / 1024.0 / 1024.0:F2} MB)"
+                : "None";
+            
+            _logger.LogInformation(
+                "FFmpeg input files:\n" +
+                "  Narration: {NarrationPath} ({NarrationSizeMB:F2} MB)\n" +
+                "  Music: {MusicPath}\n" +
+                "  Visual Assets: {AssetCount} files\n" +
+                "  Output: {OutputPath}",
+                timeline.NarrationPath, 
+                narrationFileInfo.Length / 1024.0 / 1024.0,
+                musicInfo,
+                visualAssets.Count,
+                outputPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to log input file details");
+        }
 
         return command;
     }
@@ -1432,8 +1443,19 @@ public class FfmpegVideoComposer : IVideoComposer
                 throw new InvalidOperationException($"Visual asset is empty: {asset.Path}");
             }
             
-            // Determine expected type based on file extension
-            var expectedType = asset.IsImage ? "image" : "image|video";
+            // Determine expected type - be explicit about what we expect
+            string expectedType;
+            if (asset.IsImage)
+            {
+                expectedType = "image";
+            }
+            else
+            {
+                // For video files, accept both image and video codec types since
+                // some video files may also contain image streams
+                expectedType = "image|video";
+            }
+            
             await ValidateMediaFileAsync(asset.Path, expectedType, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
         }
         

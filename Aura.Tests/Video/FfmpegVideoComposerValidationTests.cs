@@ -83,7 +83,6 @@ public class FfmpegVideoComposerValidationTests : IDisposable
     public async Task RenderAsync_WithEmptyNarrationFile_ShouldThrowInvalidOperationException()
     {
         // Arrange
-        var ffmpegResolver = new FFmpegResolver(_loggerFactory.CreateLogger<FFmpegResolver>(), _cache);
         var ffmpegLocator = new FfmpegLocator(_loggerFactory.CreateLogger<FfmpegLocator>());
         
         var composer = new FfmpegVideoComposer(
@@ -129,7 +128,6 @@ public class FfmpegVideoComposerValidationTests : IDisposable
     {
         // Arrange
         var customOutputDir = Path.Combine(_testOutputDir, "custom_output");
-        var ffmpegResolver = new FFmpegResolver(_loggerFactory.CreateLogger<FFmpegResolver>(), _cache);
         var ffmpegLocator = new FfmpegLocator(_loggerFactory.CreateLogger<FfmpegLocator>());
 
         // Act
