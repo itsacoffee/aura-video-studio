@@ -177,6 +177,10 @@ public class BackgroundJobQueueManager
         var jobCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _activeJobs[jobId] = jobCts;
         
+        // Define event handler as local variable so it can be unsubscribed
+        // This prevents memory leaks from accumulated event handlers
+        EventHandler<JobProgressEventArgs>? progressHandler = null;
+        
         try
         {
             // Deserialize job data
@@ -187,7 +191,7 @@ public class BackgroundJobQueueManager
             }
             
             // Subscribe to job runner progress
-            _jobRunner.JobProgress += (sender, args) =>
+            progressHandler = (sender, args) =>
             {
                 if (args.JobId == jobId)
                 {
@@ -195,6 +199,7 @@ public class BackgroundJobQueueManager
                     JobProgressUpdated?.Invoke(this, args);
                 }
             };
+            _jobRunner.JobProgress += progressHandler;
             
             // Execute job
             var job = await _jobRunner.CreateAndStartJobAsync(
@@ -244,6 +249,12 @@ public class BackgroundJobQueueManager
         }
         finally
         {
+            // Unsubscribe from event to prevent memory leak
+            if (progressHandler != null)
+            {
+                _jobRunner.JobProgress -= progressHandler;
+            }
+            
             _activeJobs.TryRemove(jobId, out _);
             jobCts.Dispose();
         }
