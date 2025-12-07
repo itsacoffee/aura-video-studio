@@ -479,7 +479,17 @@ public class VideoOrchestrator
 
             // Create task executor that maps generation tasks to providers
             _logger.LogInformation("[Orchestrator] Creating task executor for generation tasks");
-            var executorContext = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo, progress, detailedProgress, correlationId);
+            var executorContext = CreateTaskExecutor(
+                brief,
+                planSpec,
+                voiceSpec,
+                renderSpec,
+                ct,
+                isQuickDemo,
+                progress,
+                detailedProgress,
+                correlationId,
+                activeImageProvider);
             var taskExecutor = executorContext.Executor;
 
             // Map progress events from orchestration to both string and detailed progress
@@ -1685,7 +1695,8 @@ public class VideoOrchestrator
         bool isQuickDemo = false,
         IProgress<string>? progress = null,
         IProgress<GenerationProgress>? detailedProgress = null,
-        string? correlationId = null)
+        string? correlationId = null,
+        IImageProvider? imageProvider = null)
     {
         var state = new TaskExecutorState();
         // Shared state for task results
@@ -1693,6 +1704,7 @@ public class VideoOrchestrator
         List<Scene>? parsedScenes = null;
         string? narrationPath = null;
         Dictionary<int, IReadOnlyList<Asset>> sceneAssets = new();
+        var resolvedImageProvider = imageProvider ?? _imageProvider;
 
         state.Executor = async (node, ct) =>
         {
@@ -1831,7 +1843,7 @@ public class VideoOrchestrator
 
                 case GenerationTaskType.ImageGeneration:
                     // Generate images for specific scene
-                    if (parsedScenes == null || activeImageProvider == null)
+                    if (parsedScenes == null || resolvedImageProvider == null)
                     {
                         // Return empty asset list if no image provider available
                         return Array.Empty<Asset>();
@@ -1857,7 +1869,7 @@ public class VideoOrchestrator
                     var assets = await _retryWrapper.ExecuteWithRetryAsync(
                         async (ctRetry) =>
                         {
-                            var generatedAssets = await activeImageProvider.FetchOrGenerateAsync(scene, visualSpec, ctRetry).ConfigureAwait(false);
+                            var generatedAssets = await resolvedImageProvider.FetchOrGenerateAsync(scene, visualSpec, ctRetry).ConfigureAwait(false);
 
                             // Validate image assets
                             var imageValidation = _imageValidator.ValidateImageAssets(generatedAssets, expectedMinCount: 1);
