@@ -132,14 +132,14 @@ public class ProviderHealthInitializer
                 {
                     var providerType = provider.GetType().Name.Replace("Provider", "").Replace("Tts", "");
                     
-                    _healthMonitor.RegisterHealthCheck(providerType, async (ct) =>
+                    _healthMonitor.RegisterHealthCheck(providerType, (ct) =>
                     {
                         if (providerType == "NullTts" || providerType == "Windows")
                         {
-                            return true;
+                            return Task.FromResult(true);
                         }
 
-                        return true;
+                        return Task.FromResult(true);
                     });
 
                     _logger.LogInformation("✓ Registered health check for TTS provider: {ProviderType}", providerType);
@@ -173,9 +173,9 @@ public class ProviderHealthInitializer
                 {
                     var providerType = provider.GetType().Name.Replace("Provider", "");
                     
-                    _healthMonitor.RegisterHealthCheck(providerType, async (ct) =>
+                    _healthMonitor.RegisterHealthCheck(providerType, (ct) =>
                     {
-                        return true;
+                        return Task.FromResult(true);
                     });
 
                     _logger.LogInformation("✓ Registered health check for Image provider: {ProviderType}", providerType);
