@@ -209,6 +209,44 @@ public class ArtifactManager
     }
 
     /// <summary>
+    /// Records an artifact asynchronously with validation and returns the artifact metadata.
+    /// Used by export pipeline to persist output file paths to job artifacts.
+    /// </summary>
+    /// <param name="jobId">The job ID this artifact belongs to</param>
+    /// <param name="name">Display name for the artifact</param>
+    /// <param name="path">File system path to the artifact</param>
+    /// <param name="type">MIME type or artifact type identifier</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>A JobArtifact with validated path and size information</returns>
+    public async Task<JobArtifact> RecordArtifactAsync(
+        string jobId,
+        string name,
+        string path,
+        string type,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(jobId);
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(type);
+
+        await Task.CompletedTask; // Keep async for future persistence logic
+
+        if (!File.Exists(path))
+        {
+            _logger.LogWarning("Artifact file does not exist at path {Path} for job {JobId}", path, jobId);
+        }
+
+        var artifact = CreateArtifact(jobId, name, path, type);
+        
+        _logger.LogInformation(
+            "Recorded artifact for job {JobId}: {Name} ({Type}) at {Path} ({SizeBytes} bytes)",
+            jobId, name, type, path, artifact.SizeBytes);
+
+        return artifact;
+    }
+
+    /// <summary>
     /// Saves logs for a job.
     /// </summary>
     public void SaveLogs(string jobId, List<string> logs)
