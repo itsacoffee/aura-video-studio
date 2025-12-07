@@ -441,6 +441,22 @@ public class FfmpegVideoComposer : IVideoComposer
             process.Dispose();
         }
 
+        // Verify output file exists before returning
+        if (!File.Exists(outputFilePath))
+        {
+            _logger.LogError("Render reported success but output file does not exist: {Path}", outputFilePath);
+            throw new InvalidOperationException($"Video render failed: output file not created at {outputFilePath}");
+        }
+
+        var fileInfo = new FileInfo(outputFilePath);
+        _logger.LogInformation("Render verified: {Path} ({Size} bytes)", outputFilePath, fileInfo.Length);
+
+        if (fileInfo.Length == 0)
+        {
+            _logger.LogError("Render created empty file: {Path}", outputFilePath);
+            throw new InvalidOperationException($"Video render failed: output file is empty at {outputFilePath}");
+        }
+
         _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
         _logger.LogInformation("FFmpeg log written to: {LogPath}", ffmpegLogPath);
 
@@ -575,6 +591,22 @@ public class FfmpegVideoComposer : IVideoComposer
                     stderr,
                     jobId,
                     correlationId);
+            }
+
+            // Verify output file exists before returning
+            if (!File.Exists(outputFilePath))
+            {
+                _logger.LogError("Render reported success but output file does not exist: {Path}", outputFilePath);
+                throw new InvalidOperationException($"Video render failed: output file not created at {outputFilePath}");
+            }
+
+            var fileInfo = new FileInfo(outputFilePath);
+            _logger.LogInformation("Render verified: {Path} ({Size} bytes)", outputFilePath, fileInfo.Length);
+
+            if (fileInfo.Length == 0)
+            {
+                _logger.LogError("Render created empty file: {Path}", outputFilePath);
+                throw new InvalidOperationException($"Video render failed: output file is empty at {outputFilePath}");
             }
 
             _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);

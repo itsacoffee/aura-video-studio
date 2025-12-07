@@ -158,6 +158,18 @@ public class CompositionStage : PipelineStage
 
         // Store final video path in context
         context.FinalVideoPath = outputPath;
+        
+        // CRITICAL: Verify the path was stored correctly
+        if (string.IsNullOrEmpty(context.FinalVideoPath) || context.FinalVideoPath != outputPath)
+        {
+            Logger.LogError("[{CorrelationId}] CRITICAL: FinalVideoPath was not stored correctly! Expected: {Expected}, Got: {Actual}",
+                context.CorrelationId, outputPath, context.FinalVideoPath);
+            throw new InvalidOperationException($"Failed to store final video path. Rendered to: {outputPath}");
+        }
+
+        Logger.LogInformation("[{CorrelationId}] FinalVideoPath stored successfully: {Path}", 
+            context.CorrelationId, context.FinalVideoPath);
+        
         context.SetStageOutput(StageName, new CompositionStageOutput
         {
             VideoPath = outputPath,

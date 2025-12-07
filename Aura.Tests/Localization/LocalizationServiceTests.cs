@@ -18,6 +18,7 @@ public class LocalizationServiceTests
     private readonly Mock<ILlmProvider> _llmProviderMock;
     private readonly Mock<ILoggerFactory> _loggerFactoryMock;
     private readonly Mock<LlmStageAdapter> _stageAdapterMock;
+    private readonly Mock<Aura.Core.Services.Localization.TranslationService> _translationServiceMock;
     private readonly LocalizationService _service;
 
     public LocalizationServiceTests()
@@ -40,11 +41,20 @@ public class LocalizationServiceTests
             mockProviderMixer.Object,
             null);
         
+        // Create mock TranslationService
+        var mockTranslationLogger = new Mock<ILogger<Aura.Core.Services.Localization.TranslationService>>();
+        _translationServiceMock = new Mock<Aura.Core.Services.Localization.TranslationService>(
+            mockTranslationLogger.Object,
+            _llmProviderMock.Object,
+            _stageAdapterMock.Object,
+            null);
+        
         _service = new LocalizationService(
             _loggerMock.Object,
             _llmProviderMock.Object,
             _loggerFactoryMock.Object,
-            _stageAdapterMock.Object);
+            _stageAdapterMock.Object,
+            _translationServiceMock.Object);
     }
 
     #region ValidateLanguageCode Tests

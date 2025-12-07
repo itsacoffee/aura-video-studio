@@ -62,6 +62,50 @@ public class IdeationService
     }
 
     /// <summary>
+    /// Check if an LLM provider is available for ideation
+    /// </summary>
+    public async Task<(bool IsAvailable, string? ErrorMessage)> CheckProviderAvailabilityAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var providerTypeName = _llmProvider.GetType().Name;
+            
+            // Check if we're using the RuleBased fallback (no real LLM)
+            if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, "No AI provider is configured. Please start Ollama or configure another AI provider in Settings.");
+            }
+            
+            // If Ollama provider, verify it's running
+            if (providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_ollamaDirectClient == null)
+                {
+                    return (false, "Ollama client not configured. Please check your Ollama installation.");
+                }
+                
+                var isAvailable = await _ollamaDirectClient.IsAvailableAsync(ct).ConfigureAwait(false);
+                if (!isAvailable)
+                {
+                    return (false, "Ollama is not running. Start it with 'ollama serve' in a terminal.");
+                }
+                
+                var models = await _ollamaDirectClient.ListModelsAsync(ct).ConfigureAwait(false);
+                if (models.Count == 0)
+                {
+                    return (false, "No Ollama models installed. Install one with 'ollama pull llama3.1' or 'ollama pull qwen2.5'.");
+                }
+            }
+            
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Failed to check provider availability: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Generate creative concept variations from a topic
     /// </summary>
     public async Task<BrainstormResponse> BrainstormConceptsAsync(

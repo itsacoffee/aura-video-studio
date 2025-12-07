@@ -100,6 +100,23 @@ public partial class IdeationController : ControllerBase
                     correlationId, ragConfig.TopK, ragConfig.MinimumScore);
             }
 
+            // Pre-flight check: Verify AI provider is available before attempting ideation
+            var (isAvailable, errorMessage) = await _ideationService.CheckProviderAvailabilityAsync(ct).ConfigureAwait(false);
+            if (!isAvailable)
+            {
+                return StatusCode(503, new
+                {
+                    error = errorMessage,
+                    errorCode = "PROVIDER_NOT_AVAILABLE",
+                    correlationId,
+                    suggestions = new[] {
+                        "Start Ollama: Run 'ollama serve' in a terminal",
+                        "Install a model: Run 'ollama pull llama3.1'",
+                        "Or configure another AI provider in Settings"
+                    }
+                });
+            }
+
             // Create updated request with RAG configuration
             var requestWithRag = request with
             {
