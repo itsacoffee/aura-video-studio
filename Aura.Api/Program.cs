@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Serilog;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -622,10 +623,10 @@ builder.Services.AddSingleton<Aura.Core.Services.Providers.OllamaHealthCheckServ
 // ARCHITECTURAL FIX: Register OllamaDirectClient with proper DI instead of using reflection
 // This provides a clean, testable interface to Ollama without accessing private fields
 // Configure OllamaSettings using a factory that resolves ProviderSettings service
-builder.Services.AddSingleton<Microsoft.Extensions.Options.IConfigureOptions<Aura.Core.Providers.OllamaSettings>>(sp =>
+builder.Services.AddSingleton<IConfigureOptions<Aura.Core.Providers.OllamaSettings>>(sp =>
 {
-    return new Microsoft.Extensions.Options.ConfigureNamedOptions<Aura.Core.Providers.OllamaSettings>(
-        Microsoft.Extensions.Options.Options.DefaultName, 
+    return new ConfigureNamedOptions<Aura.Core.Providers.OllamaSettings>(
+        Options.DefaultName, 
         options =>
         {
             var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();

@@ -15,7 +15,8 @@ namespace Aura.Tests.Providers;
 public class OllamaSettingsConfigurationTests
 {
     /// <summary>
-    /// Creates a service collection with OllamaSettings configured via ProviderSettings factory
+    /// Creates a service collection with OllamaSettings configured via ProviderSettings factory.
+    /// This mirrors the configuration in Program.cs to verify the production setup works correctly.
     /// </summary>
     private static ServiceCollection CreateServiceCollectionWithOllamaSettings()
     {
