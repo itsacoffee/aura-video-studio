@@ -53,8 +53,36 @@ public class ProviderHealthCheck : IHealthCheck
             var data = new Dictionary<string, object>();
             var warnings = new List<string>();
 
+            _logger.LogInformation("=== Provider Health Check Starting ===");
+            _logger.LogInformation("LlmProviderFactory: {IsNull}", _llmProviderFactory == null ? "NULL" : "OK");
+            _logger.LogInformation("LoggerFactory: {IsNull}", _loggerFactory == null ? "NULL" : "OK");
+
             var llmProviders = _llmProviderFactory.CreateAvailableProviders(_loggerFactory);
+            
+            _logger.LogInformation("LLM Providers returned: {Count}", llmProviders.Count);
+            if (llmProviders.Count > 0)
+            {
+                _logger.LogInformation("LLM Providers: {Providers}", string.Join(", ", llmProviders.Keys));
+            }
+            else
+            {
+                _logger.LogError("CRITICAL: LlmProviderFactory.CreateAvailableProviders returned ZERO providers!");
+                _logger.LogError("This should NEVER happen - at minimum RuleBased should be available");
+            }
+
             var ttsProvidersFiltered = _ttsProviders.Where(p => p != null).ToList();
+            
+            _logger.LogInformation("TTS Providers (before filter): {Count}", _ttsProviders?.Count() ?? 0);
+            _logger.LogInformation("TTS Providers (after null filter): {Count}", ttsProvidersFiltered.Count);
+            if (ttsProvidersFiltered.Count > 0)
+            {
+                var types = ttsProvidersFiltered.Select(p => p.GetType().Name);
+                _logger.LogInformation("TTS Provider types: {Types}", string.Join(", ", types));
+            }
+            else
+            {
+                _logger.LogWarning("No TTS providers available after filtering");
+            }
 
             data["llm_providers_available"] = llmProviders.Count;
             data["tts_providers_available"] = ttsProvidersFiltered.Count;
