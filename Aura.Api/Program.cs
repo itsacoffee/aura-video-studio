@@ -961,7 +961,18 @@ builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>(sp =>
     var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
     var ragContextBuilder = sp.GetService<Aura.Core.Services.RAG.RagContextBuilder>();
     var webSearchService = sp.GetService<Aura.Core.Services.Ideation.WebSearchService>();
-    return new Aura.Core.Services.Ideation.IdeationService(logger, llmProvider, projectManager, conversationManager, trendingTopicsService, stageAdapter, ragContextBuilder, webSearchService);
+    var ollamaDirectClient = sp.GetService<Aura.Core.Providers.IOllamaDirectClient>();
+    return new Aura.Core.Services.Ideation.IdeationService(logger, llmProvider, projectManager, conversationManager, trendingTopicsService, stageAdapter, ragContextBuilder, webSearchService, ollamaDirectClient);
+});
+
+// Register Translation service for localization
+builder.Services.AddSingleton<Aura.Core.Services.Localization.TranslationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Localization.TranslationService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var ollamaDirectClient = sp.GetService<Aura.Core.Providers.IOllamaDirectClient>();
+    return new Aura.Core.Services.Localization.TranslationService(logger, llmProvider, stageAdapter, ollamaDirectClient);
 });
 
 // Register Audience Profile services
