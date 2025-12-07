@@ -11,37 +11,37 @@
  */
 
 import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-  Tooltip,
-  mergeClasses,
-  Input,
-  Menu,
-  MenuTrigger,
-  MenuPopover,
-  MenuList,
-  MenuItem,
-  MenuDivider,
-  Dropdown,
-  Option,
+    Button,
+    Dropdown,
+    Input,
+    Menu,
+    MenuDivider,
+    MenuItem,
+    MenuList,
+    MenuPopover,
+    MenuTrigger,
+    Option,
+    Text,
+    Tooltip,
+    makeStyles,
+    mergeClasses,
+    tokens,
 } from '@fluentui/react-components';
 import {
-  Add24Regular,
-  Video24Regular,
-  MusicNote224Regular,
-  Image24Regular,
-  Folder24Regular,
-  Search24Regular,
-  Grid24Regular,
-  TextBulletListSquare24Regular,
-  Delete24Regular,
-  Info24Regular,
-  MoreHorizontal24Regular,
+    Add24Regular,
+    Delete24Regular,
+    Folder24Regular,
+    Grid24Regular,
+    Image24Regular,
+    Info24Regular,
+    MoreHorizontal24Regular,
+    MusicNote224Regular,
+    Search24Regular,
+    TextBulletListSquare24Regular,
+    Video24Regular,
 } from '@fluentui/react-icons';
-import { useRef, useState, useCallback, useMemo } from 'react';
-import type { FC, DragEvent, MouseEvent as ReactMouseEvent } from 'react';
+import type { DragEvent, FC, MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useOpenCutMediaStore, type OpenCutMediaFile } from '../../stores/opencutMedia';
 import { useOpenCutTimelineStore } from '../../stores/opencutTimeline';
 import { openCutTokens } from '../../styles/designTokens';
@@ -326,11 +326,33 @@ export const MediaPanel: FC<MediaPanelProps> = ({ className }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [sortOrder] = useState<SortOrder>('asc');
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [contextMenuMedia, setContextMenuMedia] = useState<OpenCutMediaFile | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(
+    null
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaStore = useOpenCutMediaStore();
   const timelineStore = useOpenCutTimelineStore();
+  const contextMenuTarget = useMemo(() => {
+    if (!contextMenuPosition) return undefined;
+    const { x, y } = contextMenuPosition;
+    return {
+      getBoundingClientRect: () =>
+        ({
+          x,
+          y,
+          top: y,
+          left: x,
+          right: x,
+          bottom: y,
+          width: 0,
+          height: 0,
+          toJSON: () => null,
+        }) as DOMRect,
+    };
+  }, [contextMenuPosition]);
 
   // Filter and sort media files
   const filteredMedia = useMemo(() => {
@@ -413,17 +435,28 @@ export const MediaPanel: FC<MediaPanelProps> = ({ className }) => {
     setDraggingMediaId(null);
   }, []);
 
-  const handleContextMenu = useCallback((media: OpenCutMediaFile, e: ReactMouseEvent) => {
-    e.preventDefault();
-    setContextMenuMedia(media);
+  const closeContextMenu = useCallback(() => {
+    setContextMenuOpen(false);
+    setContextMenuMedia(null);
+    setContextMenuPosition(null);
   }, []);
+
+  const handleContextMenu = useCallback(
+    (media: OpenCutMediaFile, e: ReactMouseEvent) => {
+      e.preventDefault();
+      setContextMenuOpen(true);
+      setContextMenuMedia(media);
+      setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    },
+    []
+  );
 
   const handleDeleteMedia = useCallback(
     (mediaId: string) => {
       mediaStore.removeMediaFile(mediaId);
-      setContextMenuMedia(null);
+      closeContextMenu();
     },
-    [mediaStore]
+    [closeContextMenu, mediaStore]
   );
 
   const handleAddToTimeline = useCallback(
@@ -466,9 +499,9 @@ export const MediaPanel: FC<MediaPanelProps> = ({ className }) => {
           locked: false,
         });
       }
-      setContextMenuMedia(null);
+      closeContextMenu();
     },
-    [timelineStore]
+    [closeContextMenu, timelineStore]
   );
 
   const renderMediaItem = (file: OpenCutMediaFile) => {
@@ -719,8 +752,16 @@ export const MediaPanel: FC<MediaPanelProps> = ({ className }) => {
 
       {/* Context Menu */}
       {contextMenuMedia && (
-        <Menu open onOpenChange={() => setContextMenuMedia(null)}>
-          <MenuPopover>
+        <Menu
+          open={contextMenuOpen}
+          onOpenChange={(_, data) => {
+            setContextMenuOpen(data.open);
+            if (!data.open) {
+              closeContextMenu();
+            }
+          }}
+        >
+          <MenuPopover positioning={contextMenuTarget ? { target: contextMenuTarget } : undefined}>
             <MenuList>
               <MenuItem
                 icon={<Add24Regular />}

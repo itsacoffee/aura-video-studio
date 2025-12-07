@@ -975,6 +975,17 @@ builder.Services.AddSingleton<Aura.Core.Services.Localization.TranslationService
     return new Aura.Core.Services.Localization.TranslationService(logger, llmProvider, stageAdapter, ollamaDirectClient);
 });
 
+// Register Localization service with resilience policies
+builder.Services.AddSingleton<Aura.Api.Services.ILocalizationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Api.Services.LocalizationService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var translationService = sp.GetRequiredService<Aura.Core.Services.Localization.TranslationService>();
+    return new Aura.Api.Services.LocalizationService(logger, llmProvider, loggerFactory, stageAdapter, translationService);
+});
+
 // Register Audience Profile services
 builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileStore>();
 builder.Services.AddSingleton<Aura.Core.Services.Audience.AudienceProfileValidator>();

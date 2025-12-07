@@ -30,17 +30,12 @@ public class LocalizationService : ILocalizationService
         ILogger<LocalizationService> logger,
         ILlmProvider llmProvider,
         ILoggerFactory loggerFactory,
-        LlmStageAdapter stageAdapter)
+        LlmStageAdapter stageAdapter,
+        TranslationService translationService)
     {
         _logger = logger;
         _llmProvider = llmProvider;
-        
-        // Create the translation service once for reuse across all methods
-        // Pass the LlmStageAdapter for unified orchestration (same path as script generation)
-        _translationService = new TranslationService(
-            loggerFactory.CreateLogger<TranslationService>(),
-            llmProvider,
-            stageAdapter);
+        _translationService = translationService;
 
         // Build resilience pipeline for translation operations
         _translationPipeline = new ResiliencePipelineBuilder<TranslationResult>()

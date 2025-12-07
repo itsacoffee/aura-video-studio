@@ -10,33 +10,35 @@
  */
 
 import {
-  makeStyles,
-  tokens,
-  Text,
-  Spinner,
-  mergeClasses,
   Button,
-  Tooltip,
   Menu,
-  MenuTrigger,
-  MenuPopover,
-  MenuList,
+  MenuDivider,
   MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
+  Spinner,
+  Text,
+  Tooltip,
+  makeStyles,
+  mergeClasses,
+  tokens,
+  type MenuOpenChangeData,
 } from '@fluentui/react-components';
 import {
+  ArrowExportLtr24Regular,
+  ArrowRepeatAll24Regular,
+  Grid24Regular,
+  Settings24Regular,
+  Timer24Regular,
   Video24Regular,
+  ZoomFit24Regular,
   ZoomIn24Regular,
   ZoomOut24Regular,
-  ZoomFit24Regular,
-  Settings24Regular,
-  Grid24Regular,
-  Timer24Regular,
-  ArrowRepeatAll24Regular,
-  ArrowExportLtr24Regular,
 } from '@fluentui/react-icons';
 import { motion } from 'framer-motion';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FC } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutTimelineStore } from '../../stores/opencutTimeline';
@@ -115,8 +117,8 @@ const useStyles = makeStyles({
     minWidth: 0,
   },
   canvas: {
-    width: 'auto',
-    height: 'auto',
+    width: '100%',
+    height: '100%',
     maxWidth: '100%',
     maxHeight: '100%',
     aspectRatio: '16 / 9',
@@ -180,10 +182,10 @@ const useStyles = makeStyles({
   },
   videoElementFit: {
     objectFit: 'contain',
+    width: '100%',
+    height: '100%',
     maxWidth: '100%',
     maxHeight: '100%',
-    width: 'auto',
-    height: 'auto',
   },
   videoElement50: {
     objectFit: 'none',
@@ -297,6 +299,33 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
   const [loopPlayback, setLoopPlayback] = useState(false);
   const [zoom, setZoom] = useState<ZoomLevel>('fit');
   const [quality, setQuality] = useState<PreviewQuality>('full');
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(
+    null
+  );
+
+  const contextMenuTarget = useMemo(() => {
+    if (!contextMenuPosition) return undefined;
+    const { x, y } = contextMenuPosition;
+    return {
+      getBoundingClientRect: () =>
+        ({
+          x,
+          y,
+          top: y,
+          left: x,
+          right: x,
+          bottom: y,
+          width: 0,
+          height: 0,
+          toJSON: () => null,
+        }) as DOMRect,
+    };
+  }, [contextMenuPosition]);
+  const contextMenuPositioning = useMemo(
+    () => (contextMenuTarget ? { target: contextMenuTarget } : undefined),
+    [contextMenuTarget]
+  );
 
   // Generate video source from timeline clips
   const videoSrc = useMemo(() => {
@@ -366,7 +395,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoSrc) return;
-    
+
     // Only sync if there's a significant difference (avoid feedback loop)
     // Use 0.1 second threshold to avoid excessive updates
     if (Math.abs(video.currentTime - playbackStore.currentTime) > 0.1) {
@@ -465,6 +494,109 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
         return 'Full';
     }
   };
+  const canCopyFrame = Boolean(videoRef.current && videoRef.current.readyState >= 2);
+
+  const handlePreviewContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      setContextMenuPosition({ x: event.clientX, y: event.clientY });
+      setContextMenuOpen(true);
+    },
+    []
+  );
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenuOpen(false);
+    setContextMenuPosition(null);
+  }, []);
+
+  const handleContextMenuOpenChange = useCallback(
+    (_: unknown, data: MenuOpenChangeData) => {
+      setContextMenuOpen(data.open);
+      if (!data.open) {
+        setContextMenuPosition(null);
+      }
+    },
+    []
+  );
+
+  const handleFullscreenFromMenu = useCallback(() => {
+    handleFullscreen();
+    closeContextMenu();
+  }, [closeContextMenu, handleFullscreen]);
+
+  const handleTogglePlayback = useCallback(() => {
+    if (playbackStore.isPlaying) {
+      playbackStore.pause();
+    } else {
+      playbackStore.play();
+    }
+    closeContextMenu();
+  }, [closeContextMenu, playbackStore]);
+
+  const handleToggleLoop = useCallback(() => {
+    setLoopPlayback((prev) => !prev);
+    closeContextMenu();
+  }, [closeContextMenu]);
+
+  const handleToggleSafeAreas = useCallback(() => {
+    setShowSafeAreas((prev) => !prev);
+    closeContextMenu();
+  }, [closeContextMenu]);
+
+  const handleToggleTimecode = useCallback(() => {
+    setShowTimecode((prev) => !prev);
+    closeContextMenu();
+  }, [closeContextMenu]);
+
+  const handleZoomSelect = useCallback(
+    (level: ZoomLevel) => {
+      setZoom(level);
+      closeContextMenu();
+    },
+    [closeContextMenu]
+  );
+
+  const handleQualitySelect = useCallback(
+    (value: PreviewQuality) => {
+      setQuality(value);
+      closeContextMenu();
+    },
+    [closeContextMenu]
+  );
+
+  const handleCopyFrameToClipboard = useCallback(async () => {
+    try {
+      const video = videoRef.current;
+      if (!video || !video.videoWidth || !video.videoHeight) {
+        return;
+      }
+
+      if (typeof ClipboardItem === 'undefined') {
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((result) => resolve(result), 'image/png')
+      );
+
+      if (!blob || !navigator.clipboard?.write) return;
+
+      const clipboardItem = new ClipboardItem({ 'image/png': blob });
+      await navigator.clipboard.write([clipboardItem]);
+    } catch (error) {
+      console.warn('Unable to copy frame to clipboard', error);
+    } finally {
+      closeContextMenu();
+    }
+  }, [closeContextMenu]);
 
   return (
     <div ref={containerRef} className={mergeClasses(styles.container, className)}>
@@ -586,6 +718,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
             initial={{ scale: 0.98, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
+            onContextMenu={handlePreviewContextMenu}
           >
             {isLoading ? (
               <div className={styles.loadingOverlay}>
@@ -660,6 +793,56 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
             <CaptionPreview />
 
             <div className={styles.aspectRatioLabel}>16:9</div>
+
+            <Menu
+              open={contextMenuOpen}
+              onOpenChange={handleContextMenuOpenChange}
+            >
+              <MenuPopover positioning={contextMenuPositioning}>
+                <MenuList>
+                  <MenuItem onClick={handleTogglePlayback}>
+                    {playbackStore.isPlaying ? 'Pause Playback' : 'Play Preview'}
+                  </MenuItem>
+                  <MenuItem onClick={handleToggleLoop}>
+                    {loopPlayback ? 'Disable Loop' : 'Enable Loop'}
+                  </MenuItem>
+                  <MenuItem onClick={handleToggleSafeAreas}>
+                    {showSafeAreas ? 'Hide Safe Areas' : 'Show Safe Areas'}
+                  </MenuItem>
+                  <MenuItem onClick={handleToggleTimecode}>
+                    {showTimecode ? 'Hide Timecode' : 'Show Timecode'}
+                  </MenuItem>
+                  <MenuDivider />
+                  <MenuItem onClick={() => handleZoomSelect('fit')}>
+                    Zoom: Fit {zoom === 'fit' ? '✓' : ''}
+                  </MenuItem>
+                  <MenuItem onClick={() => handleZoomSelect('50')}>
+                    Zoom: 50% {zoom === '50' ? '✓' : ''}
+                  </MenuItem>
+                  <MenuItem onClick={() => handleZoomSelect('100')}>
+                    Zoom: 100% {zoom === '100' ? '✓' : ''}
+                  </MenuItem>
+                  <MenuItem onClick={() => handleZoomSelect('200')}>
+                    Zoom: 200% {zoom === '200' ? '✓' : ''}
+                  </MenuItem>
+                  <MenuDivider />
+                  <MenuItem onClick={() => handleQualitySelect('full')}>
+                    Quality: Full {quality === 'full' ? '✓' : ''}
+                  </MenuItem>
+                  <MenuItem onClick={() => handleQualitySelect('half')}>
+                    Quality: Half {quality === 'half' ? '✓' : ''}
+                  </MenuItem>
+                  <MenuItem onClick={() => handleQualitySelect('quarter')}>
+                    Quality: Quarter {quality === 'quarter' ? '✓' : ''}
+                  </MenuItem>
+                  <MenuDivider />
+                  <MenuItem onClick={handleFullscreenFromMenu}>Toggle Fullscreen</MenuItem>
+                  <MenuItem disabled={!canCopyFrame || !videoSrc} onClick={handleCopyFrameToClipboard}>
+                    Copy Current Frame
+                  </MenuItem>
+                </MenuList>
+              </MenuPopover>
+            </Menu>
           </motion.div>
         </div>
       </div>

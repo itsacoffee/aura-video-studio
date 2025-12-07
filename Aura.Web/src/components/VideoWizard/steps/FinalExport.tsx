@@ -1,30 +1,30 @@
 import {
-  Badge,
-  Button,
-  Card,
-  Checkbox,
-  Dropdown,
-  Field,
-  makeStyles,
-  Option,
-  ProgressBar,
-  Radio,
-  RadioGroup,
-  Spinner,
-  Text,
-  Title2,
-  Title3,
-  tokens,
-  Tooltip,
+    Badge,
+    Button,
+    Card,
+    Checkbox,
+    Dropdown,
+    Field,
+    makeStyles,
+    Option,
+    ProgressBar,
+    Radio,
+    RadioGroup,
+    Spinner,
+    Text,
+    Title2,
+    Title3,
+    tokens,
+    Tooltip,
 } from '@fluentui/react-components';
 import {
-  CheckmarkCircle24Regular,
-  Dismiss24Regular,
-  DocumentMultiple24Regular,
-  ErrorCircle24Regular,
-  Folder24Regular,
-  Info24Regular,
-  Open24Regular,
+    CheckmarkCircle24Regular,
+    Dismiss24Regular,
+    DocumentMultiple24Regular,
+    ErrorCircle24Regular,
+    Folder24Regular,
+    Info24Regular,
+    Open24Regular,
 } from '@fluentui/react-icons';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -163,6 +163,13 @@ interface ExportResult {
   fullPath?: string;
 }
 
+interface JobOutputFile {
+  path?: string;
+  filePath?: string;
+  type?: string;
+  sizeBytes?: number;
+}
+
 // Job data structure returned from the backend API
 interface JobStatusData {
   /** Progress percentage (0-100) */
@@ -184,6 +191,14 @@ interface JobStatusData {
     message?: string;
     suggestedActions?: string[];
   };
+  /** Structured output payload returned by the backend */
+  output?: {
+    videoPath?: string;
+    subtitlePath?: string;
+    path?: string;
+    filePath?: string;
+    files?: JobOutputFile[];
+  };
   /** Path to the output file for completed jobs */
   outputPath?: string;
   /** Artifacts produced by the job (video, subtitles, etc.) */
@@ -201,6 +216,75 @@ interface JobStatusData {
   startedAt?: string;
   /** When the job completed */
   completedAt?: string;
+}
+
+/**
+ * Normalize a file path by trimming and returning undefined for empty values.
+ */
+function normalizePath(path?: string | null): string | undefined {
+  const trimmed = (path ?? '').trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/**
+ * Returns true if the provided path looks like a video file.
+ */
+function hasVideoExtension(path: string): boolean {
+  const lower = path.toLowerCase();
+  return ['.mp4', '.webm', '.mov', '.mkv', '.avi', '.m4v', '.gif'].some((ext) =>
+    lower.endsWith(ext)
+  );
+}
+
+/**
+ * Extract the most likely video path from a list of files or artifacts.
+ */
+function selectVideoFilePath(
+  files?: Array<{ path?: string; filePath?: string; type?: string }>
+): string | undefined {
+  if (!files || !Array.isArray(files)) return undefined;
+
+  const videoFile = files.find((file) => {
+    const candidate = normalizePath(file.path ?? file.filePath);
+    if (!candidate) return false;
+    const type = (file.type ?? '').toLowerCase();
+    return type.includes('video') || hasVideoExtension(candidate);
+  });
+
+  if (videoFile) {
+    return normalizePath(videoFile.path ?? videoFile.filePath);
+  }
+
+  const firstFile = files.find((file) => normalizePath(file.path ?? file.filePath));
+  return firstFile ? normalizePath(firstFile.path ?? firstFile.filePath) : undefined;
+}
+
+/**
+ * Extracts a usable output path from job data, handling multiple backend shapes.
+ */
+function extractOutputPath(jobData?: JobStatusData | null): string | undefined {
+  if (!jobData) return undefined;
+
+  // 1) Direct outputPath field (most common)
+  const direct = normalizePath(jobData.outputPath);
+  if (direct) return direct;
+
+  // 2) Nested output object (used by newer backends)
+  const output = jobData.output;
+  const fromOutput =
+    normalizePath(output?.videoPath) ??
+    normalizePath(output?.path) ??
+    normalizePath(output?.filePath);
+  if (fromOutput) return fromOutput;
+
+  const fromOutputFiles = selectVideoFilePath(output?.files);
+  if (fromOutputFiles) return fromOutputFiles;
+
+  // 3) Artifacts array (legacy/alternative shape)
+  const fromArtifacts = selectVideoFilePath(jobData.artifacts);
+  if (fromArtifacts) return fromArtifacts;
+
+  return undefined;
 }
 
 /**
@@ -245,13 +329,13 @@ function getInitializationMessage(pollAttempts: number): string {
 /**
  * Checks job status and throws if job failed or was cancelled.
  * Returns true if job completed successfully WITH a valid outputPath.
- * 
+ *
  * ARCHITECTURAL FIX: No longer accepts "completed" status without outputPath.
  * This prevents the bug where jobs at 72% appear complete but have no output file.
  */
 function checkJobCompletion(jobData: JobStatusData): boolean {
   const status = (jobData.status || '').toLowerCase().trim();
-  
+
   // Check for failure states first
   if (status === 'failed') {
     throw new Error(jobData.errorMessage || 'Video generation failed');
@@ -264,10 +348,8 @@ function checkJobCompletion(jobData: JobStatusData): boolean {
   // 1. Status is "completed"
   // 2. We have a valid outputPath or artifacts
   if (status === 'completed') {
-    const hasOutput =
-      jobData.outputPath ||
-      (jobData.artifacts && Array.isArray(jobData.artifacts) && jobData.artifacts.length > 0);
-    
+    const hasOutput = Boolean(extractOutputPath(jobData));
+
     if (!hasOutput) {
       // Job says it's completed but no output - this is a backend bug
       // Don't treat as completed, let polling continue or timeout
@@ -276,7 +358,7 @@ function checkJobCompletion(jobData: JobStatusData): boolean {
       );
       return false; // NOT completed - missing output
     }
-    
+
     return true; // Truly completed with output
   }
 
@@ -600,9 +682,7 @@ export const FinalExport: FC<FinalExportProps> = ({
                 // Check if job appears completed even if status isn't "completed"
                 // This handles edge cases where job finished but status wasn't updated
                 const status = (data.status || '').toLowerCase();
-                const hasOutput =
-                  data.outputPath ||
-                  (data.artifacts && Array.isArray(data.artifacts) && data.artifacts.length > 0);
+                const hasOutput = Boolean(extractOutputPath(data));
 
                 if ((jobProgress >= 100 || hasOutput) && status === 'running') {
                   console.warn(
@@ -633,9 +713,7 @@ export const FinalExport: FC<FinalExportProps> = ({
                   reject(new Error('Video generation was cancelled'));
                 } else {
                   // Even if status isn't "completed", check if we have output
-                  const hasOutput =
-                    data.outputPath ||
-                    (data.artifacts && Array.isArray(data.artifacts) && data.artifacts.length > 0);
+                  const hasOutput = Boolean(extractOutputPath(data));
                   if (!hasOutput && status !== 'completed') {
                     console.warn(
                       '[SSE] Job completion event received but no output path and status is not completed'
@@ -862,23 +940,30 @@ export const FinalExport: FC<FinalExportProps> = ({
                           `[FinalExport] Job appears stuck: ${currentStage} at ${jobProgress}% for ${Math.round(stuckDuration / 1000)}s`
                         );
 
-                        // Check if job has output even though status isn't completed
-                        const hasOutput =
-                          typedJobData.outputPath ||
-                          (typedJobData.artifacts &&
-                            Array.isArray(typedJobData.artifacts) &&
-                            typedJobData.artifacts.length > 0);
+                        const hasOutput = Boolean(extractOutputPath(typedJobData));
 
-                        // Lowered threshold from 95% to 70% to detect stuck jobs earlier
-                        if (hasOutput || jobProgress >= 70) {
+                        if (hasOutput) {
                           console.info(
-                            '[FinalExport] Job has output or is near completion (>=70%), treating as completed despite stuck status'
+                            '[FinalExport] Job produced output while progress appears stuck, treating as completed'
                           );
                           jobCompleted = true;
                           break;
                         }
 
-                        // If truly stuck without output, throw error
+                        // Near-complete jobs can linger while the renderer writes the file.
+                        // Instead of failing early (which caused 72% errors), keep polling until timeout.
+                        if (jobProgress >= 70) {
+                          console.info(
+                            '[FinalExport] Job is past 70% but no output yet; continuing to poll for final file instead of failing early'
+                          );
+                          setExportStage(
+                            'Finalizing output file... waiting for the renderer to finish writing the video'
+                          );
+                          stuckStartTime = Date.now(); // Give additional time before re-evaluating
+                          pollDelay = Math.min(pollDelay * backoffMultiplier, maxPollDelay);
+                          continue;
+                        }
+
                         throw new Error(
                           `Video generation appears stuck at ${currentStage} stage (${jobProgress}% complete for over 60 seconds). ` +
                             'The job may have encountered an issue. Please try again or check the logs.'
@@ -924,35 +1009,9 @@ export const FinalExport: FC<FinalExportProps> = ({
           const finalJobData = jobData as JobStatusData;
 
           // Get file path from job artifacts or output path
-          let outputPath = finalJobData.outputPath;
+          const outputPath = extractOutputPath(finalJobData);
 
-          // Try to extract from artifacts if outputPath is not directly available
-          if (
-            !outputPath &&
-            finalJobData.artifacts &&
-            Array.isArray(finalJobData.artifacts) &&
-            finalJobData.artifacts.length > 0
-          ) {
-            // Find video artifact - check multiple possible formats
-            const videoArtifact = finalJobData.artifacts.find((a) => {
-              const path = a.path || a.filePath || '';
-              const type = (a.type || '').toLowerCase();
-              return (
-                type.includes('video') ||
-                path.endsWith('.mp4') ||
-                path.endsWith('.webm') ||
-                path.endsWith('.mov') ||
-                path.endsWith('.mkv') ||
-                path.endsWith('.avi')
-              );
-            });
-            if (videoArtifact) {
-              outputPath = videoArtifact.path || videoArtifact.filePath;
-              console.info('[FinalExport] Found video artifact:', videoArtifact);
-            }
-          }
-
-          // If still no output path, try to construct from job directory
+          // If still no output path, surface a clear error
           if (!outputPath) {
             console.error('[FinalExport] Job data:', JSON.stringify(finalJobData, null, 2));
             throw new Error(

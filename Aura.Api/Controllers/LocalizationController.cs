@@ -36,6 +36,7 @@ public class LocalizationController : ControllerBase
     private readonly ILogger<LocalizationController> _logger;
     private readonly ILlmProvider _llmProvider;
     private readonly LlmStageAdapter _stageAdapter;
+    private readonly TranslationService _translationService;
     private readonly GlossaryManager _glossaryManager;
     private readonly ILoggerFactory _loggerFactory;
     private readonly List<ISSMLMapper> _ssmlMappers;
@@ -48,26 +49,22 @@ public class LocalizationController : ControllerBase
         ILlmProvider llmProvider,
         ILoggerFactory loggerFactory,
         IConfiguration configuration,
-        LlmStageAdapter stageAdapter)
+        LlmStageAdapter stageAdapter,
+        TranslationService translationService,
+        ILocalizationService localizationService)
     {
         _logger = logger;
         _llmProvider = llmProvider;
         _stageAdapter = stageAdapter;
+        _translationService = translationService;
         _loggerFactory = loggerFactory;
+        _localizationService = localizationService;
         
         // Load timeout configuration with defaults
         // Translation with local LLMs (Ollama) can take several minutes for longer texts or when models need to load
         // Default timeout increased to 180 seconds (3 minutes) to accommodate model loading and complex translations
         _requestTimeoutSeconds = configuration.GetValue("Localization:RequestTimeoutSeconds", 60);
         _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 180);
-        
-        // Initialize the localization service with retry logic
-        // Pass the LlmStageAdapter for unified orchestration (same path as script generation)
-        _localizationService = new LocalizationService(
-            loggerFactory.CreateLogger<LocalizationService>(),
-            llmProvider,
-            loggerFactory,
-            stageAdapter);
         
         var storageDir = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -577,13 +574,8 @@ public class LocalizationController : ControllerBase
 
         try
         {
-            var translationService = new TranslationService(
-                _loggerFactory.CreateLogger<TranslationService>(), 
-                _llmProvider,
-                _stageAdapter);
-
             var batchRequest = MapToBatchTranslationRequest(request);
-            var result = await translationService.BatchTranslateAsync(batchRequest, null, cancellationToken).ConfigureAwait(false);
+            var result = await _translationService.BatchTranslateAsync(batchRequest, null, cancellationToken).ConfigureAwait(false);
             
             var dto = MapToBatchTranslationResultDto(result);
 
@@ -1295,11 +1287,6 @@ public class LocalizationController : ControllerBase
 
         try
         {
-            var translationService = new TranslationService(
-                _loggerFactory.CreateLogger<TranslationService>(),
-                _llmProvider,
-                _stageAdapter);
-
             var ssmlPlannerService = new SSMLPlannerService(
                 _loggerFactory.CreateLogger<SSMLPlannerService>(),
                 _ssmlMappers);
@@ -1309,7 +1296,7 @@ public class LocalizationController : ControllerBase
 
             var integrationService = new TranslationIntegrationService(
                 _loggerFactory.CreateLogger<TranslationIntegrationService>(),
-                translationService,
+                _translationService,
                 ssmlPlannerService,
                 captionBuilder);
 
@@ -1417,11 +1404,6 @@ public class LocalizationController : ControllerBase
                 });
             }
 
-            var translationService = new TranslationService(
-                _loggerFactory.CreateLogger<TranslationService>(),
-                _llmProvider,
-                _stageAdapter);
-
             var ssmlPlannerService = new SSMLPlannerService(
                 _loggerFactory.CreateLogger<SSMLPlannerService>(),
                 _ssmlMappers);
@@ -1431,7 +1413,7 @@ public class LocalizationController : ControllerBase
 
             var integrationService = new TranslationIntegrationService(
                 _loggerFactory.CreateLogger<TranslationIntegrationService>(),
-                translationService,
+                _translationService,
                 ssmlPlannerService,
                 captionBuilder);
 

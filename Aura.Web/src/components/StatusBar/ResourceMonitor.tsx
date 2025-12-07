@@ -1,11 +1,18 @@
-import { makeStyles, tokens, Text, ProgressBar, Tooltip } from '@fluentui/react-components';
 import {
-  Window24Regular,
-  DataArea24Regular,
-  HardDrive24Regular,
-  Warning24Filled,
+    Badge,
+    makeStyles,
+    ProgressBar,
+    Text,
+    tokens,
+    Tooltip,
+} from '@fluentui/react-components';
+import {
+    DataArea24Regular,
+    HardDrive24Regular,
+    Warning24Filled,
+    Window24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { get } from '../../services/api/apiClient';
 
 const useStyles = makeStyles({
@@ -65,6 +72,7 @@ interface ResourceMetrics {
   memory: number; // percentage
   gpu: number | null; // percentage, or null if GPU monitoring unavailable
   diskIO: number; // MB/s
+  updatedAt?: Date | null;
 }
 
 // Backend API response types matching SystemResourceMetrics from Aura.Core.Models
@@ -130,17 +138,28 @@ function parseMetricsResponse(response: SystemResourceMetrics | null | undefined
     return { cpu: 0, memory: 0, gpu: null, diskIO: 0 };
   }
 
-  // Parse CPU usage with fallback to 0
-  const cpuUsage = response.cpu?.overallUsagePercent ?? 0;
+  // Parse CPU usage with fallback to process usage if overall is unavailable
+  const cpuUsage =
+    response.cpu?.overallUsagePercent ??
+    response.cpu?.processUsagePercent ??
+    0;
 
-  // Parse memory usage with fallback to 0
-  const memoryUsage = response.memory?.usagePercent ?? 0;
+  // Parse memory usage, deriving from bytes if percent is missing
+  const memoryUsage =
+    response.memory?.usagePercent ??
+    (typeof response.memory?.usedBytes === 'number' &&
+    typeof response.memory?.totalBytes === 'number' &&
+    response.memory.totalBytes > 0
+      ? (response.memory.usedBytes / response.memory.totalBytes) * 100
+      : 0);
 
   // Parse GPU usage - null if GPU object is not present or usagePercent is undefined
   const gpuUsage =
     response.gpu && typeof response.gpu.usagePercent === 'number'
       ? response.gpu.usagePercent
-      : null;
+      : response.gpu && typeof response.gpu?.memoryUsagePercent === 'number'
+        ? response.gpu.memoryUsagePercent
+        : null;
 
   // Calculate disk I/O from first disk if available
   let diskIO = 0;
@@ -156,6 +175,7 @@ function parseMetricsResponse(response: SystemResourceMetrics | null | undefined
     memory: Math.max(0, Math.min(100, memoryUsage)),
     gpu: gpuUsage !== null ? Math.max(0, Math.min(100, gpuUsage)) : null,
     diskIO: Math.max(0, diskIO),
+    updatedAt: response.timestamp ? new Date(response.timestamp) : new Date(),
   };
 }
 
@@ -171,6 +191,9 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
     gpu: null,
     diskIO: 0,
   });
+  const [status, setStatus] = useState<'connecting' | 'live' | 'stale' | 'offline'>('connecting');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const failureStreakRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch real system metrics from backend API
@@ -193,6 +216,9 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
         // Use defensive parsing to handle null/undefined fields
         const parsedMetrics = parseMetricsResponse(systemMetrics);
         setMetrics(parsedMetrics);
+        setLastUpdated(parsedMetrics.updatedAt ?? new Date());
+        failureStreakRef.current = 0;
+        setStatus('live');
       } catch (error: unknown) {
         // Silently handle errors - don't update metrics if request fails
         // This prevents UI flicker when backend is temporarily unavailable
@@ -200,6 +226,8 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
         if (errorObj.name !== 'AbortError') {
           console.warn('[ResourceMonitor] Failed to fetch metrics:', errorObj.message);
         }
+        failureStreakRef.current += 1;
+        setStatus(failureStreakRef.current >= 3 ? 'offline' : 'stale');
       }
     };
 
@@ -217,6 +245,19 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
       }
     };
   }, []);
+
+  // Mark data as stale if it has not refreshed recently
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (!lastUpdated) return;
+      const ageMs = Date.now() - lastUpdated.getTime();
+      if (ageMs > 8000 && status === 'live') {
+        setStatus('stale');
+      }
+    }, 2000);
+
+    return () => window.clearInterval(interval);
+  }, [lastUpdated, status]);
 
   const getUsageColor = (value: number): 'success' | 'warning' | 'error' => {
     if (value >= 90) return 'error';
@@ -255,9 +296,35 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
     return suggestions[metric] || null;
   };
 
+  const statusBadge = (() => {
+    switch (status) {
+      case 'live':
+        return { color: 'success' as const, label: 'Live' };
+      case 'stale':
+        return { color: 'warning' as const, label: 'Stale' };
+      case 'offline':
+        return { color: 'danger' as const, label: 'Offline' };
+      default:
+        return { color: 'informative' as const, label: 'Connecting' };
+    }
+  })();
+
+  const lastUpdatedCopy = lastUpdated
+    ? `Updated ${Math.max(1, Math.round((Date.now() - lastUpdated.getTime()) / 1000))}s ago`
+    : status === 'offline'
+      ? 'Unable to reach metrics service'
+      : 'Waiting for first sample';
+
   if (compact) {
     return (
-      <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: tokens.spacingHorizontalM,
+          alignItems: 'center',
+        }}
+        title={lastUpdatedCopy}
+      >
         <Tooltip content={`CPU: ${metrics.cpu.toFixed(0)}%`} relationship="label">
           <div className={`${styles.resourceLabel} ${getUsageClass(metrics.cpu)}`}>
             <Window24Regular />
@@ -287,7 +354,15 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
 
   return (
     <div className={styles.container}>
-      <Text className={styles.title}>System Resources</Text>
+      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+        <Text className={styles.title}>System Resources</Text>
+        <Badge appearance="tint" color={statusBadge.color} size="small">
+          {statusBadge.label}
+        </Badge>
+        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+          {lastUpdatedCopy}
+        </Text>
+      </div>
 
       {/* CPU Usage */}
       <div className={styles.resourceItem}>

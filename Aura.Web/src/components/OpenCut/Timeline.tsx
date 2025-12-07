@@ -15,42 +15,42 @@
  */
 
 import {
-  makeStyles,
-  tokens,
-  Text,
-  Button,
-  Tooltip,
-  Badge,
-  mergeClasses,
-  Menu,
-  MenuTrigger,
-  MenuPopover,
-  MenuList,
-  MenuItem,
-  Divider,
+    Badge,
+    Button,
+    Divider,
+    makeStyles,
+    Menu,
+    MenuItem,
+    MenuList,
+    MenuPopover,
+    MenuTrigger,
+    mergeClasses,
+    Text,
+    tokens,
+    Tooltip,
 } from '@fluentui/react-components';
 import {
-  Video24Regular,
-  MusicNote224Regular,
-  TextT24Regular,
-  Cut24Regular,
-  Copy24Regular,
-  Delete24Regular,
-  Add24Regular,
-  ZoomIn24Regular,
-  ZoomOut24Regular,
-  ArrowUndo24Regular,
-  ArrowRedo24Regular,
-  LockClosed24Regular,
-  LockOpen24Regular,
-  Speaker224Regular,
-  SpeakerMute24Regular,
-  ChevronDown16Regular,
-  Image24Regular,
+    Add24Regular,
+    ArrowRedo24Regular,
+    ArrowUndo24Regular,
+    ChevronDown16Regular,
+    Copy24Regular,
+    Cut24Regular,
+    Delete24Regular,
+    Image24Regular,
+    LockClosed24Regular,
+    LockOpen24Regular,
+    MusicNote224Regular,
+    Speaker224Regular,
+    SpeakerMute24Regular,
+    TextT24Regular,
+    Video24Regular,
+    ZoomIn24Regular,
+    ZoomOut24Regular,
 } from '@fluentui/react-icons';
 import { motion } from 'framer-motion';
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { FC, MouseEvent as ReactMouseEvent, WheelEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOpenCutKeyframesStore } from '../../stores/opencutKeyframes';
 import useOpenCutLayoutStore, { LAYOUT_CONSTANTS } from '../../stores/opencutLayout';
 import { useOpenCutMarkersStore } from '../../stores/opencutMarkers';
@@ -58,22 +58,22 @@ import { useOpenCutMediaStore } from '../../stores/opencutMedia';
 import { useOpenCutPlaybackStore } from '../../stores/opencutPlayback';
 import { useOpenCutProjectStore } from '../../stores/opencutProject';
 import {
-  useOpenCutTimelineStore,
-  type ClipType,
-  type TimelineClip,
-  type TimelineGap,
+    useOpenCutTimelineStore,
+    type ClipType,
+    type TimelineClip,
+    type TimelineGap,
 } from '../../stores/opencutTimeline';
 import { useOpenCutTransitionsStore } from '../../stores/opencutTransitions';
 import { openCutTokens } from '../../styles/designTokens';
 import type { MarkerType } from '../../types/opencut';
 import { MarkerTrack } from './Markers';
 import {
-  GapIndicator,
-  RipplePreview,
-  SnapIndicator,
-  TimelineToolbar,
-  type RippleClipPreview,
-  type RippleDirection,
+    GapIndicator,
+    RipplePreview,
+    SnapIndicator,
+    TimelineToolbar,
+    type RippleClipPreview,
+    type RippleDirection,
 } from './Timeline/index';
 import { TransitionHandle } from './Transitions';
 import { ClipWaveform } from './Waveform';
@@ -401,7 +401,8 @@ const useStyles = makeStyles({
     width: '2px',
     backgroundColor: openCutTokens.colors.playhead,
     zIndex: openCutTokens.zIndex.sticky - 5,
-    pointerEvents: 'none',
+    pointerEvents: 'auto',
+    cursor: 'ew-resize',
   },
   playheadHandle: {
     position: 'absolute',
@@ -1774,6 +1775,7 @@ export const Timeline: FC<TimelineProps> = ({ className, onResize }) => {
                       initial={false}
                       animate={{ left: playheadPosition }}
                       transition={{ type: 'tween', duration: 0.05 }}
+                      onMouseDown={handlePlayheadDragStart}
                     />
 
                     {/* Snap indicator - shows visual feedback during clip snapping */}
