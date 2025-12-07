@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Serilog;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -621,15 +622,21 @@ builder.Services.AddSingleton<Aura.Core.Services.Providers.OllamaHealthCheckServ
 
 // ARCHITECTURAL FIX: Register OllamaDirectClient with proper DI instead of using reflection
 // This provides a clean, testable interface to Ollama without accessing private fields
-builder.Services.Configure<Aura.Core.Providers.OllamaSettings>(options =>
+// Configure OllamaSettings using a factory that resolves ProviderSettings service
+builder.Services.AddSingleton<IConfigureOptions<Aura.Core.Providers.OllamaSettings>>(sp =>
 {
-    var providerSettings = builder.Configuration.GetSection("ProviderSettings").Get<Aura.Core.Configuration.ProviderSettings>();
-    if (providerSettings != null)
-    {
-        options.BaseUrl = providerSettings.GetOllamaUrl();
-        options.Timeout = TimeSpan.FromMinutes(3); // 3 minute timeout for ideation
-        options.MaxRetries = 3;
-    }
+    return new ConfigureNamedOptions<Aura.Core.Providers.OllamaSettings>(
+        Options.DefaultName, 
+        options =>
+        {
+            var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+            options.BaseUrl = providerSettings.GetOllamaUrl();
+            options.Timeout = TimeSpan.FromMinutes(3); // 3 minute timeout for ideation
+            options.MaxRetries = 3;
+            options.GpuEnabled = providerSettings.GetOllamaGpuEnabled();
+            options.NumGpu = providerSettings.GetOllamaNumGpu();
+            options.NumCtx = providerSettings.GetOllamaNumCtx();
+        });
 });
 builder.Services.AddHttpClient<Aura.Core.Providers.IOllamaDirectClient, Aura.Core.Providers.OllamaDirectClient>(client =>
 {
