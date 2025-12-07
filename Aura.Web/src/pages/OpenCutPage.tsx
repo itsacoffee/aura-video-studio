@@ -1,5 +1,5 @@
 import { makeStyles, tokens } from '@fluentui/react-components';
-import { OpenCutEditor } from '../components/OpenCut';
+import { OpenCutEditor, OpenCutErrorBoundary } from '../components/OpenCut';
 
 const useStyles = makeStyles({
   root: {
@@ -45,7 +45,9 @@ export function OpenCutPage() {
   return (
     <div className={styles.root}>
       <div className={styles.editorContainer}>
-        <OpenCutEditor />
+        <OpenCutErrorBoundary>
+          <OpenCutEditor />
+        </OpenCutErrorBoundary>
       </div>
     </div>
   );

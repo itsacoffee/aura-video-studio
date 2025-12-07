@@ -1,5 +1,6 @@
 export { OpenCutDiagnostics } from './OpenCutDiagnostics';
 export { OpenCutEditor } from './OpenCutEditor';
+export { OpenCutErrorBoundary } from './OpenCutErrorBoundary';
 export { ResizablePanel } from './ResizablePanel';
 export { EmptyState } from './EmptyState';
 export { PlaybackControls } from './PlaybackControls';

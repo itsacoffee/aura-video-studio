@@ -657,7 +657,22 @@ public class CompositeLlmProvider : ILlmProvider
             var providers = GetProviders(forceRefresh);
             if (providers == null || providers.Count == 0)
             {
-                _logger.LogWarning("No LLM providers available in registry for {Operation} (attempt {Attempt})", operationName, attempt + 1);
+                const string criticalError = 
+                    "CRITICAL: No LLM providers are registered in DI container. " +
+                    "This indicates a system-level provider registration failure. " +
+                    "Check application startup logs for provider registration errors.";
+                    
+                _logger.LogError("{Error} Operation: {Operation}, Attempt: {Attempt}",
+                    criticalError, operationName, attempt + 1);
+                
+                // After both attempts fail, throw a clear error
+                if (attempt == 1)
+                {
+                    throw new InvalidOperationException(
+                        "No LLM providers are available. This is a critical system failure. " +
+                        "The application should have at least the RuleBased fallback provider registered. " +
+                        "Please check the application logs for provider registration errors during startup.");
+                }
                 continue;
             }
 
