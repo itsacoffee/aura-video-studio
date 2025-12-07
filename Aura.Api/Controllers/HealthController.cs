@@ -126,7 +126,7 @@ public class HealthController : ControllerBase
     public ActionResult<IEnumerable<ProviderHealthCheckDto>> CheckAllProviders()
     {
         _logger.LogInformation("Manual health check requested for all providers");
-        
+
         var metrics = _healthMonitor.GetAllProviderHealth();
         var dtos = metrics.Values.Select(ToDto).ToList();
         return Ok(dtos);
@@ -139,15 +139,15 @@ public class HealthController : ControllerBase
     public ActionResult<ProviderHealthSummaryDto> GetProvidersSummary()
     {
         var allMetrics = _healthMonitor.GetAllProviderHealth();
-        
+
         var summary = new ProviderHealthSummaryDto
         {
             TotalProviders = allMetrics.Count,
             HealthyProviders = allMetrics.Values.Count(m => m.IsHealthy),
             DegradedProviders = allMetrics.Values.Count(m => !m.IsHealthy && m.ConsecutiveFailures < 3),
             OfflineProviders = allMetrics.Values.Count(m => m.ConsecutiveFailures >= 3),
-            LastUpdateTime = allMetrics.Values.Any() 
-                ? allMetrics.Values.Max(m => m.LastCheckTime) 
+            LastUpdateTime = allMetrics.Values.Any()
+                ? allMetrics.Values.Max(m => m.LastCheckTime)
                 : DateTime.MinValue,
             ProvidersByType = GroupProvidersByType(allMetrics)
         };
@@ -274,7 +274,9 @@ public class HealthController : ControllerBase
         name.Equals("Ollama", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("OpenAI", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("Azure", StringComparison.OrdinalIgnoreCase) ||
-        name.Equals("Gemini", StringComparison.OrdinalIgnoreCase);
+        name.Equals("Gemini", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Anthropic", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Qwen", StringComparison.OrdinalIgnoreCase);
 
     private bool IsTtsProvider(string name) =>
         name.Contains("tts", StringComparison.OrdinalIgnoreCase) ||
@@ -286,7 +288,14 @@ public class HealthController : ControllerBase
         name.Contains("image", StringComparison.OrdinalIgnoreCase) ||
         name.Contains("visual", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("StableDiffusion", StringComparison.OrdinalIgnoreCase) ||
-        name.Equals("Stock", StringComparison.OrdinalIgnoreCase);
+        name.Equals("Stability", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Stock", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("LocalStock", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Pexels", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Unsplash", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Midjourney", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("DallE", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("DallE3", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Get health status for all LLM providers
@@ -296,7 +305,7 @@ public class HealthController : ControllerBase
     {
         var providers = _healthService.GetLlmProvidersHealth();
         var allDown = _healthService.AreAllProvidersDown("llm");
-        
+
         var dto = new ProviderTypeHealthDto
         {
             ProviderType = "llm",
@@ -317,7 +326,7 @@ public class HealthController : ControllerBase
     {
         var providers = _healthService.GetTtsProvidersHealth();
         var allDown = _healthService.AreAllProvidersDown("tts");
-        
+
         var dto = new ProviderTypeHealthDto
         {
             ProviderType = "tts",
@@ -338,7 +347,7 @@ public class HealthController : ControllerBase
     {
         var providers = _healthService.GetImageProvidersHealth();
         var allDown = _healthService.AreAllProvidersDown("images");
-        
+
         var dto = new ProviderTypeHealthDto
         {
             ProviderType = "images",
@@ -358,7 +367,7 @@ public class HealthController : ControllerBase
     public async Task<ActionResult<SystemHealthDto>> GetSystemHealth(CancellationToken ct)
     {
         var metrics = await _systemHealthChecker.CheckSystemHealthAsync(ct).ConfigureAwait(false);
-        
+
         var dto = new SystemHealthDto
         {
             FFmpegAvailable = metrics.FFmpegAvailable,
@@ -379,7 +388,7 @@ public class HealthController : ControllerBase
     public async Task<ActionResult> ResetProviderCircuitBreaker(string name, CancellationToken ct)
     {
         var success = await _healthService.ResetCircuitBreakerAsync(name, ct).ConfigureAwait(false);
-        
+
         if (!success)
         {
             return NotFound(new { error = $"Provider '{name}' not found" });
@@ -428,7 +437,7 @@ public class HealthController : ControllerBase
     public ActionResult ResetCircuitBreaker(string serviceName)
     {
         var success = _circuitBreakerRegistry.Reset(serviceName);
-        
+
         if (!success)
         {
             return NotFound(new { error = $"Circuit breaker for '{serviceName}' not found" });

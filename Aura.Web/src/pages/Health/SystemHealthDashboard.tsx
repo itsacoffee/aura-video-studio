@@ -1,31 +1,32 @@
 import {
+  Badge,
+  Body1,
+  Button,
+  Caption1,
+  Card,
+  Divider,
   makeStyles,
-  tokens,
+  Spinner,
+  Text,
   Title1,
   Title3,
-  Text,
-  Button,
-  Card,
-  Badge,
-  Spinner,
-  Caption1,
-  Body1,
-  Divider,
+  tokens,
 } from '@fluentui/react-components';
 import {
   ArrowClockwise24Regular,
   CheckmarkCircle24Regular,
-  Warning24Regular,
   ErrorCircle24Regular,
-  Server24Regular,
   Pulse24Regular,
+  Server24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useEffect, useCallback } from 'react';
+import type { AxiosError } from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
 import apiClient from '../../services/api/apiClient';
 import type {
+  ProviderHealthCheckDto,
   ProviderTypeHealthDto,
   SystemHealthDto,
-  ProviderHealthCheckDto,
 } from '../../types/api-v1';
 
 const useStyles = makeStyles({
@@ -136,24 +137,27 @@ const SystemHealthDashboard = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const fetchHealthData = useCallback(async () => {
+    const fetchHealthEndpoint = async <T,>(url: string) => {
+      try {
+        const response = await apiClient.get<T>(url);
+        return response.data;
+      } catch (err) {
+        const axiosError = err as AxiosError<T>;
+        if (axiosError.response?.data) {
+          return axiosError.response.data;
+        }
+
+        setError(err instanceof Error ? err.message : 'Failed to fetch health data');
+        return null;
+      }
+    };
+
     try {
       const [llm, tts, images, system] = await Promise.all([
-        apiClient
-          .get<ProviderTypeHealthDto>('/api/health/llm')
-          .then((r) => r.data)
-          .catch(() => null),
-        apiClient
-          .get<ProviderTypeHealthDto>('/api/health/tts')
-          .then((r) => r.data)
-          .catch(() => null),
-        apiClient
-          .get<ProviderTypeHealthDto>('/api/health/images')
-          .then((r) => r.data)
-          .catch(() => null),
-        apiClient
-          .get<SystemHealthDto>('/api/health/system')
-          .then((r) => r.data)
-          .catch(() => null),
+        fetchHealthEndpoint<ProviderTypeHealthDto>('/api/health/llm'),
+        fetchHealthEndpoint<ProviderTypeHealthDto>('/api/health/tts'),
+        fetchHealthEndpoint<ProviderTypeHealthDto>('/api/health/images'),
+        fetchHealthEndpoint<SystemHealthDto>('/api/health/system'),
       ]);
 
       setLlmHealth(llm);

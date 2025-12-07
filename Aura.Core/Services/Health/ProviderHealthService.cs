@@ -138,7 +138,8 @@ public class ProviderHealthService
         name.Equals("Azure", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("AzureOpenAI", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("Gemini", StringComparison.OrdinalIgnoreCase) ||
-        name.Equals("Anthropic", StringComparison.OrdinalIgnoreCase);
+        name.Equals("Anthropic", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Qwen", StringComparison.OrdinalIgnoreCase);
 
     private bool IsTtsProvider(string name) =>
         name.Contains("tts", StringComparison.OrdinalIgnoreCase) ||
@@ -156,7 +157,12 @@ public class ProviderHealthService
         name.Equals("StableDiffusion", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("Stability", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("Stock", StringComparison.OrdinalIgnoreCase) ||
-        name.Equals("LocalStock", StringComparison.OrdinalIgnoreCase);
+        name.Equals("LocalStock", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Pexels", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Unsplash", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Midjourney", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("DallE", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("DallE3", StringComparison.OrdinalIgnoreCase);
 }
 
 /// <summary>

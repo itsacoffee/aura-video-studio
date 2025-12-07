@@ -59,13 +59,14 @@ public class LocalizationController : ControllerBase
         _translationService = translationService;
         _loggerFactory = loggerFactory;
         _localizationService = localizationService;
-        
+
         // Load timeout configuration with defaults
         // Translation with local LLMs (Ollama) can take several minutes for longer texts or when models need to load
         // Default timeout increased to 180 seconds (3 minutes) to accommodate model loading and complex translations
-        _requestTimeoutSeconds = configuration.GetValue("Localization:RequestTimeoutSeconds", 60);
-        _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 180);
-        
+        // Increase defaults to better accommodate first-run model loads on local LLMs (GPU warmup)
+        _requestTimeoutSeconds = configuration.GetValue("Localization:RequestTimeoutSeconds", 180);
+        _llmTimeoutSeconds = configuration.GetValue("Localization:LlmTimeoutSeconds", 420);
+
         var storageDir = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "AuraVideoStudio",
@@ -111,8 +112,8 @@ public class LocalizationController : ControllerBase
                 Title = "Invalid Source Language",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = sourceValidation.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = sourceValidation.ErrorCode ?? "INVALID_LANGUAGE",
                     ["languageCode"] = request.SourceLanguage
@@ -131,8 +132,8 @@ public class LocalizationController : ControllerBase
                 Title = "Invalid Target Language",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = targetValidation.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = targetValidation.ErrorCode ?? "INVALID_LANGUAGE",
                     ["languageCode"] = request.TargetLanguage
@@ -155,8 +156,8 @@ public class LocalizationController : ControllerBase
                 Title = "Empty Content",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = "No text provided for translation. Please provide either sourceText or scriptLines.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "EMPTY_CONTENT"
                 }
@@ -172,8 +173,8 @@ public class LocalizationController : ControllerBase
                 Title = "Text Too Long",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = $"Text length ({textLength} characters) exceeds maximum allowed ({maxTextLength} characters). Please split into smaller batches.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "TEXT_TOO_LONG",
                     ["textLength"] = textLength,
@@ -190,9 +191,9 @@ public class LocalizationController : ControllerBase
         {
             var translationRequest = MapToTranslationRequest(request);
             var result = await _localizationService.TranslateAsync(translationRequest, linkedCts.Token).ConfigureAwait(false);
-            
+
             var dto = MapToTranslationResultDto(result);
-            
+
             _logger.LogInformation("Translation completed in {Time:F2}s with quality {Quality:F1}",
                 result.TranslationTimeSeconds, result.Quality.OverallScore);
 
@@ -208,8 +209,8 @@ public class LocalizationController : ControllerBase
                 Title = "Translation Service Temporarily Unavailable",
                 Status = StatusCodes.Status503ServiceUnavailable,
                 Detail = "The translation service is experiencing issues and has been temporarily disabled. Please try again in a few minutes.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "CIRCUIT_BREAKER_OPEN",
                     ["retryAfterSeconds"] = 30
@@ -217,14 +218,14 @@ public class LocalizationController : ControllerBase
             });
         }
         catch (InvalidOperationException ex) when (
-            ex.Message.Contains("does not support translation") || 
+            ex.Message.Contains("does not support translation") ||
             ex.Message.Contains("No AI provider is configured") ||
             ex.Message.Contains("Ollama is not running") ||
             ex.Message.Contains("not available"))
         {
             _logger.LogWarning(ex, "Translation provider not available, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
-            
+
             // Return 503 for provider availability issues with clear instructions
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
             {
@@ -232,8 +233,8 @@ public class LocalizationController : ControllerBase
                 Title = "AI Provider Not Available",
                 Status = StatusCodes.Status503ServiceUnavailable,
                 Detail = ex.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "PROVIDER_NOT_AVAILABLE",
                     ["suggestions"] = new[] {
@@ -244,7 +245,7 @@ public class LocalizationController : ControllerBase
                 }
             });
         }
-        catch (ProviderException ex) when (ex.Message.Contains("connection", StringComparison.OrdinalIgnoreCase) || 
+        catch (ProviderException ex) when (ex.Message.Contains("connection", StringComparison.OrdinalIgnoreCase) ||
                                             ex.Message.Contains("unavailable", StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning(ex, "LLM provider connection failed, CorrelationId: {CorrelationId}",
@@ -255,8 +256,8 @@ public class LocalizationController : ControllerBase
                 Title = "AI Provider Unavailable",
                 Status = StatusCodes.Status503ServiceUnavailable,
                 Detail = $"Could not connect to AI provider: {ex.Message}",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "PROVIDER_UNAVAILABLE",
                     ["recommendation"] = "Verify Ollama is running: 'ollama list' should show available models"
@@ -267,7 +268,7 @@ public class LocalizationController : ControllerBase
         {
             _logger.LogError(ex, "LLM provider error during translation, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
-            
+
             var statusCode = ex.IsTransient ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status500InternalServerError;
             return StatusCode(statusCode, new ProblemDetails
             {
@@ -275,8 +276,8 @@ public class LocalizationController : ControllerBase
                 Title = "LLM Provider Error",
                 Status = statusCode,
                 Detail = ex.UserMessage ?? ex.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = ex.SpecificErrorCode,
                     ["providerName"] = ex.ProviderName,
@@ -298,8 +299,8 @@ public class LocalizationController : ControllerBase
                 Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. " +
                          $"This often happens when GPU is under heavy load (100% usage). " +
                          $"Please wait a few moments and try again with shorter text or check GPU availability.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "TIMEOUT",
                     ["timeoutSeconds"] = _llmTimeoutSeconds,
@@ -329,8 +330,8 @@ public class LocalizationController : ControllerBase
                 Title = "Invalid Translation Request",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = ex.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "INVALID_REQUEST"
                 }
@@ -345,8 +346,8 @@ public class LocalizationController : ControllerBase
                 Title = "Translation Failed",
                 Status = StatusCodes.Status500InternalServerError,
                 Detail = "An unexpected error occurred during translation. Please try again or contact support if the problem persists.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "INTERNAL_ERROR",
                     ["isRetryable"] = true
@@ -383,8 +384,8 @@ public class LocalizationController : ControllerBase
                 Title = "Invalid Source Language",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = sourceValidation.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = sourceValidation.ErrorCode ?? "INVALID_LANGUAGE",
                     ["languageCode"] = request.SourceLanguage
@@ -403,8 +404,8 @@ public class LocalizationController : ControllerBase
                 Title = "Invalid Target Language",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = targetValidation.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = targetValidation.ErrorCode ?? "INVALID_LANGUAGE",
                     ["languageCode"] = request.TargetLanguage
@@ -421,8 +422,8 @@ public class LocalizationController : ControllerBase
                 Title = "Empty Content",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = "No text provided for translation. Please provide sourceText.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "EMPTY_CONTENT"
                 }
@@ -439,8 +440,8 @@ public class LocalizationController : ControllerBase
                 Title = "Text Too Long",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = $"Text length ({request.SourceText.Length} characters) exceeds maximum allowed ({maxTextLength} characters). Please split into smaller batches.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "TEXT_TOO_LONG",
                     ["textLength"] = request.SourceText.Length,
@@ -470,7 +471,7 @@ public class LocalizationController : ControllerBase
                 request.Provider ?? "(default)", request.ModelId ?? "(default)", HttpContext.TraceIdentifier);
 
             var result = await _localizationService.TranslateAsync(translationRequest, linkedCts.Token).ConfigureAwait(false);
-            
+
             _logger.LogInformation("Simple translation completed in {Time:F2}s, CorrelationId: {CorrelationId}",
                 result.TranslationTimeSeconds, HttpContext.TraceIdentifier);
 
@@ -486,8 +487,8 @@ public class LocalizationController : ControllerBase
                 Title = "Translation Service Temporarily Unavailable",
                 Status = StatusCodes.Status503ServiceUnavailable,
                 Detail = "The translation service is experiencing issues and has been temporarily disabled. Please try again in a few minutes.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "CIRCUIT_BREAKER_OPEN",
                     ["retryAfterSeconds"] = 30
@@ -498,7 +499,7 @@ public class LocalizationController : ControllerBase
         {
             _logger.LogError(ex, "LLM provider error during simple translation, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
-            
+
             var statusCode = ex.IsTransient ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status500InternalServerError;
             return StatusCode(statusCode, new ProblemDetails
             {
@@ -506,8 +507,8 @@ public class LocalizationController : ControllerBase
                 Title = "LLM Provider Error",
                 Status = statusCode,
                 Detail = ex.UserMessage ?? ex.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = ex.SpecificErrorCode,
                     ["providerName"] = ex.ProviderName,
@@ -529,8 +530,8 @@ public class LocalizationController : ControllerBase
                 Detail = $"Translation request timed out after {_llmTimeoutSeconds} seconds. " +
                          $"This often happens when GPU is under heavy load (100% usage). " +
                          $"Please wait a few moments and try again with shorter text.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "TIMEOUT",
                     ["timeoutSeconds"] = _llmTimeoutSeconds,
@@ -560,8 +561,8 @@ public class LocalizationController : ControllerBase
                 Title = "Translation Failed",
                 Status = StatusCodes.Status500InternalServerError,
                 Detail = "An unexpected error occurred during translation. Please try again or contact support if the problem persists.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "INTERNAL_ERROR",
                     ["isRetryable"] = true
@@ -586,7 +587,7 @@ public class LocalizationController : ControllerBase
         {
             var batchRequest = MapToBatchTranslationRequest(request);
             var result = await _translationService.BatchTranslateAsync(batchRequest, null, cancellationToken).ConfigureAwait(false);
-            
+
             var dto = MapToBatchTranslationResultDto(result);
 
             _logger.LogInformation("Batch translation completed: {Success}/{Total}",
@@ -634,8 +635,8 @@ public class LocalizationController : ControllerBase
                 Title = "Invalid Language Code",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = languageValidation.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = languageValidation.ErrorCode ?? "INVALID_LANGUAGE",
                     ["languageCode"] = request.TargetLanguage
@@ -652,8 +653,8 @@ public class LocalizationController : ControllerBase
                 Title = "Empty Content",
                 Status = StatusCodes.Status400BadRequest,
                 Detail = "Content is required for cultural analysis.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "EMPTY_CONTENT"
                 }
@@ -680,7 +681,7 @@ public class LocalizationController : ControllerBase
                 request.Provider ?? "(default)", request.ModelId ?? "(default)", HttpContext.TraceIdentifier);
 
             var result = await _localizationService.AnalyzeCulturalContentAsync(analysisRequest, linkedCts.Token).ConfigureAwait(false);
-            
+
             var dto = MapToCulturalAnalysisResultDto(result);
 
             _logger.LogInformation("Cultural analysis completed successfully: Score={Score}, Issues={IssueCount}, Recommendations={RecCount}, CorrelationId: {CorrelationId}",
@@ -698,8 +699,8 @@ public class LocalizationController : ControllerBase
                 Title = "Analysis Service Temporarily Unavailable",
                 Status = StatusCodes.Status503ServiceUnavailable,
                 Detail = "The cultural analysis service is experiencing issues. Please try again in a few minutes.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "CIRCUIT_BREAKER_OPEN",
                     ["retryAfterSeconds"] = 30
@@ -710,7 +711,7 @@ public class LocalizationController : ControllerBase
         {
             _logger.LogError(ex, "LLM provider error during cultural analysis, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
-            
+
             var statusCode = ex.IsTransient ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status500InternalServerError;
             return StatusCode(statusCode, new ProblemDetails
             {
@@ -718,8 +719,8 @@ public class LocalizationController : ControllerBase
                 Title = "LLM Provider Error",
                 Status = statusCode,
                 Detail = ex.UserMessage ?? ex.Message,
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = ex.SpecificErrorCode,
                     ["providerName"] = ex.ProviderName,
@@ -741,8 +742,8 @@ public class LocalizationController : ControllerBase
                 Detail = $"Cultural analysis request timed out after {_llmTimeoutSeconds} seconds. " +
                          $"This often happens when GPU is under heavy load. " +
                          $"Please try with shorter content or wait for GPU to become available.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "TIMEOUT",
                     ["timeoutSeconds"] = _llmTimeoutSeconds,
@@ -772,8 +773,8 @@ public class LocalizationController : ControllerBase
                 Title = "Cultural Analysis Failed",
                 Status = StatusCodes.Status500InternalServerError,
                 Detail = "An unexpected error occurred during cultural analysis. Please try again or contact support.",
-                Extensions = 
-                { 
+                Extensions =
+                {
                     ["correlationId"] = HttpContext.TraceIdentifier,
                     ["errorCode"] = "INTERNAL_ERROR",
                     ["isRetryable"] = true
@@ -791,7 +792,7 @@ public class LocalizationController : ControllerBase
     {
         var languages = LanguageRegistry.GetAllLanguages();
         var dtos = languages.Select(MapToLanguageInfoDto).ToList();
-        
+
         _logger.LogInformation("Returned {Count} supported languages", dtos.Count);
         return Ok(dtos);
     }
@@ -806,7 +807,7 @@ public class LocalizationController : ControllerBase
         try
         {
             var capabilities = _llmProvider.GetCapabilities();
-            
+
             return Ok(new TranslationProviderHealthDto(
                 IsAvailable: true,
                 ProviderName: capabilities.ProviderName,
@@ -820,7 +821,7 @@ public class LocalizationController : ControllerBase
         {
             _logger.LogWarning(ex, "Failed to get provider capabilities, CorrelationId: {CorrelationId}",
                 HttpContext.TraceIdentifier);
-            
+
             return Ok(new TranslationProviderHealthDto(
                 IsAvailable: false,
                 ProviderName: "",
@@ -889,7 +890,7 @@ public class LocalizationController : ControllerBase
     public ActionResult<LanguageInfoDto> GetLanguage(string languageCode)
     {
         var language = LanguageRegistry.GetLanguage(languageCode);
-        
+
         if (language == null)
         {
             return NotFound(new ProblemDetails
@@ -923,7 +924,7 @@ public class LocalizationController : ControllerBase
                 cancellationToken).ConfigureAwait(false);
 
             var dto = MapToProjectGlossaryDto(glossary);
-            
+
             return CreatedAtAction(
                 nameof(GetGlossary),
                 new { glossaryId = glossary.Id },
@@ -953,7 +954,7 @@ public class LocalizationController : ControllerBase
         CancellationToken cancellationToken)
     {
         var glossary = await _glossaryManager.GetGlossaryAsync(glossaryId, cancellationToken).ConfigureAwait(false);
-        
+
         if (glossary == null)
         {
             return NotFound(new ProblemDetails
@@ -978,7 +979,7 @@ public class LocalizationController : ControllerBase
     {
         var glossaries = await _glossaryManager.ListGlossariesAsync(cancellationToken).ConfigureAwait(false);
         var dtos = glossaries.Select(MapToProjectGlossaryDto).ToList();
-        
+
         return Ok(dtos);
     }
 
@@ -1003,7 +1004,7 @@ public class LocalizationController : ControllerBase
                 cancellationToken).ConfigureAwait(false);
 
             var dto = MapToGlossaryEntryDto(entry);
-            
+
             return CreatedAtAction(
                 nameof(GetGlossary),
                 new { glossaryId },
