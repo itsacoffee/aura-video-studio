@@ -129,6 +129,9 @@ public class FfmpegVideoComposer : IVideoComposer
         progress.Report(new RenderProgress(ProgressValidatingAudio, TimeSpan.Zero, TimeSpan.Zero, "Validating audio files..."));
         await PreValidateAudioAsync(timeline, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
 
+        // VALIDATE INPUT FILES FIRST - fail fast if files are bad
+        await ValidateInputFilesAsync(timeline, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
+
         // Create output file path using configured output directory
         string outputFilePath = Path.Combine(
             _outputDirectory,
@@ -208,10 +211,66 @@ public class FfmpegVideoComposer : IVideoComposer
             _logger.LogWarning(ex, "Failed to create FFmpeg log file at {LogPath}", ffmpegLogPath);
         }
 
+        // Track FFmpeg activity for watchdog timer
+        DateTime lastFfmpegActivity = DateTime.UtcNow;
+        float lastProgressPercent = 0f;
+
+        // Watchdog timer to detect FFmpeg hanging (no output for 90 seconds)
+        var watchdogTimer = new System.Timers.Timer(10000); // Check every 10 seconds
+        watchdogTimer.Elapsed += (sender, args) =>
+        {
+            var inactivityDuration = DateTime.UtcNow - lastFfmpegActivity;
+            if (inactivityDuration.TotalSeconds > 90 && !process.HasExited)
+            {
+                _logger.LogError(
+                    "FFmpeg WATCHDOG TRIGGERED: No stderr output for {Seconds}s at {Progress}%. " +
+                    "FFmpeg may be hung. Terminating process. (JobId: {JobId})",
+                    inactivityDuration.TotalSeconds, lastProgressPercent, jobId);
+                
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                    watchdogTimer.Stop();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to kill hung FFmpeg process");
+                }
+            }
+        };
+        watchdogTimer.Start();
+
+        // Heartbeat timer for visibility (every 5 seconds)
+        var heartbeatTimer = new System.Timers.Timer(5000);
+        heartbeatTimer.Elapsed += (sender, args) =>
+        {
+            if (!process.HasExited)
+            {
+                try
+                {
+                    _logger.LogInformation(
+                        "FFmpeg HEARTBEAT: JobId={JobId}, Progress={Progress}%, Elapsed={Elapsed}s, " +
+                        "ProcessId={Pid}, Memory={MemoryMB}MB, CPU={CpuSeconds}s",
+                        jobId, lastProgressPercent, (DateTime.UtcNow - startTime).TotalSeconds,
+                        process.Id, 
+                        process.WorkingSet64 / 1024 / 1024,
+                        process.TotalProcessorTime.TotalSeconds);
+                }
+                catch
+                {
+                    // Process may have exited, ignore
+                }
+            }
+        };
+        heartbeatTimer.Start();
+
         // Set up output handler to parse progress and capture output
         process.ErrorDataReceived += (sender, args) =>
         {
             if (string.IsNullOrEmpty(args.Data)) return;
+
+            // Reset watchdog timer on any stderr output
+            lastFfmpegActivity = DateTime.UtcNow;
 
             // Capture for error reporting
             stderrBuilder.AppendLine(args.Data);
@@ -249,6 +308,7 @@ public class FfmpegVideoComposer : IVideoComposer
                             // Calculate progress percentage
                             float percentage = (float)(currentTime.TotalSeconds / totalDuration.TotalSeconds * 100);
                             percentage = Math.Clamp(percentage, 0, 100);
+                            lastProgressPercent = percentage; // Track for watchdog
 
                             // Calculate time remaining
                             var elapsed = now - startTime;
@@ -294,6 +354,12 @@ public class FfmpegVideoComposer : IVideoComposer
 
         process.Exited += (sender, args) =>
         {
+            // Stop watchdog and heartbeat timers
+            watchdogTimer.Stop();
+            watchdogTimer.Dispose();
+            heartbeatTimer.Stop();
+            heartbeatTimer.Dispose();
+
             if (process.ExitCode == 0)
             {
                 tcs.SetResult(true);
@@ -411,6 +477,19 @@ public class FfmpegVideoComposer : IVideoComposer
             // Dispose cancellation registration
             cancellationRegistration.Dispose();
 
+            // Stop and dispose timers
+            try
+            {
+                watchdogTimer?.Stop();
+                watchdogTimer?.Dispose();
+                heartbeatTimer?.Stop();
+                heartbeatTimer?.Dispose();
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+
             // Ensure process is cleaned up
             try
             {
@@ -449,12 +528,21 @@ public class FfmpegVideoComposer : IVideoComposer
         }
 
         var fileInfo = new FileInfo(outputFilePath);
-        _logger.LogInformation("Render verified: {Path} ({Size} bytes)", outputFilePath, fileInfo.Length);
+        _logger.LogInformation("Render verified: {Path} ({SizeMB:F2} MB, {SizeBytes} bytes)", 
+            outputFilePath, fileInfo.Length / 1024.0 / 1024.0, fileInfo.Length);
 
         if (fileInfo.Length == 0)
         {
             _logger.LogError("Render created empty file: {Path}", outputFilePath);
             throw new InvalidOperationException($"Video render failed: output file is empty at {outputFilePath}");
+        }
+
+        // Add minimum size check (video should be at least 100KB for even shortest videos)
+        if (fileInfo.Length < 100 * 1024)
+        {
+            _logger.LogWarning(
+                "Output file is suspiciously small: {SizeKB} KB. May be corrupted.",
+                fileInfo.Length / 1024);
         }
 
         _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
@@ -870,8 +958,23 @@ public class FfmpegVideoComposer : IVideoComposer
         // Build the command
         var command = builder.Build();
 
+        // Enhanced logging for diagnostics
         _logger.LogInformation("FFmpeg command built successfully: {Length} characters", command.Length);
         _logger.LogDebug("Full command: ffmpeg {Command}", command);
+        
+        // Log detailed input file information
+        _logger.LogInformation(
+            "FFmpeg input files (JobId={JobId}):\n" +
+            "  Narration: {NarrationPath} ({NarrationSizeMB:F2} MB)\n" +
+            "  Music: {MusicPath}\n" +
+            "  Visual Assets: {AssetCount} files\n" +
+            "  Output: {OutputPath}",
+            Path.GetFileName(outputPath).Replace("AuraVideoStudio_", "").Replace(".mp4", ""),
+            timeline.NarrationPath, 
+            new FileInfo(timeline.NarrationPath).Length / 1024.0 / 1024.0,
+            string.IsNullOrEmpty(timeline.MusicPath) ? "None" : $"{timeline.MusicPath} ({new FileInfo(timeline.MusicPath).Length / 1024.0 / 1024.0:F2} MB)",
+            visualAssets.Count,
+            outputPath);
 
         return command;
     }
@@ -1277,6 +1380,140 @@ public class FfmpegVideoComposer : IVideoComposer
         throw new InvalidOperationException(
             $"{audioType} audio validation failed: {validation.ErrorMessage}. " +
             $"CorrelationId: {correlationId}, JobId: {jobId}");
+    }
+
+    /// <summary>
+    /// Validates all input files before FFmpeg execution to fail fast on corrupted files
+    /// </summary>
+    private async Task ValidateInputFilesAsync(Timeline timeline, string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
+    {
+        _logger.LogInformation("Pre-validating input files before FFmpeg execution (JobId={JobId})...", jobId);
+        
+        // Validate narration file
+        if (string.IsNullOrEmpty(timeline.NarrationPath) || !File.Exists(timeline.NarrationPath))
+        {
+            throw new InvalidOperationException($"Narration file not found: {timeline.NarrationPath}");
+        }
+        
+        var narrationInfo = new FileInfo(timeline.NarrationPath);
+        if (narrationInfo.Length == 0)
+        {
+            throw new InvalidOperationException($"Narration file is empty: {timeline.NarrationPath}");
+        }
+        
+        // Use ffprobe to validate narration is valid audio
+        await ValidateMediaFileAsync(timeline.NarrationPath, "audio", ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
+        
+        // Validate music file if present
+        if (!string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath))
+        {
+            try
+            {
+                await ValidateMediaFileAsync(timeline.MusicPath, "audio", ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Music file validation failed, will skip music: {Path}", timeline.MusicPath);
+            }
+        }
+        
+        // Validate visual assets
+        var visualAssets = CollectVisualAssets(timeline);
+        foreach (var asset in visualAssets)
+        {
+            if (!File.Exists(asset.Path))
+            {
+                throw new FileNotFoundException($"Visual asset not found: {asset.Path}");
+            }
+            
+            var assetInfo = new FileInfo(asset.Path);
+            if (assetInfo.Length == 0)
+            {
+                throw new InvalidOperationException($"Visual asset is empty: {asset.Path}");
+            }
+            
+            // Determine expected type based on file extension
+            var expectedType = asset.IsImage ? "image" : "image|video";
+            await ValidateMediaFileAsync(asset.Path, expectedType, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
+        }
+        
+        _logger.LogInformation("All input files validated successfully (JobId={JobId})", jobId);
+    }
+
+    /// <summary>
+    /// Validates a media file using ffprobe
+    /// </summary>
+    private async Task ValidateMediaFileAsync(string filePath, string expectedType, string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
+    {
+        // Get ffprobe path (same directory as ffmpeg)
+        var ffmpegDir = Path.GetDirectoryName(ffmpegPath);
+        string ffprobePath;
+        
+        if (string.IsNullOrEmpty(ffmpegDir))
+        {
+            // FFmpeg is in PATH, assume ffprobe is too
+            ffprobePath = "ffprobe";
+        }
+        else
+        {
+            // FFmpeg has a full path, look for ffprobe in the same directory
+            ffprobePath = Path.Combine(ffmpegDir, "ffprobe.exe");
+            if (!File.Exists(ffprobePath))
+            {
+                // Try without .exe extension (Linux/Mac)
+                ffprobePath = Path.Combine(ffmpegDir, "ffprobe");
+                if (!File.Exists(ffprobePath))
+                {
+                    // Fall back to PATH
+                    ffprobePath = "ffprobe";
+                }
+            }
+        }
+        
+        var args = $"-v error -show_entries stream=codec_type -of default=noprint_wrappers=1:nokey=1 \"{filePath}\"";
+        
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = ffprobePath,
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+        
+        try
+        {
+            process.Start();
+            var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Media file validation failed for {filePath}: {stderr}");
+            }
+            
+            var codecTypes = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var isValid = codecTypes.Any(type => expectedType.Contains(type.Trim(), StringComparison.OrdinalIgnoreCase));
+            
+            if (!isValid)
+            {
+                throw new InvalidOperationException(
+                    $"Media file {filePath} is not a valid {expectedType} file. " +
+                    $"Detected types: {string.Join(", ", codecTypes)}");
+            }
+            
+            _logger.LogDebug("Media file validated: {Path} (Type: {Type})", filePath, string.Join(", ", codecTypes));
+        }
+        finally
+        {
+            process.Dispose();
+        }
     }
 
 
