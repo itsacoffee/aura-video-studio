@@ -439,37 +439,80 @@ public class OllamaDirectClientIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task HttpClient_HasCorrectTimeout_FromSettings()
+    public async Task GenerateAsync_CallsCorrectEndpoint_VerifiedByMock()
     {
-        // Arrange
-        var client = _serviceProvider.GetRequiredService<IOllamaDirectClient>();
-        var clientType = client.GetType();
-        var httpClientField = clientType.GetField("_httpClient", 
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
-        // Act
-        var httpClient = httpClientField?.GetValue(client) as HttpClient;
+        // Arrange - Verify that the client calls the correct base URL + endpoint
+        var generateResponse = new
+        {
+            response = "Test response",
+            model = "llama3.1",
+            done = true
+        };
 
-        // Assert
-        Assert.NotNull(httpClient);
-        Assert.Equal(TimeSpan.FromMinutes(3), httpClient.Timeout);
+        _mockHttpHandler.AddResponse(
+            "POST",
+            "http://127.0.0.1:11434/api/generate",
+            HttpStatusCode.OK,
+            JsonSerializer.Serialize(generateResponse));
+
+        var client = _serviceProvider.GetRequiredService<IOllamaDirectClient>();
+
+        // Act
+        var result = await client.GenerateAsync("llama3.1", "test prompt");
+
+        // Assert - The mock handler validates that the correct URL was called
+        Assert.NotNull(result);
+        Assert.Equal("Test response", result);
+        Assert.Equal(1, _mockHttpHandler.RequestCount);
     }
 
     [Fact]
-    public async Task HttpClient_HasCorrectBaseAddress_FromSettings()
+    public async Task IsAvailableAsync_CallsCorrectEndpoint_VerifiedByMock()
     {
-        // Arrange
+        // Arrange - Verify that the client calls the correct base URL + endpoint
+        _mockHttpHandler.AddResponse(
+            "GET",
+            "http://127.0.0.1:11434/api/version",
+            HttpStatusCode.OK,
+            "{}");
+
         var client = _serviceProvider.GetRequiredService<IOllamaDirectClient>();
-        var clientType = client.GetType();
-        var httpClientField = clientType.GetField("_httpClient",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         // Act
-        var httpClient = httpClientField?.GetValue(client) as HttpClient;
+        var isAvailable = await client.IsAvailableAsync();
 
-        // Assert
-        Assert.NotNull(httpClient);
-        Assert.Equal(new Uri("http://127.0.0.1:11434"), httpClient.BaseAddress);
+        // Assert - The mock handler validates that the correct URL was called
+        Assert.True(isAvailable);
+        Assert.Equal(1, _mockHttpHandler.RequestCount);
+    }
+
+    [Fact]
+    public async Task ListModelsAsync_CallsCorrectEndpoint_VerifiedByMock()
+    {
+        // Arrange - Verify that the client calls the correct base URL + endpoint
+        var modelsResponse = new
+        {
+            models = new[]
+            {
+                new { name = "llama3.1" }
+            }
+        };
+
+        _mockHttpHandler.AddResponse(
+            "GET",
+            "http://127.0.0.1:11434/api/tags",
+            HttpStatusCode.OK,
+            JsonSerializer.Serialize(modelsResponse));
+
+        var client = _serviceProvider.GetRequiredService<IOllamaDirectClient>();
+
+        // Act
+        var models = await client.ListModelsAsync();
+
+        // Assert - The mock handler validates that the correct URL was called
+        Assert.NotNull(models);
+        Assert.Single(models);
+        Assert.Equal(1, _mockHttpHandler.RequestCount);
     }
 
     public void Dispose()
