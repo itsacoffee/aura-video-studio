@@ -13,6 +13,7 @@ using Aura.Core.Data;
 using Aura.Core.Extensions;
 using Aura.Core.Hardware;
 using Aura.Core.Logging;
+using Aura.Core.Services.FFmpeg;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Planner;
@@ -557,6 +558,20 @@ builder.Services.AddSingleton<Aura.Core.Configuration.FFmpegConfigurationStore>(
 // Register unified FFmpeg configuration service
 builder.Services.AddSingleton<Aura.Core.Configuration.IFfmpegConfigurationService, Aura.Core.Configuration.FfmpegConfigurationService>();
 
+// Core FFmpeg + GPU dependencies
+builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var toolsDir = providerSettings.GetToolsDirectory();
+    var explicitPath = providerSettings.GetFfmpegPath();
+    return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDir, explicitPath);
+});
+builder.Services.AddSingleton<IProcessManager, ProcessManager>();
+builder.Services.AddSingleton<IFFmpegService, FFmpegService>();
+builder.Services.AddSingleton<IFFmpegExecutor, FFmpegExecutor>();
+builder.Services.AddSingleton<Aura.Core.Hardware.IGpuDetectionService, Aura.Core.Hardware.GpuDetectionService>();
+
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<IHardwareDetector>(sp => sp.GetRequiredService<HardwareDetector>());
@@ -626,7 +641,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Providers.OllamaHealthCheckServ
 builder.Services.AddSingleton<IConfigureOptions<Aura.Core.Providers.OllamaSettings>>(sp =>
 {
     return new ConfigureNamedOptions<Aura.Core.Providers.OllamaSettings>(
-        Options.DefaultName, 
+        Options.DefaultName,
         options =>
         {
             var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
@@ -785,10 +800,10 @@ builder.Services.AddSingleton<Aura.Core.Orchestration.LlmStageAdapter>(sp =>
     var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
     var providerSettings = sp.GetService<Aura.Core.Configuration.ProviderSettings>();
-    
+
     // Create providers using the same factory as ScriptOrchestrator
     var providers = factory.CreateAvailableProviders(loggerFactory);
-    
+
     return new Aura.Core.Orchestration.LlmStageAdapter(logger, providers, mixer, providerSettings);
 });
 
@@ -1501,12 +1516,12 @@ builder.Services.AddSingleton(sp =>
 {
     var env = sp.GetRequiredService<IWebHostEnvironment>();
     var config = sp.GetRequiredService<IConfiguration>();
-    
+
     // Start with environment-appropriate defaults
     var options = env.IsDevelopment()
         ? Aura.Core.Orchestrator.OrchestratorOptions.CreateDebug()
         : Aura.Core.Orchestrator.OrchestratorOptions.CreateDefault();
-    
+
     // Override with configuration values if present
     var orchestrationSection = config.GetSection("Orchestration");
     if (orchestrationSection.Exists())
@@ -1516,38 +1531,38 @@ builder.Services.AddSingleton(sp =>
         {
             options.TaskTimeout = TimeSpan.FromMinutes(taskTimeoutMinutes.Value);
         }
-        
+
         var batchTimeoutMinutes = orchestrationSection.GetValue<double?>("BatchTimeoutMinutes");
         if (batchTimeoutMinutes.HasValue)
         {
             options.BatchTimeout = TimeSpan.FromMinutes(batchTimeoutMinutes.Value);
         }
-        
+
         var stuckThreshold = orchestrationSection.GetValue<int?>("StuckDetectionThresholdSeconds");
         if (stuckThreshold.HasValue)
         {
             options.StuckDetectionThresholdSeconds = stuckThreshold.Value;
         }
-        
+
         var enableRecovery = orchestrationSection.GetValue<bool?>("EnableTaskRecovery");
         if (enableRecovery.HasValue)
         {
             options.EnableTaskRecovery = enableRecovery.Value;
         }
-        
+
         var maxRetries = orchestrationSection.GetValue<int?>("MaxTaskRetries");
         if (maxRetries.HasValue)
         {
             options.MaxTaskRetries = maxRetries.Value;
         }
-        
+
         var maxConcurrency = orchestrationSection.GetValue<int?>("MaxConcurrency");
         if (maxConcurrency.HasValue)
         {
             options.MaxConcurrency = maxConcurrency.Value;
         }
     }
-    
+
     return options;
 });
 
@@ -2234,7 +2249,7 @@ try
 {
     using var validationScope = app.Services.CreateScope();
     var settingsValidator = validationScope.ServiceProvider.GetService<Aura.Core.Configuration.SettingsValidationService>();
-    
+
     if (settingsValidator != null)
     {
         Log.Information("Running comprehensive configuration validation...");
@@ -2248,7 +2263,7 @@ try
             Log.Error("");
             Log.Error("The application cannot start due to critical configuration issues:");
             Log.Error("");
-            
+
             foreach (var issue in validationResult.CriticalIssues)
             {
                 Log.Error("  [{Code}] {Message}", issue.Code, issue.Message);
@@ -2257,11 +2272,11 @@ try
                     Log.Error("    Resolution: {Resolution}", issue.Resolution);
                 }
             }
-            
+
             Log.Error("");
             Log.Error("Please fix the issues above and restart the application.");
             Log.Error("========================================");
-            
+
             // Exit with error code 1 to indicate failure
             Environment.ExitCode = 1;
             return;
@@ -2691,7 +2706,7 @@ if (!app.Environment.IsDevelopment())
 {
     // Force HTTPS in production
     app.UseHttpsRedirection();
-    
+
     // HTTP Strict Transport Security (HSTS) - only in production
     app.UseHsts();
 }
@@ -6305,7 +6320,7 @@ appLifetime.ApplicationStarted.Register(() =>
                 var llmFactory = scope.ServiceProvider.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
                 var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
                 var providers = llmFactory.CreateAvailableProviders(loggerFactory);
-                
+
                 if (providers.Count == 0)
                 {
                     logger.LogCritical("✗ CRITICAL: NO LLM providers registered! All AI features will fail!");
@@ -6316,14 +6331,14 @@ appLifetime.ApplicationStarted.Register(() =>
                 {
                     logger.LogInformation("✓ LLM Providers: {Count} registered ({Providers})",
                         providers.Count, string.Join(", ", providers.Keys));
-                    
+
                     // Verify RuleBased is present
                     if (!providers.ContainsKey("RuleBased"))
                     {
                         logger.LogWarning("✗ RuleBased fallback provider NOT registered - this should always be available");
                         healthIssues++;
                     }
-                    
+
                     // Check if Ollama is configured and registered
                     var providerSettings = scope.ServiceProvider.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
                     var preferredProvider = providerSettings.GetPreferredLlmProvider();
@@ -6401,30 +6416,30 @@ await ValidateProviderRegistrationAsync(app.Services);
 static async Task ValidateProviderRegistrationAsync(IServiceProvider services)
 {
     var logger = services.GetRequiredService<ILogger<Program>>();
-    
+
     logger.LogInformation("=== DIAGNOSTIC: Provider Validation ===");
-    
+
     // Check DI registration
     var llmProvider = services.GetService<Aura.Core.Providers.ILlmProvider>();
-    logger.LogInformation("ILlmProvider: {Status}", 
+    logger.LogInformation("ILlmProvider: {Status}",
         llmProvider != null ? $"✓ {llmProvider.GetType().Name}" : "✗ NULL");
-    
+
     var ollamaClient = services.GetService<Aura.Core.Providers.IOllamaDirectClient>();
-    logger.LogInformation("IOllamaDirectClient: {Status}", 
+    logger.LogInformation("IOllamaDirectClient: {Status}",
         ollamaClient != null ? "✓ Registered" : "✗ NULL");
-    
+
     // Check ProviderHealthMonitor
     var healthMonitor = services.GetService<Aura.Core.Services.Health.ProviderHealthMonitor>();
     if (healthMonitor != null)
     {
         var providers = healthMonitor.GetAllProviderHealth();
         logger.LogInformation("ProviderHealthMonitor: {Count} providers", providers.Count);
-        
+
         if (providers.Count == 0)
         {
             logger.LogCritical("CRITICAL: Zero providers in ProviderHealthMonitor!");
         }
-        
+
         foreach (var kvp in providers)
         {
             logger.LogInformation("  - {Name}: {Healthy}", kvp.Key, kvp.Value.IsHealthy);
@@ -6434,14 +6449,14 @@ static async Task ValidateProviderRegistrationAsync(IServiceProvider services)
     {
         logger.LogError("CRITICAL: ProviderHealthMonitor is NULL");
     }
-    
+
     // Test Ollama connectivity
     if (ollamaClient != null)
     {
         try
         {
             var available = await ollamaClient.IsAvailableAsync(CancellationToken.None);
-            logger.LogInformation("Ollama connectivity: {Status}", 
+            logger.LogInformation("Ollama connectivity: {Status}",
                 available ? "✓ AVAILABLE" : "✗ UNAVAILABLE");
         }
         catch (Exception ex)
@@ -6449,7 +6464,7 @@ static async Task ValidateProviderRegistrationAsync(IServiceProvider services)
             logger.LogError(ex, "Ollama test failed");
         }
     }
-    
+
     logger.LogInformation("=== Validation Complete ===");
 }
 

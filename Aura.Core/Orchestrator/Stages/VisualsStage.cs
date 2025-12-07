@@ -17,6 +17,8 @@ namespace Aura.Core.Orchestrator.Stages;
 /// </summary>
 public class VisualsStage : PipelineStage
 {
+    private const int SceneTimeoutSeconds = 45;
+
     private readonly IImageProvider? _imageProvider;
     private readonly ImageOutputValidator _imageValidator;
     private readonly ProviderRetryWrapper _retryWrapper;
@@ -72,7 +74,7 @@ public class VisualsStage : PipelineStage
                 context.CorrelationId);
 
             ReportProgress(progress, 100, "No image provider available - configure stock image API keys in Settings");
-            
+
             context.SceneAssets = sceneAssets;
             context.SetStageOutput(StageName, new VisualsStageOutput
             {
@@ -82,7 +84,7 @@ public class VisualsStage : PipelineStage
                 FailureReason = "No image provider available. Configure Pexels, Unsplash, or Pixabay API keys in Settings.",
                 GeneratedAt = DateTime.UtcNow
             });
-            
+
             return;
         }
 
@@ -108,6 +110,9 @@ public class VisualsStage : PipelineStage
 
             try
             {
+                using var sceneCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                sceneCts.CancelAfter(TimeSpan.FromSeconds(SceneTimeoutSeconds));
+
                 var assets = await _retryWrapper.ExecuteWithRetryAsync(
                     async (ctRetry) =>
                     {
@@ -150,7 +155,7 @@ public class VisualsStage : PipelineStage
                         return generatedAssets;
                     },
                     $"Image Generation (Scene {scene.Index})",
-                    ct,
+                    sceneCts.Token,
                     maxRetries: 2
                 ).ConfigureAwait(false);
 
@@ -166,16 +171,24 @@ public class VisualsStage : PipelineStage
             }
             catch (Exception ex)
             {
+                if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                var timedOut = ex is OperationCanceledException;
+
                 // Log with more context for debugging
                 Logger.LogWarning(
                     ex,
                     "[{CorrelationId}] Failed to generate visuals for scene {SceneIndex} (heading: '{Heading}'). " +
-                    "Provider: {Provider}. Error: {ErrorMessage}. Continuing with empty assets.",
+                    "Provider: {Provider}. Error: {ErrorMessage}. Continuing with empty assets. TimedOut={TimedOut}",
                     context.CorrelationId,
                     scene.Index,
                     scene.Heading ?? "unknown",
                     _imageProvider?.GetType().Name ?? "null",
-                    ex.Message);
+                    ex.Message,
+                    timedOut);
 
                 sceneAssets[scene.Index] = Array.Empty<Asset>();
                 failedScenes++;
