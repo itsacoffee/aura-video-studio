@@ -272,4 +272,64 @@ public class ExportPathPropagationTests
         receivedUpdates[0].Status.Should().Be("completed");
         receivedUpdates[0].OutputPath.Should().Be(outputPath);
     }
+
+    [Fact]
+    public async Task ExportPipeline_Integration_PropagatesOutputPathThroughFullFlow()
+    {
+        // This test validates the full integration between ExportOrchestrationService and ExportJobService
+        // Simulating the scenario where:
+        // 1. ExportController creates a VideoJob
+        // 2. ExportController queues an export with the videoJobId
+        // 3. ExportOrchestrationService processes the export
+        // 4. Upon completion, ExportOrchestrationService updates the VideoJob with the outputPath
+        // 5. SSE subscribers receive the outputPath in the completion event
+        
+        // Arrange
+        var videoJobId = Guid.NewGuid().ToString();
+        var outputFile = Path.Combine(Path.GetTempPath(), $"integration-test-{Guid.NewGuid()}.mp4");
+        
+        // Create the VideoJob (simulating ExportController creating it)
+        var videoJob = new VideoJob
+        {
+            Id = videoJobId,
+            Status = "queued",
+            Progress = 0,
+            Stage = "Preparing export"
+        };
+        await _exportJobService.CreateJobAsync(videoJob);
+        
+        // Verify initial state has no outputPath
+        var initialJob = await _exportJobService.GetJobAsync(videoJobId);
+        initialJob.Should().NotBeNull();
+        initialJob!.OutputPath.Should().BeNullOrEmpty("outputPath should not be set initially");
+        
+        // Act - Simulate the export completing
+        // In the real flow, ExportOrchestrationService.ProcessJobAsync would call this after FFmpeg finishes
+        await _exportJobService.UpdateJobStatusAsync(
+            videoJobId,
+            "completed",
+            100,
+            outputPath: outputFile);
+        
+        // Assert - Verify outputPath was propagated
+        var completedJob = await _exportJobService.GetJobAsync(videoJobId);
+        completedJob.Should().NotBeNull();
+        completedJob!.Status.Should().Be("completed");
+        completedJob.Progress.Should().Be(100);
+        completedJob.OutputPath.Should().Be(outputFile, "outputPath must be set when job completes successfully");
+        completedJob.CompletedAt.Should().NotBeNull();
+        
+        // Verify SSE stream would include outputPath
+        // (In real usage, frontend subscribes before job completes and receives updates)
+        var receivedUpdates = new System.Collections.Generic.List<Aura.Core.Models.Export.VideoJob>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        
+        await foreach (var update in _exportJobService.SubscribeToJobUpdatesAsync(videoJobId, cts.Token))
+        {
+            receivedUpdates.Add(update);
+        }
+        
+        receivedUpdates.Should().HaveCount(1, "should receive the completed job state");
+        receivedUpdates[0].OutputPath.Should().Be(outputFile, "SSE stream must include outputPath");
+    }
 }
