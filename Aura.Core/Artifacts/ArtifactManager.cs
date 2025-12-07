@@ -211,6 +211,7 @@ public class ArtifactManager
     /// <summary>
     /// Records an artifact asynchronously with validation and returns the artifact metadata.
     /// Used by export pipeline to persist output file paths to job artifacts.
+    /// This method is async to allow for future database persistence logic.
     /// </summary>
     /// <param name="jobId">The job ID this artifact belongs to</param>
     /// <param name="name">Display name for the artifact</param>
@@ -218,7 +219,7 @@ public class ArtifactManager
     /// <param name="type">MIME type or artifact type identifier</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>A JobArtifact with validated path and size information</returns>
-    public async Task<JobArtifact> RecordArtifactAsync(
+    public Task<JobArtifact> RecordArtifactAsync(
         string jobId,
         string name,
         string path,
@@ -229,8 +230,6 @@ public class ArtifactManager
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(type);
-
-        await Task.CompletedTask; // Keep async for future persistence logic
 
         if (!File.Exists(path))
         {
@@ -243,7 +242,7 @@ public class ArtifactManager
             "Recorded artifact for job {JobId}: {Name} ({Type}) at {Path} ({SizeBytes} bytes)",
             jobId, name, type, path, artifact.SizeBytes);
 
-        return artifact;
+        return Task.FromResult(artifact);
     }
 
     /// <summary>

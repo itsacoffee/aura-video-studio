@@ -14,6 +14,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
+using VideoJobList = System.Collections.Generic.List<Aura.Core.Models.Export.VideoJob>;
+
 namespace Aura.Tests.Services;
 
 /// <summary>
@@ -195,7 +197,7 @@ public class ExportPathPropagationTests
 
         await _exportJobService.CreateJobAsync(job);
 
-        var receivedUpdates = new System.Collections.Generic.List<Aura.Core.Models.Export.VideoJob>();
+        var receivedUpdates = new VideoJobList();
         using var cts = new CancellationTokenSource();
 
         // Act - Subscribe to updates
@@ -258,7 +260,7 @@ public class ExportPathPropagationTests
 
         await _exportJobService.CreateJobAsync(job);
 
-        var receivedUpdates = new System.Collections.Generic.List<Aura.Core.Models.Export.VideoJob>();
+        var receivedUpdates = new VideoJobList();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         // Act - Subscribe to a job that's already completed
@@ -321,7 +323,7 @@ public class ExportPathPropagationTests
         
         // Verify SSE stream would include outputPath
         // (In real usage, frontend subscribes before job completes and receives updates)
-        var receivedUpdates = new System.Collections.Generic.List<Aura.Core.Models.Export.VideoJob>();
+        var receivedUpdates = new VideoJobList();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         
         await foreach (var update in _exportJobService.SubscribeToJobUpdatesAsync(videoJobId, cts.Token))
