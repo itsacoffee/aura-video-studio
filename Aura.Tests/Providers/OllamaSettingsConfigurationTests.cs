@@ -9,14 +9,16 @@ using Xunit;
 namespace Aura.Tests.Providers;
 
 /// <summary>
-/// Tests to verify OllamaSettings configuration via ProviderSettings service
+/// Tests to verify OllamaSettings configuration via ProviderSettings service using 
+/// dependency injection factory pattern with proper default values
 /// </summary>
 public class OllamaSettingsConfigurationTests
 {
-    [Fact]
-    public void OllamaSettings_ConfiguresFromProviderSettings_WithCorrectDefaults()
+    /// <summary>
+    /// Creates a service collection with OllamaSettings configured via ProviderSettings factory
+    /// </summary>
+    private static ServiceCollection CreateServiceCollectionWithOllamaSettings()
     {
-        // Arrange - Build a minimal service collection that mimics Program.cs
         var services = new ServiceCollection();
         
         // Add logging
@@ -35,7 +37,7 @@ public class OllamaSettingsConfigurationTests
             return new ProviderSettings(logger, null);
         });
         
-        // Register OllamaSettings configuration using factory (THIS IS WHAT WE'RE TESTING)
+        // Register OllamaSettings configuration using factory (this is what we're testing)
         services.AddSingleton<IConfigureOptions<OllamaSettings>>(sp =>
         {
             return new ConfigureNamedOptions<OllamaSettings>(
@@ -51,6 +53,15 @@ public class OllamaSettingsConfigurationTests
                     options.NumCtx = providerSettings.GetOllamaNumCtx();
                 });
         });
+        
+        return services;
+    }
+
+    [Fact]
+    public void OllamaSettings_ConfiguresFromProviderSettings_WithCorrectDefaults()
+    {
+        // Arrange - Build a minimal service collection that mimics Program.cs
+        var services = CreateServiceCollectionWithOllamaSettings();
         
         // Register OllamaDirectClient with HttpClient
         services.AddHttpClient<IOllamaDirectClient, OllamaDirectClient>(client =>
@@ -83,31 +94,7 @@ public class OllamaSettingsConfigurationTests
     public void OllamaDirectClient_CanBeResolved_WithConfiguredSettings()
     {
         // Arrange - Build service collection
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddHttpClient();
-        services.AddMemoryCache();
-        
-        // Register ProviderSettings
-        services.AddSingleton<ProviderSettings>(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<ProviderSettings>>();
-            return new ProviderSettings(logger, null);
-        });
-        
-        // Register OllamaSettings configuration
-        services.AddSingleton<IConfigureOptions<OllamaSettings>>(sp =>
-        {
-            return new ConfigureNamedOptions<OllamaSettings>(
-                Options.DefaultName, 
-                options =>
-                {
-                    var providerSettings = sp.GetRequiredService<ProviderSettings>();
-                    options.BaseUrl = providerSettings.GetOllamaUrl();
-                    options.Timeout = TimeSpan.FromMinutes(3);
-                    options.MaxRetries = 3;
-                });
-        });
+        var services = CreateServiceCollectionWithOllamaSettings();
         
         // Register OllamaDirectClient
         services.AddHttpClient<IOllamaDirectClient, OllamaDirectClient>();
