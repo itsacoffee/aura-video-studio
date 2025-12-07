@@ -85,43 +85,69 @@ public static class ServiceCollectionExtensions
         // This allows direct resolution by provider name: sp.GetKeyedService<ILlmProvider>("OpenAI")
 
         // RuleBased provider (ALWAYS AVAILABLE - offline fallback)
+        // This provider has NO dependencies and should NEVER fail to register
         services.AddKeyedSingleton<ILlmProvider>("RuleBased", (sp, key) =>
         {
-            var logger = sp.GetRequiredService<ILogger<RuleBasedLlmProvider>>();
-            return new RuleBasedLlmProvider(logger);
+            try
+            {
+                var logger = sp.GetRequiredService<ILogger<RuleBasedLlmProvider>>();
+                var provider = new RuleBasedLlmProvider(logger);
+                logger.LogInformation("RuleBased LLM provider successfully created (this should always succeed)");
+                return provider;
+            }
+            catch (Exception ex)
+            {
+                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("ProviderRegistration");
+                logger.LogCritical(ex, "CRITICAL: RuleBased provider failed to instantiate - this should NEVER happen!");
+                throw new InvalidOperationException("Failed to create RuleBased provider - system is in invalid state", ex);
+            }
         });
 
         // Ollama provider (local, checks availability at runtime)
         // GPU configuration is read from provider settings
         services.AddKeyedSingleton<ILlmProvider>("Ollama", (sp, key) =>
         {
-            var logger = sp.GetRequiredService<ILogger<OllamaLlmProvider>>();
-            // Use the configured "OllamaClient" with proper timeout and handler settings
-            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient("OllamaClient");
-            var providerSettings = sp.GetRequiredService<ProviderSettings>();
-            var baseUrl = providerSettings.GetOllamaUrl();
-            var model = providerSettings.GetOllamaModel();
+            try
+            {
+                var logger = sp.GetRequiredService<ILogger<OllamaLlmProvider>>();
+                // Use the configured "OllamaClient" with proper timeout and handler settings
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("OllamaClient");
+                var providerSettings = sp.GetRequiredService<ProviderSettings>();
+                var baseUrl = providerSettings.GetOllamaUrl();
+                var model = providerSettings.GetOllamaModel();
 
-            // Get GPU configuration from settings
-            var gpuEnabled = providerSettings.GetOllamaGpuEnabled();
-            var numGpu = providerSettings.GetOllamaNumGpu();
-            var numCtx = providerSettings.GetOllamaNumCtx();
+                // Get GPU configuration from settings
+                var gpuEnabled = providerSettings.GetOllamaGpuEnabled();
+                var numGpu = providerSettings.GetOllamaNumGpu();
+                var numCtx = providerSettings.GetOllamaNumCtx();
 
-            logger.LogInformation("Creating OllamaLlmProvider with GPU config: Enabled={GpuEnabled}, NumGpu={NumGpu}, NumCtx={NumCtx}",
-                gpuEnabled, numGpu, numCtx);
+                logger.LogInformation(
+                    "Creating OllamaLlmProvider: BaseUrl={BaseUrl}, Model={Model}, " +
+                    "GPU={GpuEnabled}/{NumGpu}, Context={NumCtx}",
+                    baseUrl, model, gpuEnabled, numGpu, numCtx);
 
-            return new OllamaLlmProvider(
-                logger, 
-                httpClient, 
-                baseUrl, 
-                model,
-                maxRetries: 2,
-                timeoutSeconds: 900,
-                promptCustomizationService: null,
-                gpuEnabled: gpuEnabled,
-                numGpu: numGpu,
-                numCtx: numCtx);
+                var provider = new OllamaLlmProvider(
+                    logger,
+                    httpClient,
+                    baseUrl,
+                    model,
+                    maxRetries: 2,
+                    timeoutSeconds: 900,
+                    promptCustomizationService: null,
+                    gpuEnabled: gpuEnabled,
+                    numGpu: numGpu,
+                    numCtx: numCtx);
+                
+                logger.LogInformation("✓ Ollama LLM provider successfully created");
+                return provider;
+            }
+            catch (Exception ex)
+            {
+                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("ProviderRegistration");
+                logger.LogError(ex, "✗ Failed to create Ollama provider - provider will be unavailable");
+                throw;
+            }
         });
 
         // OpenAI provider (requires API key)

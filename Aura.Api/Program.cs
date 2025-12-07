@@ -6282,6 +6282,55 @@ appLifetime.ApplicationStarted.Register(() =>
                 healthIssues++;
             }
 
+            // Check LLM Provider Registration
+            try
+            {
+                logger.LogInformation("=== LLM Provider Registration Check ===");
+                var llmFactory = scope.ServiceProvider.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
+                var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+                var providers = llmFactory.CreateAvailableProviders(loggerFactory);
+                
+                if (providers.Count == 0)
+                {
+                    logger.LogCritical("✗ CRITICAL: NO LLM providers registered! All AI features will fail!");
+                    logger.LogCritical("This is a critical system failure - at minimum RuleBased provider should be available");
+                    healthIssues++;
+                }
+                else
+                {
+                    logger.LogInformation("✓ LLM Providers: {Count} registered ({Providers})",
+                        providers.Count, string.Join(", ", providers.Keys));
+                    
+                    // Verify RuleBased is present
+                    if (!providers.ContainsKey("RuleBased"))
+                    {
+                        logger.LogWarning("✗ RuleBased fallback provider NOT registered - this should always be available");
+                        healthIssues++;
+                    }
+                    
+                    // Check if Ollama is configured and registered
+                    var providerSettings = scope.ServiceProvider.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+                    var preferredProvider = providerSettings.GetPreferredLlmProvider();
+                    if (!string.IsNullOrEmpty(preferredProvider))
+                    {
+                        if (providers.ContainsKey(preferredProvider))
+                        {
+                            logger.LogInformation("✓ Preferred provider '{Preferred}' is registered", preferredProvider);
+                        }
+                        else
+                        {
+                            logger.LogWarning("✗ Preferred provider '{Preferred}' is configured but NOT registered", preferredProvider);
+                            healthIssues++;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "✗ Failed to check LLM provider registration");
+                healthIssues++;
+            }
+
             if (healthIssues > 0)
             {
                 logger.LogWarning(
