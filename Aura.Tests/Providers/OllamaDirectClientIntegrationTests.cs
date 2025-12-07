@@ -558,6 +558,28 @@ public class OllamaDirectClientIntegrationTests : IDisposable
 
             var mockResponse = _responses.Dequeue();
 
+            // Validate that the request matches expected method and URI
+            var requestUri = request.RequestUri?.ToString() ?? string.Empty;
+            var requestMethod = request.Method.Method;
+
+            if (!string.IsNullOrEmpty(mockResponse.Method) && 
+                !mockResponse.Method.Equals(requestMethod, StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpResponseMessage(HttpStatusCode.MethodNotAllowed)
+                {
+                    Content = new StringContent($"Expected {mockResponse.Method}, got {requestMethod}")
+                };
+            }
+
+            if (!string.IsNullOrEmpty(mockResponse.Uri) && 
+                !requestUri.Equals(mockResponse.Uri, StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpResponseMessage(HttpStatusCode.NotFound)
+                {
+                    Content = new StringContent($"Expected {mockResponse.Uri}, got {requestUri}")
+                };
+            }
+
             if (mockResponse.DelayMs > 0)
             {
                 await Task.Delay(mockResponse.DelayMs, cancellationToken);
