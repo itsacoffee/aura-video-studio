@@ -20,13 +20,13 @@ public class OllamaSettings
 {
     /// <summary>Base URL for Ollama API (default: http://127.0.0.1:11434)</summary>
     public string BaseUrl { get; set; } = "http://127.0.0.1:11434";
-    
+
     /// <summary>Default model to use if not specified</summary>
     public string? DefaultModel { get; set; }
-    
-    /// <summary>Timeout for requests (default: 3 minutes)</summary>
-    public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(3);
-    
+
+    /// <summary>Timeout for requests (default: 4 minutes to allow model load)</summary>
+    public TimeSpan Timeout { get; set; } = TimeSpan.FromMinutes(4);
+
     /// <summary>Maximum retry attempts (default: 3)</summary>
     public int MaxRetries { get; set; } = 3;
 
@@ -42,7 +42,7 @@ public class OllamaSettings
 
 /// <summary>
 /// Direct HTTP client for Ollama API with proper dependency injection.
-/// 
+///
 /// ARCHITECTURAL FIX: This replaces reflection-based access to OllamaLlmProvider.
 /// Uses IHttpClientFactory for proper lifetime management and configuration.
 /// Implements retry logic with Polly-style exponential backoff.
@@ -109,11 +109,11 @@ public class OllamaDirectClient : IOllamaDirectClient
         while (attempt < maxAttempts)
         {
             attempt++;
-            
+
             try
             {
                 var startTime = DateTime.UtcNow;
-                
+
                 // Heartbeat logging for long-running requests
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 var heartbeatTask = Task.Run(async () =>
@@ -132,7 +132,7 @@ public class OllamaDirectClient : IOllamaDirectClient
                     cancellationToken).ConfigureAwait(false);
 
                 cts.Cancel(); // Stop heartbeat
-                
+
                 response.EnsureSuccessStatusCode();
 
                 var result = await response.Content.ReadFromJsonAsync<OllamaGenerateResponse>(

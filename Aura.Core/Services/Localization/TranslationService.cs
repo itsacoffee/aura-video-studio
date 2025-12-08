@@ -541,38 +541,15 @@ public class TranslationService
             string? response = null;
             try
             {
-                // CRITICAL FIX: Detect Ollama provider and use direct path with proper timeout handling
-                // This fixes timeout issues where LlmStageAdapter may have shorter timeouts
+                // Prefer the same orchestration path used by Script Generation for consistency.
+                // First try LlmStageAdapter; if that fails, fall back to direct Ollama.
                 var providerTypeName = _llmProvider.GetType().Name;
                 bool isOllamaProvider = providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase);
 
-                if (isOllamaProvider)
+                // 1) Primary path: LlmStageAdapter (aligns with Script Generation stability)
+                try
                 {
-                    _logger.LogInformation("Detected Ollama provider - using direct Ollama path with 10-minute timeout and heartbeat logging");
-                    try
-                    {
-                        response = await GenerateWithOllamaDirectAsync(
-                            systemPrompt,
-                            userPrompt,
-                            sourceLanguage,
-                            targetLanguage,
-                            llmParameters?.ModelOverride,
-                            cancellationToken).ConfigureAwait(false);
-                        _logger.LogInformation("Successfully generated translation via direct Ollama path");
-                    }
-                    catch (Exception directEx)
-                    {
-                        _logger.LogWarning(directEx, "Direct Ollama path failed, falling back to LlmStageAdapter");
-                        // Fall through to LlmStageAdapter fallback
-                        response = null;
-                    }
-                }
-
-                // Use LlmStageAdapter for unified orchestration (fallback or non-Ollama providers)
-                // This ensures proper provider selection, fallback logic, and timeout configuration
-                if (response == null)
-                {
-                    _logger.LogInformation("Using LlmStageAdapter for translation (unified orchestration path)");
+                    _logger.LogInformation("Using LlmStageAdapter for translation (primary path)");
                     var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
                         systemPrompt,
                         userPrompt,
@@ -581,15 +558,37 @@ public class TranslationService
                         llmParameters,
                         cancellationToken).ConfigureAwait(false);
 
-                    if (!orchestrationResult.IsSuccess)
+                    if (!orchestrationResult.IsSuccess || string.IsNullOrWhiteSpace(orchestrationResult.Data))
                     {
-                        throw new InvalidOperationException(
-                            orchestrationResult.ErrorMessage ?? "LLM orchestration failed for translation");
+                        var err = orchestrationResult.ErrorMessage ?? "LLM orchestration failed for translation";
+                        _logger.LogWarning("LlmStageAdapter translation failed/empty: {Error}", err);
+                        response = null;
                     }
+                    else
+                    {
+                        response = orchestrationResult.Data;
+                        _logger.LogInformation("Translation via LlmStageAdapter succeeded (Provider: {Provider})",
+                            orchestrationResult.ProviderUsed ?? "Unknown");
+                    }
+                }
+                catch (Exception stageEx)
+                {
+                    _logger.LogWarning(stageEx, "LlmStageAdapter translation path threw, will try direct Ollama (if available)");
+                    response = null;
+                }
 
-                    response = orchestrationResult.Data;
-                    _logger.LogInformation("Successfully generated translation via LlmStageAdapter (Provider: {Provider})",
-                        orchestrationResult.ProviderUsed ?? "Unknown");
+                // 2) Fallback: direct Ollama path with longer timeout/heartbeat
+                if (response == null && isOllamaProvider)
+                {
+                    _logger.LogInformation("Falling back to direct Ollama path with heartbeat logging");
+                    response = await GenerateWithOllamaDirectAsync(
+                        systemPrompt,
+                        userPrompt,
+                        sourceLanguage,
+                        targetLanguage,
+                        llmParameters?.ModelOverride,
+                        cancellationToken).ConfigureAwait(false);
+                    _logger.LogInformation("Translation via direct Ollama succeeded after fallback");
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
