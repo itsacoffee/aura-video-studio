@@ -39,11 +39,11 @@ public class ProviderHealthInitializer
     public void RegisterAllProviders()
     {
         _logger.LogInformation("=== Starting Provider Health Registration ===");
-        
+
         RegisterLlmProviders();
         RegisterTtsProviders();
         RegisterImageProviders();
-        
+
         _logger.LogInformation("=== Provider Health Registration Complete ===");
     }
 
@@ -52,7 +52,7 @@ public class ProviderHealthInitializer
         try
         {
             _logger.LogInformation("Registering LLM providers with health monitor...");
-            
+
             var llmProviderFactory = _serviceProvider.GetService<LlmProviderFactory>();
             if (llmProviderFactory == null)
             {
@@ -65,26 +65,28 @@ public class ProviderHealthInitializer
 
             foreach (var (providerName, provider) in providers)
             {
+                var providerKey = providerName;
+                var providerInstance = provider;
                 try
                 {
-                    _healthMonitor.RegisterHealthCheck(providerName, async (ct) =>
+                    Func<CancellationToken, Task<bool>> healthCheck = async ct =>
                     {
-                        if (providerName == "RuleBased")
+                        if (providerKey == "RuleBased")
                         {
                             return true;
                         }
 
-                        if (providerName == "Ollama")
+                        if (providerKey == "Ollama")
                         {
-                            var providerType = provider.GetType();
-                            var method = providerType.GetMethod("IsServiceAvailableAsync", 
+                            var providerType = providerInstance.GetType();
+                            var method = providerType.GetMethod("IsServiceAvailableAsync",
                                 new[] { typeof(CancellationToken), typeof(bool) });
-                            
+
                             if (method != null)
                             {
                                 try
                                 {
-                                    var task = method.Invoke(provider, new object[] { ct, false }) as Task<bool>;
+                                    var task = method.Invoke(providerInstance, new object[] { ct, false }) as Task<bool>;
                                     if (task != null)
                                     {
                                         return await task;
@@ -99,13 +101,16 @@ public class ProviderHealthInitializer
                         }
 
                         return true;
-                    });
+                    };
 
-                    _logger.LogInformation("✓ Registered health check for LLM provider: {ProviderName}", providerName);
+                    _healthMonitor.RegisterHealthCheck(providerKey, healthCheck);
+                    TriggerSeedHealthCheck(providerKey, healthCheck);
+
+                    _logger.LogInformation("✓ Registered health check for LLM provider: {ProviderName}", providerKey);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "✗ Failed to register health check for LLM provider: {ProviderName}", providerName);
+                    _logger.LogError(ex, "✗ Failed to register health check for LLM provider: {ProviderName}", providerKey);
                 }
             }
         }
@@ -120,29 +125,25 @@ public class ProviderHealthInitializer
         try
         {
             _logger.LogInformation("Registering TTS providers with health monitor...");
-            
+
             var ttsProviders = _serviceProvider.GetServices<ITtsProvider>();
             var providersList = ttsProviders.Where(p => p != null).ToList();
-            
+
             _logger.LogInformation("Found {Count} TTS providers to register", providersList.Count);
 
             foreach (var provider in providersList)
             {
+                var providerType = provider.GetType().Name.Replace("Provider", "").Replace("Tts", "");
                 try
                 {
-                    var providerType = provider.GetType().Name.Replace("Provider", "").Replace("Tts", "");
-                    
-                    _healthMonitor.RegisterHealthCheck(providerType, (ct) =>
-                    {
-                        if (providerType == "NullTts" || providerType == "Windows")
-                        {
-                            return Task.FromResult(true);
-                        }
+                    var providerKey = providerType;
 
-                        return Task.FromResult(true);
-                    });
+                    Func<CancellationToken, Task<bool>> healthCheck = ct => Task.FromResult(true);
 
-                    _logger.LogInformation("✓ Registered health check for TTS provider: {ProviderType}", providerType);
+                    _healthMonitor.RegisterHealthCheck(providerKey, healthCheck);
+                    TriggerSeedHealthCheck(providerKey, healthCheck);
+
+                    _logger.LogInformation("✓ Registered health check for TTS provider: {ProviderType}", providerKey);
                 }
                 catch (Exception ex)
                 {
@@ -161,24 +162,25 @@ public class ProviderHealthInitializer
         try
         {
             _logger.LogInformation("Registering Image providers with health monitor...");
-            
+
             var imageProviders = _serviceProvider.GetServices<IImageProvider>();
             var providersList = imageProviders.Where(p => p != null).ToList();
-            
+
             _logger.LogInformation("Found {Count} Image providers to register", providersList.Count);
 
             foreach (var provider in providersList)
             {
+                var providerType = provider.GetType().Name.Replace("Provider", "");
                 try
                 {
-                    var providerType = provider.GetType().Name.Replace("Provider", "");
-                    
-                    _healthMonitor.RegisterHealthCheck(providerType, (ct) =>
-                    {
-                        return Task.FromResult(true);
-                    });
+                    var providerKey = providerType;
 
-                    _logger.LogInformation("✓ Registered health check for Image provider: {ProviderType}", providerType);
+                    Func<CancellationToken, Task<bool>> healthCheck = ct => Task.FromResult(true);
+
+                    _healthMonitor.RegisterHealthCheck(providerKey, healthCheck);
+                    TriggerSeedHealthCheck(providerKey, healthCheck);
+
+                    _logger.LogInformation("✓ Registered health check for Image provider: {ProviderType}", providerKey);
                 }
                 catch (Exception ex)
                 {
@@ -190,5 +192,21 @@ public class ProviderHealthInitializer
         {
             _logger.LogError(ex, "Error registering Image providers with health monitor");
         }
+    }
+
+    private void TriggerSeedHealthCheck(string providerName, Func<CancellationToken, Task<bool>> healthCheck)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _healthMonitor.CheckProviderHealthAsync(providerName, healthCheck, CancellationToken.None).ConfigureAwait(false);
+                _logger.LogDebug("Initial health check seeded for provider {ProviderName}", providerName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Initial health check failed for provider {ProviderName}", providerName);
+            }
+        });
     }
 }

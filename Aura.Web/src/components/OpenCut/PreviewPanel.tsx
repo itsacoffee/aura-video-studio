@@ -287,7 +287,13 @@ function formatTimecode(seconds: number, fps: number = 30): string {
 export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = false }) => {
   const styles = useStyles();
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoAspect, setVideoAspect] = useState(16 / 9);
+  const [renderSize, setRenderSize] = useState<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
 
   // Connect to stores
   const playbackStore = useOpenCutPlaybackStore();
@@ -484,6 +490,77 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
     }
   };
 
+  const computeFittedSize = useCallback(
+    (containerWidth: number, containerHeight: number) => {
+      if (containerWidth <= 0 || containerHeight <= 0) {
+        return { width: 0, height: 0 };
+      }
+      const containerAspect = containerWidth / containerHeight;
+      if (containerAspect > videoAspect) {
+        const height = containerHeight;
+        const width = height * videoAspect;
+        return { width, height };
+      }
+      const width = containerWidth;
+      const height = width / videoAspect;
+      return { width, height };
+    },
+    [videoAspect]
+  );
+
+  // Track video aspect ratio when metadata is available
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const updateAspect = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setVideoAspect(video.videoWidth / video.videoHeight);
+      }
+    };
+
+    updateAspect();
+    video.addEventListener('loadedmetadata', updateAspect);
+    return () => {
+      video.removeEventListener('loadedmetadata', updateAspect);
+    };
+  }, [videoSrc]);
+
+  // Recompute fitted size on container resize or aspect changes
+  useEffect(() => {
+    const wrapper = canvasWrapperRef.current;
+    if (!wrapper) return;
+
+    const updateSize = (width: number, height: number) => {
+      setRenderSize(computeFittedSize(width, height));
+    };
+
+    const initialRect = wrapper.getBoundingClientRect();
+    updateSize(initialRect.width, initialRect.height);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[entries.length - 1];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      updateSize(width, height);
+    });
+    resizeObserver.observe(wrapper);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [computeFittedSize]);
+
+  const canvasStyle = useMemo(() => {
+    if (renderSize.width <= 0 || renderSize.height <= 0) {
+      return undefined;
+    }
+    return {
+      width: `${renderSize.width}px`,
+      height: `${renderSize.height}px`,
+    };
+  }, [renderSize.height, renderSize.width]);
+
   const getQualityLabel = () => {
     switch (quality) {
       case 'quarter':
@@ -496,29 +573,23 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
   };
   const canCopyFrame = Boolean(videoRef.current && videoRef.current.readyState >= 2);
 
-  const handlePreviewContextMenu = useCallback(
-    (event: React.MouseEvent) => {
-      event.preventDefault();
-      setContextMenuPosition({ x: event.clientX, y: event.clientY });
-      setContextMenuOpen(true);
-    },
-    []
-  );
+  const handlePreviewContextMenu = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    setContextMenuPosition({ x: event.clientX, y: event.clientY });
+    setContextMenuOpen(true);
+  }, []);
 
   const closeContextMenu = useCallback(() => {
     setContextMenuOpen(false);
     setContextMenuPosition(null);
   }, []);
 
-  const handleContextMenuOpenChange = useCallback(
-    (_: unknown, data: MenuOpenChangeData) => {
-      setContextMenuOpen(data.open);
-      if (!data.open) {
-        setContextMenuPosition(null);
-      }
-    },
-    []
-  );
+  const handleContextMenuOpenChange = useCallback((_: unknown, data: MenuOpenChangeData) => {
+    setContextMenuOpen(data.open);
+    if (!data.open) {
+      setContextMenuPosition(null);
+    }
+  }, []);
 
   const handleFullscreenFromMenu = useCallback(() => {
     handleFullscreen();
@@ -711,10 +782,11 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
       </div>
 
       <div className={styles.previewArea}>
-        <div className={styles.canvasWrapper}>
+        <div ref={canvasWrapperRef} className={styles.canvasWrapper}>
           <div className={styles.canvasGlow} />
           <motion.div
             className={styles.canvas}
+            style={canvasStyle}
             initial={{ scale: 0.98, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -794,10 +866,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
 
             <div className={styles.aspectRatioLabel}>16:9</div>
 
-            <Menu
-              open={contextMenuOpen}
-              onOpenChange={handleContextMenuOpenChange}
-            >
+            <Menu open={contextMenuOpen} onOpenChange={handleContextMenuOpenChange}>
               <MenuPopover positioning={contextMenuPositioning}>
                 <MenuList>
                   <MenuItem onClick={handleTogglePlayback}>
@@ -837,7 +906,10 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({ className, isLoading = fal
                   </MenuItem>
                   <MenuDivider />
                   <MenuItem onClick={handleFullscreenFromMenu}>Toggle Fullscreen</MenuItem>
-                  <MenuItem disabled={!canCopyFrame || !videoSrc} onClick={handleCopyFrameToClipboard}>
+                  <MenuItem
+                    disabled={!canCopyFrame || !videoSrc}
+                    onClick={handleCopyFrameToClipboard}
+                  >
                     Copy Current Frame
                   </MenuItem>
                 </MenuList>

@@ -103,20 +103,32 @@ public class HealthController : ControllerBase
     /// Trigger immediate health check for a specific provider
     /// </summary>
     [HttpPost("providers/{name}/check")]
-    public Task<ActionResult<ProviderHealthCheckDto>> CheckProvider(
+    public async Task<ActionResult<ProviderHealthCheckDto>> CheckProvider(
         string name,
         CancellationToken ct)
     {
-        // Note: This requires registered health check functions
-        // For now, return the cached metrics
-        var metrics = _healthMonitor.GetProviderHealth(name);
-        if (metrics == null)
+        // Prefer running the registered health check if available so the dashboard reflects real status
+        if (_healthMonitor.TryGetHealthCheck(name, out var healthCheck) && healthCheck != null)
         {
-            return Task.FromResult<ActionResult<ProviderHealthCheckDto>>(NotFound(new { error = $"Provider '{name}' not found" }));
+            _logger.LogInformation("Manual health check requested for provider: {ProviderName}", name);
+
+            var metrics = await _healthMonitor.CheckProviderHealthAsync(name, healthCheck, ct).ConfigureAwait(false);
+            var dto = ToDto(metrics);
+
+            return metrics.IsHealthy
+                ? Ok(dto)
+                : StatusCode(503, dto);
         }
 
-        _logger.LogInformation("Manual health check requested for provider: {ProviderName}", name);
-        return Task.FromResult<ActionResult<ProviderHealthCheckDto>>(Ok(ToDto(metrics)));
+        // Fallback: return cached metrics if no health check is registered
+        var cachedMetrics = _healthMonitor.GetProviderHealth(name);
+        if (cachedMetrics == null)
+        {
+            return NotFound(new { error = $"Provider '{name}' not found" });
+        }
+
+        _logger.LogInformation("Manual health check requested for provider (cached only): {ProviderName}", name);
+        return Ok(ToDto(cachedMetrics));
     }
 
     /// <summary>

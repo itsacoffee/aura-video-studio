@@ -41,6 +41,16 @@ public class ProviderHealthMonitor
     }
 
     /// <summary>
+    /// Try to get a registered health check function for a provider.
+    /// </summary>
+    public bool TryGetHealthCheck(string providerName, out Func<CancellationToken, Task<bool>>? healthCheckFunc)
+    {
+        var found = _healthCheckFunctions.TryGetValue(providerName, out var func);
+        healthCheckFunc = func;
+        return found && func != null;
+    }
+
+    /// <summary>
     /// Check the health of a specific provider
     /// </summary>
     public async Task<ProviderHealthMetrics> CheckProviderHealthAsync(
@@ -49,7 +59,7 @@ public class ProviderHealthMonitor
         CancellationToken ct = default)
     {
         var state = _healthStates.GetOrAdd(providerName, _ => new ProviderHealthState(providerName));
-        var circuitBreaker = _circuitBreakers.GetOrAdd(providerName, 
+        var circuitBreaker = _circuitBreakers.GetOrAdd(providerName,
             _ => new CircuitBreaker(providerName, _circuitBreakerSettings, _logger));
         var stopwatch = Stopwatch.StartNew();
 
@@ -107,7 +117,7 @@ public class ProviderHealthMonitor
     {
         if (_healthStates.TryGetValue(providerName, out var state))
         {
-            var circuitBreaker = _circuitBreakers.GetOrAdd(providerName, 
+            var circuitBreaker = _circuitBreakers.GetOrAdd(providerName,
                 _ => new CircuitBreaker(providerName, _circuitBreakerSettings, _logger));
             return state.ToMetrics(circuitBreaker);
         }
@@ -122,9 +132,9 @@ public class ProviderHealthMonitor
     {
         return _healthStates.ToDictionary(
             kvp => kvp.Key,
-            kvp => 
+            kvp =>
             {
-                var circuitBreaker = _circuitBreakers.GetOrAdd(kvp.Key, 
+                var circuitBreaker = _circuitBreakers.GetOrAdd(kvp.Key,
                     _ => new CircuitBreaker(kvp.Key, _circuitBreakerSettings, _logger));
                 return kvp.Value.ToMetrics(circuitBreaker);
             }
