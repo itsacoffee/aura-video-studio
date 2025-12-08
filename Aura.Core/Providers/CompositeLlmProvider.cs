@@ -295,6 +295,7 @@ public class CompositeLlmProvider : ILlmProvider
         return new Models.Providers.ProviderCapabilities
         {
             ProviderName = "Unknown",
+            DefaultModel = null,
             SupportsTranslation = false,
             SupportsStreaming = false,
             IsLocalModel = false,

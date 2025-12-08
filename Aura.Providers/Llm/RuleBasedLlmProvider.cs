@@ -32,7 +32,7 @@ public class RuleBasedLlmProvider : ILlmProvider
     {
         _logger = logger;
         _random = new Random(42); // Fixed seed for deterministic output
-        
+
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)
         {
@@ -49,28 +49,28 @@ public class RuleBasedLlmProvider : ILlmProvider
     public Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
         _logger.LogInformation("Generating rule-based script for topic: {Topic}", brief.Topic);
-        
+
         // Log if user has provided custom instructions
         if (brief.PromptModifiers?.AdditionalInstructions != null)
         {
             _logger.LogInformation("User provided additional instructions for script generation");
         }
-        
+
         // Calculate the target word count based on duration, pacing, and density
         int targetWordCount = CalculateWordCount(spec.TargetDuration, spec.Pacing, spec.Density);
-        
+
         // Determine the number of scenes using the unified scene count calculation
         int sceneCount = spec.GetCalculatedSceneCount();
-        
+
         // Approximate words per scene
         int wordsPerScene = targetWordCount / sceneCount;
-        
+
         _logger.LogDebug("Target word count: {WordCount}, Scenes: {SceneCount}, Words per scene: {WordsPerScene}",
             targetWordCount, sceneCount, wordsPerScene);
 
         // Generate the script (RuleBased provider uses templates, prompt modifiers logged but not directly applied)
         string script = GenerateScript(brief, spec, sceneCount, wordsPerScene);
-        
+
         return Task.FromResult(script);
     }
 
@@ -102,42 +102,42 @@ public class RuleBasedLlmProvider : ILlmProvider
     {
         // Determine video type from topic keywords
         var videoType = ScriptTemplates.DetermineVideoType(brief.Topic);
-        
-        _logger.LogInformation("Detected video type: {VideoType} for topic: {Topic}", 
+
+        _logger.LogInformation("Detected video type: {VideoType} for topic: {Topic}",
             videoType, brief.Topic);
-        
+
         // Calculate target word count
         int targetWordCount = sceneCount * wordsPerScene;
-        
+
         // Use template-based generation for professional content
         string templateScript = ScriptTemplates.GenerateFromTemplate(videoType, brief.Topic, targetWordCount);
-        
+
         // If template is too short, supplement with additional content
         if (CountWords(templateScript) < targetWordCount)
         {
             templateScript = ExpandScriptToTargetLength(templateScript, brief, targetWordCount);
         }
-        
+
         return templateScript;
     }
-    
+
     private string ExpandScriptToTargetLength(string script, Brief brief, int targetWordCount)
     {
         var currentWords = CountWords(script);
-        
+
         if (currentWords >= targetWordCount)
         {
             return script;
         }
-        
+
         var sections = new List<string> { script };
-        
+
         sections.Add("");
         sections.Add("## Additional Insights");
         sections.Add($"Let's explore some additional aspects of {brief.Topic} that enhance our understanding. These supplementary points provide extra context and depth to what we've already covered.");
         sections.Add("");
         sections.Add("The broader implications are worth considering. When we look at the bigger picture, we can see how this topic connects to related areas and affects various aspects of our work or lives.");
-        
+
         return string.Join("\n", sections);
     }
 
@@ -151,7 +151,7 @@ public class RuleBasedLlmProvider : ILlmProvider
         _logger.LogWarning("RuleBasedLlmProvider.CompleteAsync: Raw prompt completion not supported for rule-based provider. " +
             "This provider only supports structured script generation via DraftScriptAsync. " +
             "For prompt completion, use an AI provider like Ollama, OpenAI, or Gemini.");
-        
+
         // For rule-based provider, we can't meaningfully process arbitrary prompts
         // Throw an exception to signal that this provider cannot handle this operation
         // This will trigger the fallback chain in CompositeLlmProvider
@@ -168,16 +168,16 @@ public class RuleBasedLlmProvider : ILlmProvider
     {
         _logger.LogWarning("RuleBasedLlmProvider.GenerateChatCompletionAsync: Using basic rule-based fallback for chat completion. " +
             "This is a last-resort fallback - for better results, use an AI provider like Ollama, OpenAI, or Gemini.");
-        
+
         // Extract topic from user prompt for ideation/concept generation
         // This is a basic fallback that generates simple concept JSON
         var topic = ExtractTopicFromPrompt(userPrompt);
         var keywords = ExtractKeywords(topic);
-        
+
         // Generate basic concepts as JSON
         // This ensures ideation works even if all AI providers fail
         var concepts = GenerateBasicConcepts(topic, keywords, 3);
-        
+
         var jsonResponse = System.Text.Json.JsonSerializer.Serialize(new
         {
             concepts = concepts.Select(c => new
@@ -194,17 +194,17 @@ public class RuleBasedLlmProvider : ILlmProvider
                 productionNotes = c.ProductionNotes
             }).ToArray()
         }, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
-        
+
         _logger.LogInformation("RuleBased provider generated {Count} basic concepts as fallback for topic: {Topic}", concepts.Count, topic);
         return Task.FromResult(jsonResponse);
     }
-    
+
     private string ExtractTopicFromPrompt(string prompt)
     {
         // Split prompt into lines and look for a line starting with "Topic:"
         // This avoids false matches like "for the following topic:" where "topic:" appears mid-sentence
         var lines = prompt.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        
+
         foreach (var line in lines)
         {
             var trimmedLine = line.Trim();
@@ -220,7 +220,7 @@ public class RuleBasedLlmProvider : ILlmProvider
                 }
             }
         }
-        
+
         // Fallback: look for content after "topic:" but only if followed by actual content
         // This handles cases like "Topic: value" on the same line
         foreach (var line in lines)
@@ -242,7 +242,7 @@ public class RuleBasedLlmProvider : ILlmProvider
                 }
             }
         }
-        
+
         // Final fallback: use first substantive line (skip instruction lines)
         foreach (var line in lines)
         {
@@ -257,29 +257,29 @@ public class RuleBasedLlmProvider : ILlmProvider
             {
                 continue;
             }
-            
-            _logger.LogDebug("Using fallback topic extraction from line: {Line}", 
+
+            _logger.LogDebug("Using fallback topic extraction from line: {Line}",
                 trimmedLine.Length > 50 ? trimmedLine.Substring(0, 50) + "..." : trimmedLine);
             return trimmedLine.Length > 100 ? trimmedLine.Substring(0, 100) + "..." : trimmedLine;
         }
-        
+
         // Ultimate fallback
         _logger.LogWarning("Could not extract topic from prompt, using default");
         return "video content";
     }
-    
+
     private List<BasicConcept> GenerateBasicConcepts(string topic, List<string> keywords, int count)
     {
         var concepts = new List<BasicConcept>();
         var angles = new[] { "Tutorial", "Narrative", "Comparison", "Beginner's Guide", "Deep Dive" };
         var audiences = new[] { "beginners", "intermediate users", "professionals", "general audience", "enthusiasts" };
-        
+
         for (int i = 0; i < count; i++)
         {
             var angle = angles[i % angles.Length];
             var audience = audiences[i % audiences.Length];
             var keyword = keywords.ElementAtOrDefault(i) ?? topic.Split(' ').FirstOrDefault() ?? "topic";
-            
+
             concepts.Add(new BasicConcept
             {
                 Title = $"{angle} Approach to {topic}",
@@ -310,10 +310,10 @@ public class RuleBasedLlmProvider : ILlmProvider
                 ProductionNotes = $"Focus on clear visuals and concise narration. Use {angle.ToLowerInvariant()} structure."
             });
         }
-        
+
         return concepts;
     }
-    
+
     private class BasicConcept
     {
         public string Title { get; set; } = string.Empty;
@@ -335,9 +335,9 @@ public class RuleBasedLlmProvider : ILlmProvider
         CancellationToken ct)
     {
         _logger.LogInformation("Analyzing scene with rule-based heuristics");
-        
+
         // Implement deterministic analysis based on heuristics
-        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' }, 
+        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' },
             StringSplitOptions.RemoveEmptyEntries).Length;
 
         // Heuristic complexity based on word count
@@ -353,15 +353,15 @@ public class RuleBasedLlmProvider : ILlmProvider
         // Can be enhanced with keyword detection
         double importance = 50.0;
         var importantKeywords = new[] { "introduction", "conclusion", "summary", "key", "important", "critical" };
-        var importantCount = importantKeywords.Count(keyword => 
+        var importantCount = importantKeywords.Count(keyword =>
             sceneText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
         importance += Math.Min(importantCount * 10, 30);
 
         // Heuristic emotional intensity
         double emotionalIntensity = 50.0;
-        var emotionalWords = new[] { "amazing", "incredible", "important", "critical", "exciting", 
+        var emotionalWords = new[] { "amazing", "incredible", "important", "critical", "exciting",
                                       "fantastic", "wonderful", "terrible", "devastating", "shocking" };
-        var emotionalCount = emotionalWords.Count(word => 
+        var emotionalCount = emotionalWords.Count(word =>
             sceneText.Contains(word, StringComparison.OrdinalIgnoreCase));
         emotionalIntensity += Math.Min(emotionalCount * 10, 30);
 
@@ -414,13 +414,13 @@ public class RuleBasedLlmProvider : ILlmProvider
     {
         _logger.LogInformation("Generating visual prompt with rule-based heuristics");
 
-        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' }, 
+        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' },
             StringSplitOptions.RemoveEmptyEntries).Length;
 
         var detailedDescription = $"A {targetStyle.ToString().ToLowerInvariant()} visual representation of: {sceneText}";
-        
-        var compositionGuidelines = wordCount > 50 
-            ? "Rule of thirds, balanced framing, clear focal point" 
+
+        var compositionGuidelines = wordCount > 50
+            ? "Rule of thirds, balanced framing, clear focal point"
             : "Centered composition, minimal elements, clean framing";
 
         var lightingMood = videoTone.ToLowerInvariant() switch
@@ -471,9 +471,9 @@ public class RuleBasedLlmProvider : ILlmProvider
             _ => new[] { "high quality", "professional", "detailed", "clear", "engaging" }
         };
 
-        var negativeElements = new[] 
-        { 
-            "blurry", "low quality", "distorted", "watermark", "text", "logo" 
+        var negativeElements = new[]
+        {
+            "blurry", "low quality", "distorted", "watermark", "text", "logo"
         };
 
         var continuityElements = !string.IsNullOrEmpty(previousSceneText)
@@ -511,22 +511,22 @@ public class RuleBasedLlmProvider : ILlmProvider
     {
         _logger.LogInformation("Analyzing content complexity with rule-based heuristics");
 
-        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' }, 
+        var wordCount = sceneText.Split(new[] { ' ', '\t', '\n', '\r' },
             StringSplitOptions.RemoveEmptyEntries).Length;
 
-        var technicalTerms = new[] { 
-            "algorithm", "implementation", "architecture", "framework", "methodology", 
+        var technicalTerms = new[] {
+            "algorithm", "implementation", "architecture", "framework", "methodology",
             "optimization", "integration", "configuration", "deployment", "infrastructure",
             "paradigm", "specification", "protocol", "authentication", "encryption"
         };
-        var technicalCount = technicalTerms.Count(term => 
+        var technicalCount = technicalTerms.Count(term =>
             sceneText.Contains(term, StringComparison.OrdinalIgnoreCase));
 
         var complexConcepts = new[] {
             "quantum", "molecular", "theoretical", "hypothetical", "abstract",
             "mathematical", "philosophical", "metaphysical", "paradox", "anomaly"
         };
-        var complexConceptCount = complexConcepts.Count(term => 
+        var complexConceptCount = complexConcepts.Count(term =>
             sceneText.Contains(term, StringComparison.OrdinalIgnoreCase));
 
         var conceptDifficulty = wordCount > 100 ? 60.0 : 40.0;
@@ -544,13 +544,13 @@ public class RuleBasedLlmProvider : ILlmProvider
         prerequisiteKnowledge += Math.Min(complexConceptCount * 10, 25);
 
         var multiStepReasoning = wordCount > 80 ? 50.0 : 30.0;
-        var logicalConnectors = new[] { "therefore", "consequently", "however", "moreover", 
+        var logicalConnectors = new[] { "therefore", "consequently", "however", "moreover",
                                         "furthermore", "nevertheless", "thus", "hence" };
-        var logicalConnectorCount = logicalConnectors.Count(conn => 
+        var logicalConnectorCount = logicalConnectors.Count(conn =>
             sceneText.Contains(conn, StringComparison.OrdinalIgnoreCase));
         multiStepReasoning += Math.Min(logicalConnectorCount * 8, 30);
 
-        var overallScore = (conceptDifficulty + terminologyDensity + 
+        var overallScore = (conceptDifficulty + terminologyDensity +
             prerequisiteKnowledge + multiStepReasoning) / 4.0;
 
         var newConceptsIntroduced = Math.Max(1, technicalCount + complexConceptCount + (wordCount / 50));
@@ -578,7 +578,7 @@ public class RuleBasedLlmProvider : ILlmProvider
 
         _logger.LogDebug("Content complexity analyzed: Overall={Overall:F0}, ConceptDifficulty={Concept:F0}, " +
             "TerminologyDensity={Terminology:F0}, NewConcepts={NewConcepts}",
-            result.OverallComplexityScore, result.ConceptDifficulty, 
+            result.OverallComplexityScore, result.ConceptDifficulty,
             result.TerminologyDensity, result.NewConceptsIntroduced);
 
         return Task.FromResult<ContentComplexityAnalysisResult?>(result);
@@ -596,23 +596,23 @@ public class RuleBasedLlmProvider : ILlmProvider
         var toWords = GetSignificantWords(toSceneText);
         var commonWords = fromWords.Intersect(toWords, StringComparer.OrdinalIgnoreCase).ToList();
         var overlapRatio = commonWords.Count / (double)Math.Max(fromWords.Count, 1);
-        
+
         var coherenceScore = Math.Clamp(overlapRatio * 100, 0, 100);
-        
+
         var connectionTypes = new List<string> { ConnectionType.Sequential };
-        
+
         var transitionWords = new[] { "however", "but", "although", "despite" };
         if (transitionWords.Any(w => toSceneText.Contains(w, StringComparison.OrdinalIgnoreCase)))
         {
             connectionTypes.Add(ConnectionType.Contrast);
         }
-        
+
         var callbackWords = new[] { "remember", "earlier", "as mentioned", "like we said" };
         if (callbackWords.Any(w => toSceneText.Contains(w, StringComparison.OrdinalIgnoreCase)))
         {
             connectionTypes.Add(ConnectionType.Callback);
         }
-        
+
         if (overlapRatio > 0.3)
         {
             connectionTypes.Add(ConnectionType.Thematic);
@@ -646,7 +646,7 @@ public class RuleBasedLlmProvider : ILlmProvider
         };
 
         var expectedStructure = expectedStructures.GetValueOrDefault(
-            videoType.ToLowerInvariant(), 
+            videoType.ToLowerInvariant(),
             expectedStructures["general"]);
 
         var result = new NarrativeArcResult(
@@ -714,12 +714,12 @@ public class RuleBasedLlmProvider : ILlmProvider
         try
         {
             _logger.LogInformation("RuleBased provider generating script for {Duration}s video", durationSeconds);
-            
+
             var startTime = DateTime.UtcNow;
-            
+
             var keywords = ExtractKeywords(brief);
             var videoType = DetectVideoType(keywords, brief);
-            
+
             // Use unified scene count calculation via PlanSpec
             var defaultPlanSpec = new PlanSpec(
                 TargetDuration: TimeSpan.FromSeconds(durationSeconds),
@@ -729,21 +729,21 @@ public class RuleBasedLlmProvider : ILlmProvider
             );
             var sceneCount = defaultPlanSpec.GetCalculatedSceneCount();
             _logger.LogInformation("RuleBased provider generated {SceneCount} scenes for {Duration}s video", sceneCount, durationSeconds);
-            
+
             var scenes = new List<Core.Models.Generation.ScriptScene>();
             var sceneDurations = CalculateSceneDurations(sceneCount, durationSeconds);
-            
+
             for (int i = 0; i < sceneCount; i++)
             {
                 var sceneNumber = i + 1;
                 var isFirst = i == 0;
                 var isLast = i == sceneCount - 1;
-                
+
                 var narration = GenerateSceneNarration(videoType, sceneNumber, sceneCount, isFirst, isLast, keywords, brief);
                 var visualPrompt = GenerateVisualPrompt(narration, keywords);
                 var sceneDuration = sceneDurations[i];
                 var transition = DetermineTransition(isLast);
-                
+
                 var scene = new Core.Models.Generation.ScriptScene
                 {
                     Number = sceneNumber,
@@ -752,15 +752,15 @@ public class RuleBasedLlmProvider : ILlmProvider
                     Duration = TimeSpan.FromSeconds(sceneDuration),
                     Transition = transition
                 };
-                
+
                 scenes.Add(scene);
             }
-            
+
             var totalDuration = TimeSpan.FromSeconds(durationSeconds);
             var mainTopic = keywords.FirstOrDefault() ?? "content";
-            
+
             var executionTime = DateTime.UtcNow - startTime;
-            
+
             var script = new Core.Models.Generation.Script
             {
                 Title = $"{mainTopic} - AI Generated Video",
@@ -778,15 +778,15 @@ public class RuleBasedLlmProvider : ILlmProvider
                 },
                 CorrelationId = Guid.NewGuid().ToString()
             };
-            
+
             _logger.LogInformation("RuleBased script generation completed in {Ms}ms", executionTime.TotalMilliseconds);
-            
+
             return Task.FromResult(script);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error in RuleBased script generation, returning fallback");
-            
+
             var fallbackScene = new Core.Models.Generation.ScriptScene
             {
                 Number = 1,
@@ -795,7 +795,7 @@ public class RuleBasedLlmProvider : ILlmProvider
                 Duration = TimeSpan.FromSeconds(durationSeconds),
                 Transition = Core.Models.Generation.TransitionType.Cut
             };
-            
+
             return Task.FromResult(new Core.Models.Generation.Script
             {
                 Title = "Generated Video",
@@ -826,31 +826,31 @@ public class RuleBasedLlmProvider : ILlmProvider
         {
             return new List<string> { "video", "content", "information" };
         }
-        
+
         var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "for", 
+            "the", "a", "an", "is", "are", "was", "were", "in", "on", "at", "to", "for",
             "of", "and", "or", "but", "this", "that", "with", "from", "by", "about"
         };
-        
-        var words = brief.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '!', '?', ';', ':', '-', '_' }, 
+
+        var words = brief.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '!', '?', ';', ':', '-', '_' },
             StringSplitOptions.RemoveEmptyEntries)
             .Select(w => w.ToLowerInvariant())
             .Where(w => w.Length >= 4 && !stopWords.Contains(w))
             .ToList();
-        
+
         var wordFrequency = words
             .GroupBy(w => w)
             .OrderByDescending(g => g.Count())
             .Take(5)
             .Select(g => g.Key)
             .ToList();
-        
+
         if (wordFrequency.Count == 0)
         {
             return new List<string> { "video", "content", "information" };
         }
-        
+
         return wordFrequency;
     }
 
@@ -863,15 +863,15 @@ public class RuleBasedLlmProvider : ILlmProvider
         var briefLower = brief.ToLowerInvariant();
         var keywordsStr = string.Join(" ", keywords).ToLowerInvariant();
         var combinedText = $"{briefLower} {keywordsStr}";
-        
+
         var tutorialKeywords = new[] { "tutorial", "how", "learn", "guide", "teach", "lesson", "course", "training" };
         var marketingKeywords = new[] { "product", "buy", "sale", "offer", "discount", "deal", "purchase", "customer" };
         var reviewKeywords = new[] { "review", "opinion", "thoughts", "rating", "recommend", "experience", "pros", "cons" };
-        
+
         var tutorialCount = tutorialKeywords.Count(kw => combinedText.Contains(kw));
         var marketingCount = marketingKeywords.Count(kw => combinedText.Contains(kw));
         var reviewCount = reviewKeywords.Count(kw => combinedText.Contains(kw));
-        
+
         string detectedType;
         if (tutorialCount > marketingCount && tutorialCount > reviewCount)
         {
@@ -889,7 +889,7 @@ public class RuleBasedLlmProvider : ILlmProvider
         {
             detectedType = "General";
         }
-        
+
         _logger.LogInformation("Detected video type: {Type}", detectedType);
         return detectedType;
     }
@@ -897,14 +897,14 @@ public class RuleBasedLlmProvider : ILlmProvider
     /// <summary>
     /// Generate narration for a specific scene using templates based on video type.
     /// </summary>
-    private string GenerateSceneNarration(string videoType, int sceneNumber, int totalScenes, 
+    private string GenerateSceneNarration(string videoType, int sceneNumber, int totalScenes,
         bool isFirst, bool isLast, List<string> keywords, string originalBrief)
     {
         var mainTopic = keywords.FirstOrDefault() ?? "topic";
         var keyword1 = keywords.ElementAtOrDefault(1) ?? "concepts";
         var keyword2 = keywords.ElementAtOrDefault(2) ?? "ideas";
         var keyword = keywords.ElementAtOrDefault(sceneNumber % keywords.Count) ?? "aspect";
-        
+
         if (isFirst)
         {
             return videoType switch
@@ -915,7 +915,7 @@ public class RuleBasedLlmProvider : ILlmProvider
                 _ => $"Welcome. Today we're discussing {mainTopic}."
             };
         }
-        
+
         if (isLast)
         {
             return videoType switch
@@ -926,11 +926,11 @@ public class RuleBasedLlmProvider : ILlmProvider
                 _ => $"That concludes our look at {mainTopic}. Thank you for watching."
             };
         }
-        
+
         var relatedConcept = keywords.ElementAtOrDefault((sceneNumber + 1) % keywords.Count) ?? "related concepts";
         var benefit = keywords.ElementAtOrDefault((sceneNumber + 2) % keywords.Count) ?? "advantages";
         var reason = $"it provides {benefit}";
-        
+
         return videoType switch
         {
             "Tutorial" => $"Let's explore {keyword}. This is important because it helps you understand {relatedConcept}.",
@@ -950,26 +950,26 @@ public class RuleBasedLlmProvider : ILlmProvider
         {
             return "abstract gradient background, blue and purple colors";
         }
-        
-        var narrationWords = narration.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '!', '?', ';', ':' }, 
+
+        var narrationWords = narration.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '!', '?', ';', ':' },
             StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w.Length > 4)
             .Take(5)
             .ToList();
-        
+
         var mainNoun = narrationWords.FirstOrDefault() ?? keywords.FirstOrDefault() ?? "scene";
-        
+
         var styleDescriptor = _random.Next(2) == 0 ? "professional photograph of" : "modern illustration of";
         var subject = mainNoun.ToLowerInvariant();
         var context = "clean white background, studio lighting, high quality";
-        
+
         var prompt = $"{styleDescriptor} {subject}, {context}";
-        
+
         if (prompt.Length > 100)
         {
             prompt = $"{styleDescriptor} {subject}";
         }
-        
+
         return prompt;
     }
 
@@ -981,44 +981,44 @@ public class RuleBasedLlmProvider : ILlmProvider
     private List<double> CalculateSceneDurations(int sceneCount, int totalDurationSeconds)
     {
         var durations = new List<double>();
-        
+
         if (sceneCount == 1)
         {
             durations.Add(totalDurationSeconds);
             return durations;
         }
-        
+
         if (sceneCount == 2)
         {
             durations.Add(totalDurationSeconds * 0.5);
             durations.Add(totalDurationSeconds * 0.5);
             return durations;
         }
-        
+
         var introDuration = totalDurationSeconds * 0.15;
         var outroDuration = totalDurationSeconds * 0.15;
         var middleTotalDuration = totalDurationSeconds * 0.70;
         var middleSceneCount = sceneCount - 2;
         var middleSceneDuration = middleTotalDuration / middleSceneCount;
-        
+
         durations.Add(introDuration);
-        
+
         for (int i = 0; i < middleSceneCount; i++)
         {
             durations.Add(middleSceneDuration);
         }
-        
+
         durations.Add(outroDuration);
-        
+
         var currentSum = durations.Sum();
         var difference = totalDurationSeconds - currentSum;
-        
+
         if (Math.Abs(difference) > totalDurationSeconds * 0.05)
         {
             var adjustment = difference / sceneCount;
             durations = durations.Select(d => d + adjustment).ToList();
         }
-        
+
         return durations;
     }
 
@@ -1031,7 +1031,7 @@ public class RuleBasedLlmProvider : ILlmProvider
         {
             return Core.Models.Generation.TransitionType.Fade;
         }
-        
+
         return Core.Models.Generation.TransitionType.Cut;
     }
 
@@ -1064,6 +1064,7 @@ public class RuleBasedLlmProvider : ILlmProvider
         return new Core.Models.Providers.ProviderCapabilities
         {
             ProviderName = "RuleBased",
+            DefaultModel = null,
             SupportsTranslation = false,
             SupportsStreaming = false,
             IsLocalModel = true,
@@ -1080,8 +1081,8 @@ public class RuleBasedLlmProvider : ILlmProvider
     /// RuleBased provider does not support streaming
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         await Task.CompletedTask;

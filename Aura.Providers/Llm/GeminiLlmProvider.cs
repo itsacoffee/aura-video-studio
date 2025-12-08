@@ -1509,6 +1509,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         return new Core.Models.Providers.ProviderCapabilities
         {
             ProviderName = "Google Gemini",
+            DefaultModel = _model,
             SupportsTranslation = true,
             SupportsStreaming = false,
             IsLocalModel = false,
