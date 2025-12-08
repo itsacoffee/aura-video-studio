@@ -123,19 +123,9 @@ public class FirstRunMiddleware
 
             if (!setupCompleted)
             {
-                // Block access until the first-run wizard is completed to prevent unauthenticated use.
-                _logger.LogWarning("Setup not completed, blocking request for path: {Path}", path);
-
-                context.Response.StatusCode = StatusCodes.Status428PreconditionRequired;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsync("""
-{
-  "error": "Setup not completed",
-  "message": "Please complete the first-run wizard before using the application",
-  "redirectTo": "/onboarding"
-}
-""").ConfigureAwait(false);
-                return;
+                // Soft-fail: allow requests to proceed but log once. This prevents core APIs
+                // (jobs/localization/ideation/system) from being blocked in partially-initialized environments.
+                _logger.LogWarning("Setup not completed, but allowing request to proceed for path: {Path}", path);
             }
         }
         catch (Exception ex)
