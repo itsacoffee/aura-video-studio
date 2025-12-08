@@ -42,13 +42,13 @@ public class VideoGenerationOrchestrator
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(resourceMonitor);
         ArgumentNullException.ThrowIfNull(strategySelector);
-        
+
         _logger = logger;
         _resourceMonitor = resourceMonitor;
         _strategySelector = strategySelector;
         _options = options ?? OrchestratorOptions.CreateDefault();
         _concurrencyLimiter = new SemaphoreSlim(_options.MaxConcurrency, _options.MaxConcurrency);
-        
+
         _logger.LogInformation(
             "VideoGenerationOrchestrator initialized with TaskTimeout={TaskTimeout}min, BatchTimeout={BatchTimeout}min, StuckThreshold={StuckThreshold}s",
             _options.TaskTimeout.TotalMinutes,
@@ -71,7 +71,7 @@ public class VideoGenerationOrchestrator
         ArgumentNullException.ThrowIfNull(planSpec);
         ArgumentNullException.ThrowIfNull(systemProfile);
         ArgumentNullException.ThrowIfNull(taskExecutor);
-        
+
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -105,18 +105,18 @@ public class VideoGenerationOrchestrator
             foreach (var batch in batches)
             {
                 _logger.LogInformation("Executing batch with {TaskCount} tasks", batch.Count);
-                
+
                 // Before executing batch, handle any failed visual dependencies by providing fallbacks
                 // This allows composition to proceed even if some image generation failed
                 await HandleFailedVisualDependenciesAsync(batch, graph).ConfigureAwait(false);
-                
+
                 // CRITICAL: Validate all dependencies are in succeeded state before executing batch
                 foreach (var node in batch)
                 {
                     var dependencies = graph.GetDependencies(node.TaskId);
-                    _logger.LogDebug("Task {TaskId} has {DependencyCount} dependencies: [{Dependencies}]", 
+                    _logger.LogDebug("Task {TaskId} has {DependencyCount} dependencies: [{Dependencies}]",
                         node.TaskId, dependencies.Count, string.Join(", ", dependencies));
-                    
+
                     foreach (var depTaskId in dependencies)
                     {
                         var depNode = graph.GetNode(depTaskId);
@@ -126,15 +126,15 @@ public class VideoGenerationOrchestrator
                             _logger.LogError(error);
                             throw new OrchestrationException(error);
                         }
-                        
+
                         if (depNode.Status != TaskStatus.Completed)
                         {
                             // Check if this is a non-critical visual dependency that we can skip
                             if (depNode.TaskType == GenerationTaskType.ImageGeneration)
                             {
-                                _logger.LogWarning("Visual dependency {DependencyTaskId} has status {Status}, providing fallback for composition", 
+                                _logger.LogWarning("Visual dependency {DependencyTaskId} has status {Status}, providing fallback for composition",
                                     depTaskId, depNode.Status);
-                                
+
                                 // Provide fallback (empty asset list) for failed visual task
                                 depNode.Status = TaskStatus.Completed;
                                 depNode.Result = Array.Empty<object>();
@@ -148,12 +148,12 @@ public class VideoGenerationOrchestrator
                                 throw new OrchestrationException(error);
                             }
                         }
-                        
-                        _logger.LogDebug("Dependency validation passed: Task {TaskId} <- {DependencyTaskId} (Status: {Status})", 
+
+                        _logger.LogDebug("Dependency validation passed: Task {TaskId} <- {DependencyTaskId} (Status: {Status})",
                             node.TaskId, depTaskId, depNode.Status);
                     }
                 }
-                
+
                 progress?.Report(new OrchestrationProgress(
                     $"Processing batch ({completedTasks}/{totalTasks} tasks completed)",
                     completedTasks,
@@ -305,7 +305,7 @@ public class VideoGenerationOrchestrator
             if (depNode == null) continue;
 
             // Check if this is a failed/timed-out visual task
-            if (depNode.TaskType == GenerationTaskType.ImageGeneration && 
+            if (depNode.TaskType == GenerationTaskType.ImageGeneration &&
                 depNode.Status != TaskStatus.Completed)
             {
                 _logger.LogWarning(
@@ -341,14 +341,15 @@ public class VideoGenerationOrchestrator
     {
         var results = new ConcurrentBag<TaskResult>();
         var batchCompletedCount = 0;
-        
-        // Use configurable timeouts from options
-        var taskTimeout = _options.TaskTimeout;
-        var batchTimeout = _options.BatchTimeout;
-        
+
+        // Use configurable timeouts from options, but shorten for visual batches to fail fast and allow placeholders.
+        var isVisualBatch = batch.All(n => n.TaskType == GenerationTaskType.ImageGeneration);
+        var taskTimeout = isVisualBatch ? TimeSpan.FromMinutes(2) : _options.TaskTimeout;
+        var batchTimeout = isVisualBatch ? TimeSpan.FromMinutes(6) : _options.BatchTimeout;
+
         _logger.LogDebug(
-            "Starting batch execution with {TaskCount} tasks, TaskTimeout={TaskTimeout}min, BatchTimeout={BatchTimeout}min",
-            batch.Count, taskTimeout.TotalMinutes, batchTimeout.TotalMinutes);
+            "Starting batch execution with {TaskCount} tasks, TaskTimeout={TaskTimeout}min, BatchTimeout={BatchTimeout}min, IsVisualBatch={IsVisualBatch}",
+            batch.Count, taskTimeout.TotalMinutes, batchTimeout.TotalMinutes, isVisualBatch);
 
         // Create batch-level timeout to prevent indefinite hangs
         using var batchTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -358,7 +359,7 @@ public class VideoGenerationOrchestrator
         {
             bool resourcesAcquired = false;
             bool limiterAcquired = false;
-            
+
             try
             {
                 // Check if batch timeout has already expired
@@ -367,7 +368,7 @@ public class VideoGenerationOrchestrator
                 // Wait for resources with timeout
                 using var resourceTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(batchTimeoutCts.Token);
                 resourceTimeoutCts.CancelAfter(TimeSpan.FromMinutes(2)); // 2 minute timeout for resource acquisition
-                
+
                 try
                 {
                     await _resourceMonitor.WaitForResourcesAsync(node.EstimatedResourceCost, resourceTimeoutCts.Token).ConfigureAwait(false);
@@ -382,7 +383,7 @@ public class VideoGenerationOrchestrator
                 // Acquire concurrency slot with timeout
                 using var limiterTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(batchTimeoutCts.Token);
                 limiterTimeoutCts.CancelAfter(TimeSpan.FromMinutes(1)); // 1 minute timeout for limiter
-                
+
                 try
                 {
                     await _concurrencyLimiter.WaitAsync(limiterTimeoutCts.Token).ConfigureAwait(false);
@@ -407,13 +408,13 @@ public class VideoGenerationOrchestrator
                         totalTasks,
                         stopwatch.Elapsed));
 
-                    _logger.LogInformation("Executing task: {TaskId} ({TaskType}) - Priority: {Priority}, ResourceCost: {ResourceCost}", 
+                    _logger.LogInformation("Executing task: {TaskId} ({TaskType}) - Priority: {Priority}, ResourceCost: {ResourceCost}",
                         node.TaskId, node.TaskType, node.Priority, node.EstimatedResourceCost);
 
                     // Execute task with timeout (uses batch timeout as base)
                     using var taskTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(batchTimeoutCts.Token);
                     taskTimeoutCts.CancelAfter(taskTimeout);
-                    
+
                     object result;
                     try
                     {
@@ -452,9 +453,9 @@ public class VideoGenerationOrchestrator
                         totalTasks,
                         stopwatch.Elapsed));
 
-                    _logger.LogInformation("Task completed successfully: {TaskId} (Duration: {Duration}ms)", 
-                        node.TaskId, node.CompletedAt.HasValue && node.StartedAt.HasValue 
-                            ? (node.CompletedAt.Value - node.StartedAt.Value).TotalMilliseconds 
+                    _logger.LogInformation("Task completed successfully: {TaskId} (Duration: {Duration}ms)",
+                        node.TaskId, node.CompletedAt.HasValue && node.StartedAt.HasValue
+                            ? (node.CompletedAt.Value - node.StartedAt.Value).TotalMilliseconds
                             : 0);
                 }
                 finally
@@ -525,14 +526,14 @@ public class VideoGenerationOrchestrator
         catch (TimeoutException)
         {
             _logger.LogWarning("Batch execution timed out after {Timeout} minutes, marking remaining tasks as timed out", batchTimeout.TotalMinutes);
-            
+
             // Mark any tasks that haven't completed yet as timed out
-            MarkIncompleteTasksAsTimedOut(batch, results);
+            MarkIncompleteTasksAsTimedOut(batch, results, batchTimeout);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             _logger.LogInformation("Batch execution cancelled by user");
-            
+
             // Mark incomplete tasks as cancelled
             MarkIncompleteTasksAsCancelled(batch, results);
             throw;
@@ -544,18 +545,21 @@ public class VideoGenerationOrchestrator
     /// <summary>
     /// Marks any tasks that haven't completed as timed out
     /// </summary>
-    private void MarkIncompleteTasksAsTimedOut(List<GenerationNode> batch, ConcurrentBag<TaskResult> results)
+    private void MarkIncompleteTasksAsTimedOut(
+        List<GenerationNode> batch,
+        ConcurrentBag<TaskResult> results,
+        TimeSpan batchTimeout)
     {
         var completedTaskIds = results.Select(r => r.TaskId).ToHashSet();
-        
+
         foreach (var node in batch)
         {
             if (!completedTaskIds.Contains(node.TaskId))
             {
                 _logger.LogWarning("Marking incomplete task {TaskId} as timed out", node.TaskId);
-                
+
                 node.Status = TaskStatus.TimedOut;
-                node.ErrorMessage = $"Task did not complete within batch timeout ({_options.BatchTimeout.TotalMinutes} minutes)";
+                node.ErrorMessage = $"Task did not complete within batch timeout ({batchTimeout.TotalMinutes} minutes)";
                 node.CompletedAt = DateTime.UtcNow;
 
                 var taskResult = new TaskResult(node.TaskId, false, null, node.ErrorMessage);
@@ -571,13 +575,13 @@ public class VideoGenerationOrchestrator
     private void MarkIncompleteTasksAsCancelled(List<GenerationNode> batch, ConcurrentBag<TaskResult> results)
     {
         var completedTaskIds = results.Select(r => r.TaskId).ToHashSet();
-        
+
         foreach (var node in batch)
         {
             if (!completedTaskIds.Contains(node.TaskId))
             {
                 _logger.LogInformation("Marking incomplete task {TaskId} as cancelled", node.TaskId);
-                
+
                 node.Status = TaskStatus.Cancelled;
                 node.ErrorMessage = "Cancelled before completion";
                 node.CompletedAt = DateTime.UtcNow;
@@ -622,7 +626,7 @@ public class VideoGenerationOrchestrator
 
         if (criticalFailures.Count > 0)
         {
-            _logger.LogError("Critical task failures detected: {Tasks}", 
+            _logger.LogError("Critical task failures detected: {Tasks}",
                 string.Join(", ", criticalFailures.Select(f => $"{f.TaskId}: {f.ErrorMessage}")));
             return true;
         }
@@ -666,7 +670,7 @@ public class VideoGenerationOrchestrator
             if (node.TaskType == GenerationTaskType.ImageGeneration)
             {
                 _logger.LogInformation("Using fallback for visual task {TaskId} - composition will use placeholders", failed.TaskId);
-                
+
                 // Mark as completed with empty result (fallback)
                 node.Status = TaskStatus.Completed;
                 node.Result = Array.Empty<object>();

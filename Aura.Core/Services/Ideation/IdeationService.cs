@@ -409,9 +409,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     // CRITICAL FIX: Detect Ollama provider and use direct path with proper timeout handling
                     // This fixes timeout issues where LlmStageAdapter may have shorter timeouts
                     bool isOllamaProvider = providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase);
+                    bool requiresStructuredJson = string.Equals(
+                        ideationParams.ResponseFormat,
+                        "json",
+                        StringComparison.OrdinalIgnoreCase);
                     bool useDirectOllama = false;
 
-                    if (isOllamaProvider)
+                    // Only use direct path when JSON output is NOT required (direct path returns plain text).
+                    if (isOllamaProvider && !requiresStructuredJson)
                     {
                         _logger.LogInformation("Detected Ollama provider - using direct Ollama path with 3-minute timeout and heartbeat logging for ideation");
                         try

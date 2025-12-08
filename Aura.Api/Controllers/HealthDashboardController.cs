@@ -25,7 +25,7 @@ public class HealthDashboardController : ControllerBase
     /// These providers should default to "healthy" status even without health metrics.
     /// </summary>
     private static readonly string[] AlwaysAvailableProviders = { "RuleBased", "WindowsSAPI", "Stock" };
-    
+
     private readonly ILogger<HealthDashboardController> _logger;
     private readonly ProviderHealthMonitoringService _healthMonitoring;
     private readonly ProviderCircuitBreakerService _circuitBreaker;
@@ -138,6 +138,13 @@ public class HealthDashboardController : ControllerBase
         // For providers that don't require API keys, consider them configured
         var isConfigured = !def.RequiresApiKey || hasApiKey;
 
+        // Seed default healthy metrics for configured providers with no recorded traffic yet
+        if (healthMetrics == null && isConfigured)
+        {
+            _healthMonitoring.RecordSuccess(def.Name, 0);
+            healthMetrics = _healthMonitoring.GetProviderHealth(def.Name);
+        }
+
         // Determine health status
         var healthStatus = DetermineHealthStatus(healthMetrics, circuitStatus, isConfigured, def.RequiresApiKey, def.Name);
 
@@ -197,7 +204,7 @@ public class HealthDashboardController : ControllerBase
             {
                 return "healthy";
             }
-            
+
             return isConfigured ? "unknown" : "not_configured";
         }
 

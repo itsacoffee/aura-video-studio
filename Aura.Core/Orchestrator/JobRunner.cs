@@ -440,7 +440,7 @@ public partial class JobRunner
                 {
                     await Task.Delay(TimeSpan.FromSeconds(30), stuckMonitorCts.Token).ConfigureAwait(false);
 
-                    var (isStuck, stuckDuration, lastPercent, lastStage) = CheckJobStuckStatus(jobId, thresholdSeconds: 180);
+                    var (isStuck, stuckDuration, lastPercent, lastStage) = CheckJobStuckStatus(jobId, thresholdSeconds: 90);
                     if (!isStuck)
                     {
                         continue;

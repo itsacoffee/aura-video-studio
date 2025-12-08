@@ -123,23 +123,18 @@ public class FirstRunMiddleware
 
             if (!setupCompleted)
             {
-                _logger.LogInformation("Setup not completed, access restricted for path: {Path}", path);
+                // Block access until the first-run wizard is completed to prevent unauthenticated use.
+                _logger.LogWarning("Setup not completed, blocking request for path: {Path}", path);
 
-                // If it's an API call, return 428 Precondition Required
-                if (path.StartsWith("/api", StringComparison.OrdinalIgnoreCase))
-                {
-                    context.Response.StatusCode = 428;
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        error = "Setup not completed",
-                        message = "Please complete the first-run wizard before using the application",
-                        redirectTo = "/onboarding"
-                    }).ConfigureAwait(false);
-                    return;
-                }
-
-                // For page requests, let the SPA router handle the redirect
-                await _next(context).ConfigureAwait(false);
+                context.Response.StatusCode = StatusCodes.Status428PreconditionRequired;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync("""
+{
+  "error": "Setup not completed",
+  "message": "Please complete the first-run wizard before using the application",
+  "redirectTo": "/onboarding"
+}
+""").ConfigureAwait(false);
                 return;
             }
         }
