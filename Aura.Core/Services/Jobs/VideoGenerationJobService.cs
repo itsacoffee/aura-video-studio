@@ -43,6 +43,10 @@ public class VideoGenerationJobService
         var jobId = Guid.NewGuid().ToString("N");
         var correlationId = Guid.NewGuid().ToString("N");
 
+        var renderSpecWithJob = renderSpec.JobId == null
+            ? renderSpec with { JobId = jobId }
+            : renderSpec;
+
         var job = new VideoGenerationJob
         {
             JobId = jobId,
@@ -50,7 +54,7 @@ public class VideoGenerationJobService
             Brief = brief,
             PlanSpec = planSpec,
             VoiceSpec = voiceSpec,
-            RenderSpec = renderSpec,
+            RenderSpec = renderSpecWithJob,
             SystemProfile = systemProfile,
             Status = JobStatus.Pending,
             CreatedAt = DateTime.UtcNow

@@ -94,7 +94,7 @@ public class FfmpegVideoComposer : IVideoComposer
 
     public async Task<string> RenderAsync(Timeline timeline, RenderSpec spec, IProgress<RenderProgress> progress, CancellationToken ct)
     {
-        var jobId = Guid.NewGuid().ToString("N");
+        var jobId = spec.JobId ?? Guid.NewGuid().ToString("N");
         var correlationId = System.Diagnostics.Activity.Current?.Id ?? jobId;
 
         _logger.LogInformation("Starting FFmpeg render (JobId={JobId}, CorrelationId={CorrelationId}) at {Resolution}p",

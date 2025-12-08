@@ -445,6 +445,17 @@ public class VideoOrchestrator
         ArgumentNullException.ThrowIfNull(renderSpec);
         ArgumentNullException.ThrowIfNull(systemProfile);
 
+        // Ensure RenderSpec carries a job identifier so FFmpeg log naming aligns with JobRunner.
+        var resolvedJobId = jobId ?? renderSpec.JobId;
+        var resolvedCorrelationId = correlationId ?? resolvedJobId ?? Guid.NewGuid().ToString();
+        var renderSpecWithJob = renderSpec.JobId == null && resolvedJobId != null
+            ? renderSpec with { JobId = resolvedJobId }
+            : renderSpec;
+        correlationId = resolvedCorrelationId;
+
+        // Use the resolved render spec for downstream operations
+        renderSpec = renderSpecWithJob;
+
         var startTime = DateTime.UtcNow;
         var providerFailures = new List<ProviderException>();
         var activeImageProvider = imageProviderOverride ?? _imageProvider;

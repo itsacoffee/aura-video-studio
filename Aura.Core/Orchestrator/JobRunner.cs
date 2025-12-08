@@ -117,6 +117,11 @@ public partial class JobRunner
             jobId, brief.Topic, isQuickDemo);
 
         var nowUtc = DateTime.UtcNow;
+        // Ensure render spec carries the job id so downstream components (FFmpeg) can name logs correctly
+        var renderSpecWithJobId = renderSpec.JobId == null
+            ? renderSpec with { JobId = jobId }
+            : renderSpec;
+
         var job = new Job
         {
             Id = jobId,
@@ -126,7 +131,7 @@ public partial class JobRunner
             Brief = brief,
             PlanSpec = planSpec,
             VoiceSpec = voiceSpec,
-            RenderSpec = renderSpec,
+            RenderSpec = renderSpecWithJobId,
             CreatedUtc = nowUtc,
             QueuedUtc = nowUtc,
             IsQuickDemo = isQuickDemo

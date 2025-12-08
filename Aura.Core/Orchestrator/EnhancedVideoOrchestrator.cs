@@ -99,13 +99,20 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
         string? jobId = null)
     {
         configuration ??= new PipelineConfiguration();
-        var correlationId = jobId ?? Guid.NewGuid().ToString();
+
+        // Ensure RenderSpec carries a job identifier so downstream components (FFmpeg) reuse the same log file name.
+        var resolvedJobId = jobId ?? renderSpec.JobId;
+        var renderSpecWithJob = renderSpec.JobId == null && resolvedJobId != null
+            ? renderSpec with { JobId = resolvedJobId }
+            : renderSpec;
+
+        var correlationId = resolvedJobId ?? Guid.NewGuid().ToString();
 
         _logger.LogInformation(
             "[{CorrelationId}] Starting enhanced video generation pipeline for topic: {Topic}",
             correlationId, brief.Topic);
 
-        using var context = new PipelineContext(correlationId, brief, planSpec, voiceSpec, renderSpec, systemProfile);
+        using var context = new PipelineContext(correlationId, brief, planSpec, voiceSpec, renderSpecWithJob, systemProfile);
         context.State = PipelineState.Running;
 
         try
@@ -656,7 +663,7 @@ public sealed class EnhancedVideoOrchestrator : IAsyncDisposable
             {
                 // Skip metadata lines - only add actual narrative content
                 var trimmedLine = line.Trim();
-                if (!LlmScriptCleanup.IsMetadataLine(trimmedLine) && 
+                if (!LlmScriptCleanup.IsMetadataLine(trimmedLine) &&
                     !LlmScriptCleanup.IsLlmMetaCommentary(trimmedLine))
                 {
                     currentScriptLines.Add(line);
