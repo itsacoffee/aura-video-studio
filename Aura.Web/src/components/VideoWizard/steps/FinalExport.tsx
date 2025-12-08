@@ -1,30 +1,30 @@
 import {
-    Badge,
-    Button,
-    Card,
-    Checkbox,
-    Dropdown,
-    Field,
-    makeStyles,
-    Option,
-    ProgressBar,
-    Radio,
-    RadioGroup,
-    Spinner,
-    Text,
-    Title2,
-    Title3,
-    tokens,
-    Tooltip,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  Dropdown,
+  Field,
+  makeStyles,
+  Option,
+  ProgressBar,
+  Radio,
+  RadioGroup,
+  Spinner,
+  Text,
+  Title2,
+  Title3,
+  tokens,
+  Tooltip,
 } from '@fluentui/react-components';
 import {
-    CheckmarkCircle24Regular,
-    Dismiss24Regular,
-    DocumentMultiple24Regular,
-    ErrorCircle24Regular,
-    Folder24Regular,
-    Info24Regular,
-    Open24Regular,
+  CheckmarkCircle24Regular,
+  Dismiss24Regular,
+  DocumentMultiple24Regular,
+  ErrorCircle24Regular,
+  Folder24Regular,
+  Info24Regular,
+  Open24Regular,
 } from '@fluentui/react-icons';
 import type { FC } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -740,6 +740,8 @@ export const FinalExport: FC<FinalExportProps> = ({
 
                 const errorMsg =
                   data.errorMessage || data.failureDetails?.message || 'Video generation failed';
+                setExportStatus('error');
+                setExportStage(errorMsg);
                 reject(new Error(errorMsg));
               } catch (err) {
                 eventSource.close();
@@ -911,6 +913,18 @@ export const FinalExport: FC<FinalExportProps> = ({
                 const typedJobData = (await statusResponse.json()) as JobStatusData;
                 lastJobData = typedJobData;
 
+                const normalizedStatus = (typedJobData.status || '').toLowerCase();
+                if (normalizedStatus === 'failed') {
+                  throw new Error(
+                    typedJobData.errorMessage ||
+                      typedJobData.failureDetails?.message ||
+                      'Video generation failed'
+                  );
+                }
+                if (normalizedStatus === 'cancelled' || normalizedStatus === 'canceled') {
+                  throw new Error('Video generation was cancelled');
+                }
+
                 // Extract progress with proper fallbacks and update UI
                 const jobProgress = Math.max(0, Math.min(100, typedJobData.percent ?? 0));
                 const currentStage = typedJobData.stage || 'Processing';
@@ -989,6 +1003,17 @@ export const FinalExport: FC<FinalExportProps> = ({
                   console.info('[FinalExport] Job completed successfully');
                 }
               } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+
+                // Fast-fail on terminal job errors (failed/cancelled/stuck)
+                if (
+                  errorMessage.toLowerCase().includes('failed') ||
+                  errorMessage.toLowerCase().includes('cancel') ||
+                  errorMessage.toLowerCase().includes('stuck')
+                ) {
+                  throw error;
+                }
+
                 consecutiveErrors++;
                 if (consecutiveErrors >= maxConsecutiveErrors) {
                   throw error;

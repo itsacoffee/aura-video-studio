@@ -262,6 +262,81 @@ public partial class JobRunner
     }
 
     /// <summary>
+    /// Forcefully marks a job as failed due to a detected stall and attempts to cancel execution.
+    /// </summary>
+    /// <param name="jobId">The job identifier</param>
+    /// <param name="stage">Stage where the stall was detected</param>
+    /// <param name="percent">Last reported percent</param>
+    /// <param name="stuckDuration">How long the job has been stuck</param>
+    /// <param name="correlationId">Optional correlation id for logging</param>
+    /// <returns>The updated job or null if the job was not found</returns>
+    public Job? FailJobAsStalled(
+        string jobId,
+        string? stage,
+        int percent,
+        TimeSpan stuckDuration,
+        string? correlationId = null)
+    {
+        var job = GetJob(jobId);
+        if (job == null)
+        {
+            _logger.LogWarning("Cannot mark stalled job {JobId}: job not found", jobId);
+            return null;
+        }
+
+        var effectiveStage = stage ?? job.Stage;
+        var effectiveCorrelationId = correlationId ?? job.CorrelationId ?? string.Empty;
+        var message = $"Job stalled at {effectiveStage} stage with no progress for {stuckDuration.TotalSeconds:F0}s";
+
+        _logger.LogError("[Job {JobId}] {Message}", jobId, message);
+
+        // Attempt to cancel any running work to free resources
+        if (_jobCancellationTokens.TryGetValue(jobId, out var cts))
+        {
+            try
+            {
+                cts.Cancel();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to cancel stalled job {JobId}", jobId);
+            }
+        }
+
+        // Stop auxiliary tracking to avoid leaking monitors
+        _progressEstimator.ClearHistory(jobId);
+        _memoryMonitor?.StopMonitoring(jobId);
+        CleanupProgressTracking(jobId);
+
+        var failure = new JobFailure
+        {
+            Stage = effectiveStage,
+            Message = message,
+            CorrelationId = effectiveCorrelationId,
+            FailedAt = DateTime.UtcNow,
+            ErrorCode = "E305-JOB_STALLED",
+            SuggestedActions = new[]
+            {
+                "Retry the render with lower resolution or software encoding",
+                "Verify FFmpeg is available and not blocked by antivirus",
+                "Check disk space and write permissions on the render output directory"
+            }
+        };
+
+        var updatedJob = UpdateJob(
+            job,
+            status: JobStatus.Failed,
+            stage: effectiveStage,
+            percent: percent,
+            errorMessage: message,
+            failureDetails: failure,
+            progressMessage: message,
+            finishedAt: DateTime.UtcNow);
+
+        return updatedJob;
+    }
+
+    /// <summary>
     /// Pauses a running job.
     /// </summary>
     /// <param name="jobId">The ID of the job to pause</param>

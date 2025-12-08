@@ -1624,8 +1624,19 @@ public class JobsController : ControllerBase
                         if (timeSinceLastProgress >= stallFailureThresholdSeconds && !stallFailureEmitted)
                         {
                             Log.Error(
-                                "[{CorrelationId}] Job {JobId} stalled for {Seconds:F0}s at {Percent}% ({Stage}), emitting failure event",
+                                "[{CorrelationId}] Job {JobId} stalled for {Seconds:F0}s at {Percent}% ({Stage}), emitting failure event and marking as failed",
                                 correlationId, jobId, timeSinceLastProgress, job.Percent, job.Stage);
+
+                            var failureMessage =
+                                $"Job stalled at {job.Stage} stage with no progress for over {stallFailureThresholdSeconds / 60.0:F0} minutes";
+
+                            // Force the job into a failed terminal state so polling endpoints also report failure
+                            _jobRunner.FailJobAsStalled(
+                                jobId,
+                                job.Stage,
+                                job.Percent,
+                                TimeSpan.FromSeconds(timeSinceLastProgress),
+                                correlationId);
 
                             var failureData = JsonSerializer.Serialize(new
                             {
@@ -1633,7 +1644,7 @@ public class JobsController : ControllerBase
                                 jobId = job.Id,
                                 stage = job.Stage,
                                 percent = job.Percent,
-                                errorMessage = $"Job stalled at {job.Stage} stage with no progress for over {stallFailureThresholdSeconds / 60.0:F0} minutes",
+                                errorMessage = failureMessage,
                                 stallDurationSeconds = (int)timeSinceLastProgress,
                                 correlationId
                             });
