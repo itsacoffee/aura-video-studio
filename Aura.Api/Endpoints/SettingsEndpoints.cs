@@ -25,7 +25,7 @@ public static class SettingsEndpoints
                 var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "settings.json");
                 Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
                 File.WriteAllText(settingsPath, System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-                
+
                 Log.Information("Settings saved successfully");
                 return Results.Ok(new { success = true, message = "Settings saved" });
             }
@@ -82,12 +82,12 @@ public static class SettingsEndpoints
             {
                 var portableMarkerPath = Path.Combine(AppContext.BaseDirectory, ".portable");
                 var isPortable = File.Exists(portableMarkerPath);
-                
+
                 return Results.Ok(new
                 {
                     isPortable,
                     baseDirectory = AppContext.BaseDirectory,
-                    dataDirectory = isPortable 
+                    dataDirectory = isPortable
                         ? Path.Combine(AppContext.BaseDirectory, "AuraData")
                         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura")
                 });
@@ -115,7 +115,7 @@ public static class SettingsEndpoints
             {
                 var toolsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "Tools");
                 Directory.CreateDirectory(toolsDir);
-                
+
                 if (OperatingSystem.IsWindows())
                 {
                     System.Diagnostics.Process.Start("explorer.exe", toolsDir);
@@ -128,7 +128,7 @@ public static class SettingsEndpoints
                 {
                     System.Diagnostics.Process.Start("open", toolsDir);
                 }
-                
+
                 return Results.Ok(new { success = true, path = toolsDir });
             }
             catch (Exception ex)
@@ -170,6 +170,10 @@ public static class SettingsEndpoints
         })
         .Produces<object>(200);
 
+        // Allow preflight OPTIONS for Ollama model endpoint
+        group.MapMethods("/settings/ollama/model", new[] { "OPTIONS" }, () => Results.NoContent())
+            .WithName("OptionsOllamaModel");
+
         // Set selected Ollama model
         group.MapPost("/settings/ollama/model", ([FromBody] SetOllamaModelRequest request, ProviderSettings providerSettings) =>
         {
@@ -179,7 +183,7 @@ public static class SettingsEndpoints
                 {
                     return Results.BadRequest(new { success = false, error = "Model name is required" });
                 }
-                
+
                 providerSettings.SetOllamaModel(request.Model);
                 Log.Information("Ollama model set to: {Model}", request.Model);
                 return Results.Ok(new { success = true, model = request.Model, message = "Ollama model saved successfully" });
@@ -217,14 +221,14 @@ public static class SettingsEndpoints
                         return Results.Ok(new { success = true, provider = selection.Provider, modelId = selection.ModelId });
                     }
                 }
-                
+
                 // Fallback: Check if Ollama model is configured
                 var ollamaModel = providerSettings.GetOllamaModel();
                 if (!string.IsNullOrEmpty(ollamaModel))
                 {
                     return Results.Ok(new { success = true, provider = "Ollama", modelId = ollamaModel });
                 }
-                
+
                 return Results.Ok(new { success = false, provider = (string?)null, modelId = (string?)null });
             }
             catch (Exception ex)
@@ -242,6 +246,10 @@ public static class SettingsEndpoints
         })
         .Produces<object>(200);
 
+        // Allow preflight OPTIONS for LLM selection endpoint
+        group.MapMethods("/settings/llm/selection", new[] { "OPTIONS" }, () => Results.NoContent())
+            .WithName("OptionsLlmSelection");
+
         // Set global LLM selection (provider + model)
         group.MapPost("/settings/llm/selection", ([FromBody] GlobalLlmSelectionDto request, ProviderSettings providerSettings) =>
         {
@@ -251,25 +259,25 @@ public static class SettingsEndpoints
                 {
                     return Results.BadRequest(new { success = false, error = "Provider is required" });
                 }
-                
+
                 // Save to dedicated settings file
                 var settingsPath = LlmSelectionPaths.GetLlmSelectionFilePath();
                 Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
-                
+
                 var json = System.Text.Json.JsonSerializer.Serialize(new GlobalLlmSelectionDto
                 {
                     Provider = request.Provider,
                     ModelId = request.ModelId ?? ""
                 }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-                
+
                 File.WriteAllText(settingsPath, json);
-                
+
                 // Also update Ollama model if Ollama is selected
                 if (request.Provider.Equals("Ollama", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(request.ModelId))
                 {
                     providerSettings.SetOllamaModel(request.ModelId);
                 }
-                
+
                 Log.Information("Global LLM selection set to: {Provider} / {ModelId}", request.Provider, request.ModelId);
                 return Results.Ok(new { success = true, provider = request.Provider, modelId = request.ModelId, message = "Global LLM selection saved successfully" });
             }

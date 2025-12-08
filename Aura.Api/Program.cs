@@ -1202,6 +1202,7 @@ else
 
 // Register all providers using centralized extension methods from Aura.Providers
 // This ensures consistent DI registration across LLM, TTS, and Image providers
+builder.Services.AddProviderServices();
 builder.Services.AddAuraProviders();
 builder.Services.AddProviderFactories();
 builder.Services.AddProviderHealthServices();
@@ -3058,6 +3059,9 @@ apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService hea
 
 // Configuration endpoints
 app.MapConfigurationEndpoints();
+
+// Settings endpoints (LLM selection, Ollama model, etc.)
+app.MapSettingsEndpoints();
 
 // Process management debug endpoints
 app.MapProcessEndpoints();
