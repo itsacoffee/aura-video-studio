@@ -1,8 +1,8 @@
-import type { TimelineTrack } from "@/types/timeline";
 import type { MediaFile } from "@/types/media";
 import type { BlurIntensity } from "@/types/project";
-import { videoCache } from "./video-cache";
+import type { TimelineTrack } from "@/types/timeline";
 import { drawCssBackground } from "./canvas-gradients";
+import { videoCache } from "./video-cache";
 
 export interface RenderContext {
   ctx: CanvasRenderingContext2D;
@@ -117,8 +117,18 @@ export async function renderTimelineFrame({
             Math.max(0, localTime)
           );
           if (frame) {
-            const mediaW = Math.max(1, mediaItem.width || canvasWidth);
-            const mediaH = Math.max(1, mediaItem.height || canvasHeight);
+            const frameCanvas = frame.canvas as {
+              width?: number;
+              height?: number;
+            };
+            const mediaW = Math.max(
+              1,
+              frameCanvas.width ?? mediaItem.width ?? canvasWidth
+            );
+            const mediaH = Math.max(
+              1,
+              frameCanvas.height ?? mediaItem.height ?? canvasHeight
+            );
             const coverScale = Math.max(
               canvasWidth / mediaW,
               canvasHeight / mediaH
@@ -174,8 +184,18 @@ export async function renderTimelineFrame({
           );
           if (!frame) continue;
 
-          const mediaW = Math.max(1, mediaItem.width || canvasWidth);
-          const mediaH = Math.max(1, mediaItem.height || canvasHeight);
+          const frameCanvas = frame.canvas as {
+            width?: number;
+            height?: number;
+          };
+          const mediaW = Math.max(
+            1,
+            frameCanvas.width ?? mediaItem.width ?? canvasWidth
+          );
+          const mediaH = Math.max(
+            1,
+            frameCanvas.height ?? mediaItem.height ?? canvasHeight
+          );
           const containScale = Math.min(
             canvasWidth / mediaW,
             canvasHeight / mediaH

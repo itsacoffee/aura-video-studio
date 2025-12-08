@@ -33,7 +33,7 @@ public class FfmpegVideoComposer : IVideoComposer
     // Default Ken Burns effect settings - subtle zoom from 1.0 to 1.1 for professional look
     private const double DefaultKenBurnsZoomStart = 1.0;
     private const double DefaultKenBurnsZoomEnd = 1.1;
-    
+
     // Default fade transition duration between scenes (in seconds)
     private const double DefaultFadeTransitionDuration = 0.5;
 
@@ -107,7 +107,27 @@ public class FfmpegVideoComposer : IVideoComposer
         var ffmpegLogPath = Path.Combine(_logsDirectory, $"{jobId}.log");
         StreamWriter? logWriter = null;
 
-        // Resolve FFmpeg path once at the start - this is the single source of truth for this render job
+        // Open log file early so both managed and manual runners capture output
+        try
+        {
+            logWriter = new StreamWriter(ffmpegLogPath, append: false, encoding: Encoding.UTF8)
+            {
+                AutoFlush = true
+            };
+            logWriter.WriteLine("FFmpeg Render Log");
+            logWriter.WriteLine($"Job ID: {jobId}");
+            logWriter.WriteLine($"Correlation ID: {correlationId}");
+            logWriter.WriteLine($"Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            logWriter.WriteLine(new string('-', 80));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create FFmpeg log file at {LogPath}", ffmpegLogPath);
+        }
+
+        try
+        {
+            // Resolve FFmpeg path once at the start - this is the single source of truth for this render job
         string ffmpegPath;
         try
         {
@@ -191,25 +211,11 @@ public class FfmpegVideoComposer : IVideoComposer
             EnableRaisingEvents = true
         };
 
-        // Initialize log writer for FFmpeg output
-        try
-        {
-            logWriter = new StreamWriter(ffmpegLogPath, append: false, encoding: Encoding.UTF8)
-            {
-                AutoFlush = true
-            };
-            logWriter.WriteLine($"FFmpeg Render Log - Job ID: {jobId}");
-            logWriter.WriteLine($"Correlation ID: {correlationId}");
-            logWriter.WriteLine($"Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-            logWriter.WriteLine($"Resolution: {spec.Res.Width}x{spec.Res.Height}");
-            logWriter.WriteLine($"FFmpeg Path: {ffmpegPath}");
-            logWriter.WriteLine($"Command: {ffmpegCommand}");
-            logWriter.WriteLine(new string('-', 80));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to create FFmpeg log file at {LogPath}", ffmpegLogPath);
-        }
+        // Log run metadata (only if log writer is available)
+        logWriter?.WriteLine($"Resolution: {spec.Res.Width}x{spec.Res.Height}");
+        logWriter?.WriteLine($"FFmpeg Path: {ffmpegPath}");
+        logWriter?.WriteLine($"Command: {ffmpegCommand}");
+        logWriter?.WriteLine(new string('-', 80));
 
         // Track FFmpeg activity for watchdog timer
         DateTime lastFfmpegActivity = DateTime.UtcNow;
@@ -223,7 +229,7 @@ public class FfmpegVideoComposer : IVideoComposer
             if (!process.HasExited)
             {
                 var inactivityDuration = DateTime.UtcNow - lastFfmpegActivity;
-                
+
                 if (inactivityDuration.TotalSeconds > 30 && inactivityDuration.TotalSeconds < 90)
                 {
                     _logger.LogWarning(
@@ -231,14 +237,14 @@ public class FfmpegVideoComposer : IVideoComposer
                         (int)inactivityDuration.TotalSeconds, lastProgressPercent,
                         process.WorkingSet64 / 1024 / 1024);
                 }
-                
+
                 if (inactivityDuration.TotalSeconds > 90)
                 {
                     _logger.LogError(
                         "WATCHDOG: No output for {Sec}s at {Prog}%. Last line: {Line}",
-                        (int)inactivityDuration.TotalSeconds, lastProgressPercent, 
+                        (int)inactivityDuration.TotalSeconds, lastProgressPercent,
                         lastStderrLine ?? "N/A");
-                    
+
                     try
                     {
                         process.Kill(entireProcessTree: true);
@@ -265,7 +271,7 @@ public class FfmpegVideoComposer : IVideoComposer
                         "FFmpeg HEARTBEAT: JobId={JobId}, Progress={Progress}%, Elapsed={Elapsed}s, " +
                         "ProcessId={Pid}, Memory={MemoryMB}MB, CPU={CpuSeconds}s",
                         jobId, lastProgressPercent, (DateTime.UtcNow - startTime).TotalSeconds,
-                        process.Id, 
+                        process.Id,
                         process.WorkingSet64 / 1024 / 1024,
                         process.TotalProcessorTime.TotalSeconds);
                 }
@@ -542,7 +548,7 @@ public class FfmpegVideoComposer : IVideoComposer
         }
 
         var fileInfo = new FileInfo(outputFilePath);
-        _logger.LogInformation("Render verified: {Path} ({SizeMB:F2} MB, {SizeBytes} bytes)", 
+        _logger.LogInformation("Render verified: {Path} ({SizeMB:F2} MB, {SizeBytes} bytes)",
             outputFilePath, fileInfo.Length / 1024.0 / 1024.0, fileInfo.Length);
 
         if (fileInfo.Length == 0)
@@ -569,7 +575,19 @@ public class FfmpegVideoComposer : IVideoComposer
             TimeSpan.Zero,
             "Render complete"));
 
-        return outputFilePath;
+            return outputFilePath;
+        }
+        finally
+        {
+            try
+            {
+                logWriter?.Dispose();
+            }
+            catch
+            {
+                // Ignore cleanup errors during finalization
+            }
+        }
     }
 
     /// <summary>
@@ -903,7 +921,7 @@ public class FfmpegVideoComposer : IVideoComposer
                 spec.Fps,
                 narrationInputIndex,
                 musicInputIndex);
-            
+
             if (!string.IsNullOrEmpty(filterGraph))
             {
                 builder.AddFilter(filterGraph);
@@ -975,7 +993,7 @@ public class FfmpegVideoComposer : IVideoComposer
         // Enhanced logging for diagnostics
         _logger.LogInformation("FFmpeg command built successfully: {Length} characters", command.Length);
         _logger.LogDebug("Full command: ffmpeg {Command}", command);
-        
+
         // Log detailed input file information
         try
         {
@@ -983,14 +1001,14 @@ public class FfmpegVideoComposer : IVideoComposer
             var musicInfo = !string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath)
                 ? $"{timeline.MusicPath} ({new FileInfo(timeline.MusicPath).Length / 1024.0 / 1024.0:F2} MB)"
                 : "None";
-            
+
             _logger.LogInformation(
                 "FFmpeg input files:\n" +
                 "  Narration: {NarrationPath} ({NarrationSizeMB:F2} MB)\n" +
                 "  Music: {MusicPath}\n" +
                 "  Visual Assets: {AssetCount} files\n" +
                 "  Output: {OutputPath}",
-                timeline.NarrationPath, 
+                timeline.NarrationPath,
                 narrationFileInfo.Length / 1024.0 / 1024.0,
                 musicInfo,
                 visualAssets.Count,
@@ -1021,8 +1039,8 @@ public class FfmpegVideoComposer : IVideoComposer
             if (timeline.SceneAssets.TryGetValue(scene.Index, out var sceneAssets) && sceneAssets.Count > 0)
             {
                 // Take the first valid asset for each scene
-                var primaryAsset = sceneAssets.FirstOrDefault(a => 
-                    !string.IsNullOrEmpty(a.PathOrUrl) && 
+                var primaryAsset = sceneAssets.FirstOrDefault(a =>
+                    !string.IsNullOrEmpty(a.PathOrUrl) &&
                     File.Exists(a.PathOrUrl));
 
                 if (primaryAsset != null)
@@ -1110,11 +1128,11 @@ public class FfmpegVideoComposer : IVideoComposer
             {
                 // FIX: Accumulate offset BEFORE calculating transition
                 currentOffset += assets[i].Duration.TotalSeconds;
-                
+
                 // FIX: Ensure transition offset is never negative
                 var transitionDuration = DefaultFadeTransitionDuration;
                 var safeTransitionOffset = Math.Max(0, currentOffset - transitionDuration);
-                
+
                 // FIX: If scene is too short, reduce transition duration
                 if (assets[i].Duration.TotalSeconds < transitionDuration)
                 {
@@ -1146,7 +1164,7 @@ public class FfmpegVideoComposer : IVideoComposer
         }
 
         var filterGraph = string.Join(";", filterParts);
-        
+
         // FIX: Log the full filter graph for debugging
         _logger.LogDebug("Generated filter graph ({Length} chars): {Graph}",
             filterGraph.Length,
@@ -1419,22 +1437,22 @@ public class FfmpegVideoComposer : IVideoComposer
     private async Task ValidateInputFilesAsync(Timeline timeline, string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
     {
         _logger.LogInformation("Pre-validating input files before FFmpeg execution (JobId={JobId})...", jobId);
-        
+
         // Validate narration file
         if (string.IsNullOrEmpty(timeline.NarrationPath) || !File.Exists(timeline.NarrationPath))
         {
             throw new InvalidOperationException($"Narration file not found: {timeline.NarrationPath}");
         }
-        
+
         var narrationInfo = new FileInfo(timeline.NarrationPath);
         if (narrationInfo.Length == 0)
         {
             throw new InvalidOperationException($"Narration file is empty: {timeline.NarrationPath}");
         }
-        
+
         // Use ffprobe to validate narration is valid audio
         await ValidateMediaFileAsync(timeline.NarrationPath, "audio", ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
-        
+
         // Validate music file if present
         if (!string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath))
         {
@@ -1447,7 +1465,7 @@ public class FfmpegVideoComposer : IVideoComposer
                 _logger.LogWarning(ex, "Music file validation failed, will skip music: {Path}", timeline.MusicPath);
             }
         }
-        
+
         // Validate visual assets
         var visualAssets = CollectVisualAssets(timeline);
         foreach (var asset in visualAssets)
@@ -1456,13 +1474,13 @@ public class FfmpegVideoComposer : IVideoComposer
             {
                 throw new FileNotFoundException($"Visual asset not found: {asset.Path}");
             }
-            
+
             var assetInfo = new FileInfo(asset.Path);
             if (assetInfo.Length == 0)
             {
                 throw new InvalidOperationException($"Visual asset is empty: {asset.Path}");
             }
-            
+
             // Determine expected type - be explicit about what we expect
             string expectedType;
             if (asset.IsImage)
@@ -1475,10 +1493,10 @@ public class FfmpegVideoComposer : IVideoComposer
                 // some video files may also contain image streams
                 expectedType = "image|video";
             }
-            
+
             await ValidateMediaFileAsync(asset.Path, expectedType, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
         }
-        
+
         _logger.LogInformation("All input files validated successfully (JobId={JobId})", jobId);
     }
 
@@ -1490,7 +1508,7 @@ public class FfmpegVideoComposer : IVideoComposer
         // Get ffprobe path (same directory as ffmpeg)
         var ffmpegDir = Path.GetDirectoryName(ffmpegPath);
         string ffprobePath;
-        
+
         if (string.IsNullOrEmpty(ffmpegDir))
         {
             // FFmpeg is in PATH, assume ffprobe is too
@@ -1511,9 +1529,9 @@ public class FfmpegVideoComposer : IVideoComposer
                 }
             }
         }
-        
+
         var args = $"-v error -show_entries stream=codec_type -of default=noprint_wrappers=1:nokey=1 \"{filePath}\"";
-        
+
         var process = new Process
         {
             StartInfo = new ProcessStartInfo
@@ -1526,30 +1544,30 @@ public class FfmpegVideoComposer : IVideoComposer
                 CreateNoWindow = true
             }
         };
-        
+
         try
         {
             process.Start();
             var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
             var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
             await process.WaitForExitAsync(ct).ConfigureAwait(false);
-            
+
             if (process.ExitCode != 0)
             {
                 throw new InvalidOperationException(
                     $"Media file validation failed for {filePath}: {stderr}");
             }
-            
+
             var codecTypes = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var isValid = codecTypes.Any(type => expectedType.Contains(type.Trim(), StringComparison.OrdinalIgnoreCase));
-            
+
             if (!isValid)
             {
                 throw new InvalidOperationException(
                     $"Media file {filePath} is not a valid {expectedType} file. " +
                     $"Detected types: {string.Join(", ", codecTypes)}");
             }
-            
+
             _logger.LogDebug("Media file validated: {Path} (Type: {Type})", filePath, string.Join(", ", codecTypes));
         }
         finally

@@ -25,7 +25,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import apiClient from '../../services/api/apiClient';
 import type {
   HealthDetailsResponse,
+  ProviderDashboardStatus,
   ProviderHealthCheckDto,
+  ProviderHealthDashboardResponse,
   ProviderTypeHealthDto,
   SystemHealthDto,
 } from '../../types/api-v1';
@@ -172,6 +174,59 @@ const SystemHealthDashboard = () => {
     };
   };
 
+  const mapDashboardProviders = (
+    dashboard: ProviderHealthDashboardResponse | null,
+    category: 'LLM' | 'TTS' | 'Image'
+  ): ProviderTypeHealthDto | null => {
+    if (!dashboard) return null;
+
+    const providersByCategory = dashboard.providers.filter(
+      (provider) => provider.category.toLowerCase() === category.toLowerCase()
+    );
+
+    if (providersByCategory.length === 0) {
+      return null;
+    }
+
+    const toProviderHealth = (provider: ProviderDashboardStatus): ProviderHealthCheckDto => {
+      const successRatePercent = provider.successRate ?? 0;
+      const successRate = successRatePercent / 100;
+      const averageLatencyMs = provider.averageLatencyMs ?? 0;
+
+      return {
+        providerName: provider.name,
+        isHealthy: provider.healthStatus === 'healthy',
+        lastCheckTime: provider.lastCheckTime ?? new Date().toISOString(),
+        responseTimeMs: averageLatencyMs,
+        consecutiveFailures: provider.consecutiveFailures ?? 0,
+        lastError: provider.lastError ?? null,
+        successRate,
+        averageResponseTimeMs: averageLatencyMs,
+        circuitState: provider.circuitState ?? 'Closed',
+        failureRate: Math.max(0, 1 - successRate),
+        circuitOpenedAt: null,
+      };
+    };
+
+    const providers = providersByCategory.map(toProviderHealth);
+    const healthyCount = providers.filter((p) => p.isHealthy).length;
+
+    return {
+      providerType: category.toLowerCase(),
+      providers,
+      isHealthy: healthyCount > 0,
+      healthyCount,
+      totalCount: providers.length,
+    };
+  };
+
+  const shouldFallbackToDashboard = (health: ProviderTypeHealthDto | null) => {
+    if (!health) return true;
+    if (health.totalCount === 0) return true;
+    if (!health.providers || health.providers.length === 0) return true;
+    return false;
+  };
+
   const fetchHealthData = useCallback(async () => {
     const fetchHealthEndpoint = async <T,>(url: string) => {
       try {
@@ -197,6 +252,9 @@ const SystemHealthDashboard = () => {
       ]);
 
       let resolvedSystem = system;
+      let resolvedLlm = llm;
+      let resolvedTts = tts;
+      let resolvedImages = images;
 
       // Fallback: if the legacy endpoint fails or returns null, use canonical health details endpoint
       if (!resolvedSystem) {
@@ -206,9 +264,35 @@ const SystemHealthDashboard = () => {
         }
       }
 
-      setLlmHealth(llm);
-      setTtsHealth(tts);
-      setImagesHealth(images);
+      const needsDashboard =
+        shouldFallbackToDashboard(resolvedLlm) ||
+        shouldFallbackToDashboard(resolvedTts) ||
+        shouldFallbackToDashboard(resolvedImages);
+
+      if (needsDashboard) {
+        const dashboard =
+          await fetchHealthEndpoint<ProviderHealthDashboardResponse>('/api/health-dashboard');
+        if (dashboard) {
+          resolvedLlm = resolvedLlm ?? mapDashboardProviders(dashboard, 'LLM');
+          resolvedTts = resolvedTts ?? mapDashboardProviders(dashboard, 'TTS');
+          resolvedImages = resolvedImages ?? mapDashboardProviders(dashboard, 'Image');
+
+          // If legacy endpoints returned empty provider lists, replace them with dashboard data
+          if (shouldFallbackToDashboard(resolvedLlm)) {
+            resolvedLlm = mapDashboardProviders(dashboard, 'LLM');
+          }
+          if (shouldFallbackToDashboard(resolvedTts)) {
+            resolvedTts = mapDashboardProviders(dashboard, 'TTS');
+          }
+          if (shouldFallbackToDashboard(resolvedImages)) {
+            resolvedImages = mapDashboardProviders(dashboard, 'Image');
+          }
+        }
+      }
+
+      setLlmHealth(resolvedLlm);
+      setTtsHealth(resolvedTts);
+      setImagesHealth(resolvedImages);
       setSystemHealth(resolvedSystem);
       setError(null);
     } catch (err) {

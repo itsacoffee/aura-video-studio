@@ -47,10 +47,10 @@ public class TranslationService
         _timingAdjuster = new TimingAdjuster(logger);
         _visualAnalyzer = new VisualLocalizationAnalyzer(logger, llmProvider);
         _ollamaDirectClient = ollamaDirectClient;
-        
+
         _logger.LogInformation("TranslationService constructed:");
         _logger.LogInformation("  ILlmProvider: {Type}", _llmProvider.GetType().Name);
-        _logger.LogInformation("  IOllamaDirectClient: {Status}", 
+        _logger.LogInformation("  IOllamaDirectClient: {Status}",
             _ollamaDirectClient != null ? "✓ Injected" : "✗ NULL");
     }
 
@@ -64,13 +64,13 @@ public class TranslationService
             var capabilities = _llmProvider.GetCapabilities();
             if (!capabilities.SupportsTranslation)
                 return false;
-                
+
             // If Ollama, verify it's actually running
             if (_ollamaDirectClient != null)
             {
                 return await _ollamaDirectClient.IsAvailableAsync(ct).ConfigureAwait(false);
             }
-            
+
             return true;
         }
         catch
@@ -90,7 +90,7 @@ public class TranslationService
         {
             var providerTypeName = _llmProvider.GetType().Name;
             string actionableMessage;
-            
+
             if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
             {
                 actionableMessage = "No AI provider is configured for translation. " +
@@ -102,7 +102,7 @@ public class TranslationService
                 actionableMessage = $"The current LLM provider ({capabilities.ProviderName}) does not support translation. " +
                     $"Please configure an AI provider that supports translation capabilities.";
             }
-            
+
             throw new InvalidOperationException(actionableMessage);
         }
 
@@ -418,7 +418,7 @@ public class TranslationService
         CancellationToken cancellationToken)
     {
         var translatedLines = new List<TranslatedScriptLine>();
-        
+
         // Build LLM parameters with model override if specified
         // CRITICAL: ResponseFormat must be null for translation to get plain text output
         // JSON format causes Ollama to return structured data instead of the translation
@@ -556,6 +556,7 @@ public class TranslationService
                             userPrompt,
                             sourceLanguage,
                             targetLanguage,
+                            llmParameters?.ModelOverride,
                             cancellationToken).ConfigureAwait(false);
                         _logger.LogInformation("Successfully generated translation via direct Ollama path");
                     }
@@ -642,7 +643,7 @@ public class TranslationService
                     "(3) Prompt caused model to produce no output, " +
                     "(4) Ollama service crashed - restart with 'ollama serve'",
                     sourceLanguage, targetLanguage, providerName, translationDuration.TotalMilliseconds);
-                
+
                 throw new InvalidOperationException(
                     $"LLM provider '{providerName}' returned empty response for translation. " +
                     $"If using Ollama: (1) Check if model is loaded with 'ollama list', " +
@@ -718,7 +719,7 @@ public class TranslationService
         {
             _logger.LogError(ex, "Translation failed for {SourceLang} -> {TargetLang}: {Error}",
                 sourceLanguage, targetLanguage, ex.Message);
-            
+
             // Re-throw to let caller handle failure properly instead of returning placeholder
             throw new InvalidOperationException(
                 $"Translation from {sourceLanguage} to {targetLanguage} failed: {ex.Message}", ex);
@@ -1213,6 +1214,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         string userPrompt,
         string sourceLanguage,
         string targetLanguage,
+        string? modelOverride,
         CancellationToken ct)
     {
         // ARCHITECTURAL FIX: Use injected IOllamaDirectClient instead of reflection
@@ -1233,15 +1235,57 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
 
         _logger.LogInformation("Ollama availability check passed for translation");
 
-        // Get available models and use first one (or could add logic to select best model for translation)
-        var models = await _ollamaDirectClient.ListModelsAsync(ct).ConfigureAwait(false);
-        if (models.Count == 0)
+        // Resolve model to use: prefer explicit override, then provider default, then first available
+        var availableModels = await _ollamaDirectClient.ListModelsAsync(ct).ConfigureAwait(false);
+        if (availableModels.Count == 0)
         {
             throw new InvalidOperationException(
                 "No Ollama models available for translation. Please install a model: 'ollama pull llama3.1'");
         }
 
-        var modelToUse = models[0]; // Use first available model
+        string? modelToUse = modelOverride;
+        if (string.IsNullOrWhiteSpace(modelToUse))
+        {
+            try
+            {
+                var capabilities = _llmProvider.GetCapabilities();
+                if (!string.IsNullOrWhiteSpace(capabilities.DefaultModel))
+                {
+                    modelToUse = capabilities.DefaultModel;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not read provider capabilities for default model selection");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(modelToUse))
+        {
+            var matchedModel = availableModels.FirstOrDefault(
+                m => string.Equals(m, modelToUse, StringComparison.OrdinalIgnoreCase));
+
+            if (matchedModel == null)
+            {
+                _logger.LogWarning(
+                    "Requested Ollama model '{Model}' not found. Falling back to first available model: {FallbackModel}",
+                    modelToUse,
+                    availableModels[0]);
+                modelToUse = availableModels[0];
+            }
+            else
+            {
+                modelToUse = matchedModel;
+            }
+        }
+        else
+        {
+            modelToUse = availableModels[0];
+            _logger.LogInformation(
+                "No model override provided. Using first available Ollama model: {Model}",
+                modelToUse);
+        }
+
         _logger.LogInformation(
             "Calling Ollama API directly for translation {SourceLang} -> {TargetLang} (Model: {Model})",
             sourceLanguage, targetLanguage, modelToUse);
@@ -1279,7 +1323,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ollama translation failed for {SourceLang} -> {TargetLang}", 
+            _logger.LogError(ex, "Ollama translation failed for {SourceLang} -> {TargetLang}",
                 sourceLanguage, targetLanguage);
             throw;
         }

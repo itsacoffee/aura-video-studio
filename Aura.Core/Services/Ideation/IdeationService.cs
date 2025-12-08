@@ -3848,7 +3848,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         }
 
         // Determine model to use (BrainstormRequest uses LlmModel property)
-        string? modelToUse = request.LlmModel;
+        string? modelToUse = request.LlmModel ?? parameters.ModelOverride;
         if (string.IsNullOrWhiteSpace(modelToUse))
         {
             // Try to get available models and pick the first one

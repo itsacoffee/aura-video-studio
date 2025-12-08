@@ -1,45 +1,51 @@
-import { usePlaybackStore } from "@/stores/playback-store";
-import { useProjectStore } from "@/stores/project-store";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { useSceneStore } from "@/stores/scene-store";
-import { toast } from "sonner";
-import {
-  TooltipProvider,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { EditableTimecode } from "@/components/ui/editable-timecode";
 import {
-  Pause,
-  Play,
-  SkipBack,
-  Bookmark,
-  Magnet,
-  Link,
-  ZoomOut,
-  ZoomIn,
-  Copy,
-  Trash2,
-  Snowflake,
-  ArrowLeftToLine,
-  ArrowRightToLine,
-  SplitSquareHorizontal,
-  Scissors,
-  LayersIcon,
-} from "lucide-react";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import {
   SplitButton,
   SplitButtonLeft,
   SplitButtonRight,
   SplitButtonSeparator,
 } from "@/components/ui/split-button";
-import { Slider } from "@/components/ui/slider";
-import { DEFAULT_FPS } from "@/stores/project-store";
-import { formatTimeCode } from "@/lib/time";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TIMELINE_CONSTANTS } from "@/constants/timeline-constants";
-import { EditableTimecode } from "@/components/ui/editable-timecode";
+import { formatTimeCode } from "@/lib/time";
+import { usePlaybackStore } from "@/stores/playback-store";
+import { DEFAULT_FPS, useProjectStore } from "@/stores/project-store";
+import { useSceneStore } from "@/stores/scene-store";
+import { useTimelineStore } from "@/stores/timeline-store";
+import {
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  Bookmark,
+  Copy,
+  Gauge,
+  LayersIcon,
+  Link,
+  Magnet,
+  Pause,
+  Play,
+  Scissors,
+  SkipBack,
+  Snowflake,
+  SplitSquareHorizontal,
+  Trash2,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
+import { toast } from "sonner";
 import { ScenesView } from "../scenes-view";
+import { SpeedControl } from "../speed-control";
 
 export function TimelineToolbar({
   zoomLevel,
@@ -321,7 +327,9 @@ export function TimelineToolbar({
             <TooltipTrigger asChild>
               <Button variant="text" size="icon" onClick={handleToggleBookmark}>
                 <Bookmark
-                  className={`h-4 w-4 ${currentBookmarked ? "fill-primary text-primary" : ""}`}
+                  className={`h-4 w-4 ${
+                    currentBookmarked ? "fill-primary text-primary" : ""
+                  }`}
                 />
               </Button>
             </TooltipTrigger>
@@ -373,6 +381,17 @@ export function TimelineToolbar({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="text" size="icon" title="Playback speed">
+              <Gauge className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80">
+            <SpeedControl />
+          </PopoverContent>
+        </Popover>
 
         <div className="h-6 w-px bg-border mx-1" />
         <div className="flex items-center gap-1">
