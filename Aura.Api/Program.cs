@@ -559,14 +559,7 @@ builder.Services.AddSingleton<Aura.Core.Configuration.FFmpegConfigurationStore>(
 builder.Services.AddSingleton<Aura.Core.Configuration.IFfmpegConfigurationService, Aura.Core.Configuration.FfmpegConfigurationService>();
 
 // Core FFmpeg + GPU dependencies
-builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
-{
-    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
-    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-    var toolsDir = providerSettings.GetToolsDirectory();
-    var explicitPath = providerSettings.GetFfmpegPath();
-    return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDir, explicitPath);
-});
+// Note: IFfmpegLocator is registered later (after ProviderSettings) using unified configuration
 builder.Services.AddSingleton<IProcessManager, ProcessManager>();
 builder.Services.AddSingleton<IFFmpegService, FFmpegService>();
 builder.Services.AddSingleton<IFFmpegExecutor, FFmpegExecutor>();
