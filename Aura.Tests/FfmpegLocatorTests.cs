@@ -136,6 +136,33 @@ public class FfmpegLocatorTests : IDisposable
         Assert.NotNull(result.Reason);
         Assert.True(result.AttemptedPaths.Count > 0, "Should have attempted multiple paths");
     }
+
+    [Fact]
+    public async Task CheckAllCandidatesAsync_FindsBundledResourcePath()
+    {
+        var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+        var rid = GetRuntimeRidSegment();
+
+        // Simulate packaged backend base directory
+        var backendBase = Path.Combine(_testDirectory, "resources", "backend", rid);
+        Directory.CreateDirectory(backendBase);
+
+        // Place ffmpeg in resources/ffmpeg/<rid>/bin
+        var bundledPath = Path.Combine(_testDirectory, "resources", "ffmpeg", rid, "bin", exeName);
+        Directory.CreateDirectory(Path.GetDirectoryName(bundledPath)!);
+        await CreateMockFfmpegBinary(bundledPath);
+
+        var locator = new FfmpegLocator(
+            NullLogger<FfmpegLocator>.Instance,
+            _testDirectory,
+            null,
+            backendBase);
+
+        var result = await locator.CheckAllCandidatesAsync(null, CancellationToken.None);
+
+        Assert.True(result.Found);
+        Assert.Equal(bundledPath, result.FfmpegPath);
+    }
     
     public void Dispose()
     {
@@ -150,6 +177,21 @@ public class FfmpegLocatorTests : IDisposable
         {
             // Ignore cleanup errors
         }
+    }
+    
+    private static string GetRuntimeRidSegment()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return "win-x64";
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "osx-arm64" : "osx-x64";
+        }
+
+        return "linux-x64";
     }
     
     /// <summary>
