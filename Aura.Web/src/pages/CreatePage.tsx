@@ -23,26 +23,51 @@ import {
   Checkmark24Regular,
   ChevronDown24Regular,
   ChevronUp24Regular,
+  DocumentBulletList24Regular,
+  Compose24Regular,
 } from '@fluentui/react-icons';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { ValidatedInput } from '../components/forms/ValidatedInput';
+import { JobRecoveryBanner } from '../components/JobRecoveryBanner';
 import { useNotifications } from '../components/Notifications/Toasts';
+import { PreflightOverrideDialog } from '../components/PreflightOverrideDialog';
 import { PreflightPanel } from '../components/PreflightPanel';
+import { ImageProviderSelector } from '../components/Providers/ImageProviderSelector';
+import { TemplateGallery, TemplateConfigurator } from '../components/VideoTemplates';
 import { apiUrl } from '../config/api';
-import { useFormValidation } from '../hooks/useFormValidation';
 import { useDisableWhenOffline } from '../hooks/useDisableWhenOffline';
+import { useFormValidation } from '../hooks/useFormValidation';
+import { generateVideo } from '../services/api/videoApi';
 import { keyboardShortcutManager } from '../services/keyboardShortcutManager';
 import { useActivity } from '../state/activityContext';
 import type { PreflightReport } from '../state/providers';
 import { container, spacing, gaps, formLayout } from '../themes/layout';
 import type { Brief, PlanSpec, PlannerRecommendations } from '../types';
+import type { VideoTemplate, TemplatedBrief } from '../types/videoTemplates';
 import { normalizeEnumsForApi, validateAndWarnEnums } from '../utils/enumNormalizer';
+
+/**
+ * Format duration in minutes to HH:MM:SS string
+ */
+function formatDuration(minutes: number): string {
+  const totalSeconds = Math.floor(minutes * 60);
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  return (
+    String(hrs).padStart(2, '0') +
+    ':' +
+    String(mins).padStart(2, '0') +
+    ':' +
+    String(secs).padStart(2, '0')
+  );
+}
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: container.formMaxWidth,
+    maxWidth: container.wideMaxWidth,
     margin: '0 auto',
   },
   header: {
@@ -93,7 +118,48 @@ const useStyles = makeStyles({
   advancedContent: {
     paddingTop: spacing.md,
   },
+  modeSelection: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  modeCard: {
+    padding: spacing.xl,
+    cursor: 'pointer',
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    ':hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: tokens.shadow16,
+    },
+  },
+  modeCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  modeIcon: {
+    width: '48px',
+    height: '48px',
+    borderRadius: tokens.borderRadiusMedium,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '24px',
+  },
+  modeTitle: {
+    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBase500,
+  },
+  modeDescription: {
+    color: tokens.colorNeutralForeground2,
+    fontSize: tokens.fontSizeBase300,
+  },
 });
+
+// Creation modes
+type CreateMode = 'select' | 'template' | 'scratch';
 
 export function CreatePage() {
   const styles = useStyles();
@@ -101,6 +167,11 @@ export function CreatePage() {
   const { addActivity, updateActivity } = useActivity();
   const isOfflineDisabled = useDisableWhenOffline();
   const { showSuccessToast, showFailureToast } = useNotifications();
+
+  // Template mode state
+  const [createMode, setCreateMode] = useState<CreateMode>('select');
+  const [selectedTemplate, setSelectedTemplate] = useState<VideoTemplate | null>(null);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [brief, setBrief] = useState<Partial<Brief>>({
     topic: '',
@@ -155,6 +226,12 @@ export function CreatePage() {
   const [preflightReport, setPreflightReport] = useState<PreflightReport | null>(null);
   const [isRunningPreflight, setIsRunningPreflight] = useState(false);
   const [overridePreflightGate, setOverridePreflightGate] = useState(false);
+
+  // Image provider state
+  const [selectedImageProvider, setSelectedImageProvider] = useState<string | null>(null);
+
+  // Override dialog state
+  const [showOverrideDialog, setShowOverrideDialog] = useState(false);
 
   const handleGetRecommendations = async () => {
     setLoadingRecommendations(true);
@@ -239,9 +316,27 @@ export function CreatePage() {
   };
 
   const handleGenerate = useCallback(async () => {
+    // Validate required fields before submission
+    const validationErrors: string[] = [];
+
+    if (!brief.topic || brief.topic.trim().length < 3) {
+      validationErrors.push('Topic must be at least 3 characters');
+    }
+
+    if (!planSpec.targetDurationMinutes || planSpec.targetDurationMinutes < 0.5) {
+      validationErrors.push('Duration must be at least 30 seconds');
+    }
+
+    if (validationErrors.length > 0) {
+      showFailureToast({
+        title: 'Validation Error',
+        message: validationErrors.join('. '),
+      });
+      return;
+    }
+
     setGenerating(true);
 
-    // Add activity to tracker
     const activityId = addActivity({
       type: 'video-generation',
       title: 'Generating Video',
@@ -251,7 +346,6 @@ export function CreatePage() {
       metadata: { topic: brief.topic },
     });
 
-    // Update to running
     updateActivity(activityId, { status: 'running', progress: 0 });
 
     try {
@@ -264,109 +358,124 @@ export function CreatePage() {
         planSpec
       );
 
-      // Create voice spec with defaults
-      const voiceSpec = {
-        voiceName: 'en-US-Standard-A',
-        rate: 1.0,
-        pitch: 0.0,
-        pause: 'Medium',
-      };
-
-      // Create render spec with defaults
-      const renderSpec = {
-        res: { width: 1920, height: 1080 },
-        container: 'mp4',
-        videoBitrateK: 5000,
-        audioBitrateK: 192,
-        fps: 30,
-        codec: 'H264',
-        qualityLevel: 75,
-        enableSceneCut: true,
+      // Build typed request
+      const request = {
+        brief: {
+          topic: normalizedBrief.topic || '',
+          audience: normalizedBrief.audience || 'General',
+          goal: normalizedBrief.goal || 'Inform',
+          tone: normalizedBrief.tone || 'Informative',
+          language: normalizedBrief.language || 'en-US',
+          aspect: normalizedBrief.aspect || 'Widescreen16x9',
+        },
+        planSpec: {
+          targetDuration: formatDuration(normalizedPlanSpec.targetDurationMinutes || 3),
+          pacing: normalizedPlanSpec.pacing || 'Conversational',
+          density: normalizedPlanSpec.density || 'Balanced',
+          style: normalizedPlanSpec.style || 'Standard',
+        },
+        voiceSpec: {
+          voiceName: 'default',
+          rate: 1.0,
+          pitch: 0.0,
+          pause: 'Medium',
+        },
+        renderSpec: {
+          res: '1920x1080',
+          container: 'mp4',
+          videoBitrateK: 5000,
+          audioBitrateK: 192,
+          fps: 30,
+          codec: 'H264',
+          qualityLevel: '75',
+          enableSceneCut: true,
+        },
+        imageProvider: selectedImageProvider,
       };
 
       updateActivity(activityId, { progress: 10, message: 'Sending request to server...' });
 
-      // Create a full video generation job via JobsController
-      const response = await fetch('/api/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brief: {
-            topic: normalizedBrief.topic,
-            audience: normalizedBrief.audience || 'General',
-            goal: normalizedBrief.goal || 'Inform',
-            tone: normalizedBrief.tone || 'Informative',
-            language: normalizedBrief.language || 'en-US',
-            aspect: normalizedBrief.aspect || 'Widescreen16x9',
-            promptModifiers: normalizedBrief.scriptGuidance
-              ? { additionalInstructions: normalizedBrief.scriptGuidance }
-              : undefined,
-          },
-          planSpec: {
-            targetDuration: `00:${String(Math.floor(normalizedPlanSpec.targetDurationMinutes || 3)).padStart(2, '0')}:00`,
-            pacing: normalizedPlanSpec.pacing || 'Conversational',
-            density: normalizedPlanSpec.density || 'Balanced',
-            style: normalizedPlanSpec.style || 'Standard',
-          },
-          voiceSpec,
-          renderSpec,
-        }),
+      // Use typed API client with built-in retry and error handling
+      const response = await generateVideo(request, {
+        timeout: 60000,
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      // Store job ID in session storage for recovery
+      sessionStorage.setItem('lastJobId', response.jobId);
+      sessionStorage.setItem('lastJobTopic', brief.topic || '');
 
-        // Update activity as completed
-        updateActivity(activityId, {
-          status: 'completed',
-          progress: 100,
-          message: `Video generation job created: ${data.jobId}`,
-          metadata: { jobId: data.jobId },
-        });
+      updateActivity(activityId, {
+        status: 'completed',
+        progress: 100,
+        message: `Video generation job created: ${response.jobId}`,
+        metadata: { jobId: response.jobId },
+      });
 
-        // Show success toast
-        showSuccessToast({
-          title: 'Video Generation Started',
-          message: `Job ID: ${data.jobId}. You can track progress in the jobs panel.`,
-        });
+      showSuccessToast({
+        title: 'Video Generation Started',
+        message: `Job ID: ${response.jobId}. You can track progress in the jobs panel.`,
+      });
 
-        // Navigate to recent jobs page to see the progress
-        navigate('/jobs');
-      } else {
-        const errorText = await response.text();
-        console.error('Failed to create job:', response.status, errorText);
-
-        // Update activity as failed
-        updateActivity(activityId, {
-          status: 'failed',
-          message: 'Failed to start video generation',
-          error: `${response.status} ${response.statusText}: ${errorText}`,
-        });
-
-        showFailureToast({
-          title: 'Video Generation Failed',
-          message: `Failed to start video generation: ${response.status} ${response.statusText}`,
-          errorDetails: errorText,
-        });
-      }
-    } catch (error) {
+      navigate('/jobs');
+    } catch (error: unknown) {
       console.error('Error creating video generation job:', error);
 
-      // Update activity as failed
+      // Extract user-friendly error message
+      let errorMessage = 'Unknown error occurred';
+      let errorDetails: string | undefined;
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+
+        if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Unable to connect to server. Please check your connection.';
+        } else if (error.message.includes('timeout')) {
+          errorMessage = 'Request timed out. The server may be busy.';
+        } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
+          errorMessage = 'Authentication required. Please refresh the page.';
+        }
+      }
+
+      // Check for API error response
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as {
+          response?: { data?: { detail?: string; errors?: string[] } };
+        };
+        if (apiError.response?.data?.detail) {
+          errorMessage = apiError.response.data.detail;
+        }
+        if (apiError.response?.data?.errors) {
+          errorDetails = apiError.response.data.errors.join(', ');
+        }
+      }
+
       updateActivity(activityId, {
         status: 'failed',
         message: 'Error starting video generation',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
       });
 
       showFailureToast({
         title: 'Video Generation Error',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        message: errorMessage,
+        errorDetails: errorDetails,
       });
     } finally {
       setGenerating(false);
     }
   }, [brief, planSpec, addActivity, updateActivity, showSuccessToast, showFailureToast, navigate]);
+
+  // Handle preflight override toggle - show dialog for confirmation
+  const handleOverrideToggle = useCallback(
+    (checked: boolean) => {
+      if (checked && preflightReport && !preflightReport.ok) {
+        setShowOverrideDialog(true);
+      } else {
+        setOverridePreflightGate(checked);
+      }
+    },
+    [preflightReport]
+  );
 
   // Register Create workflow shortcuts
   useEffect(() => {
@@ -427,12 +536,129 @@ export function CreatePage() {
     };
   }, [currentStep, brief.topic, preflightReport, overridePreflightGate, navigate, handleGenerate]);
 
+  // Handle template selection
+  const handleSelectTemplate = useCallback((template: VideoTemplate) => {
+    setSelectedTemplate(template);
+  }, []);
+
+  // Handle template generation
+  const handleTemplateGenerate = useCallback(
+    async (templatedBrief: TemplatedBrief) => {
+      // Convert templated brief to format expected by the job API
+      const combinedScript = templatedBrief.sections
+        .map((s) => `## ${s.name}\n\n${s.content}`)
+        .join('\n\n');
+
+      // Set brief values from template result
+      setBrief({
+        topic: templatedBrief.brief.topic,
+        audience: templatedBrief.brief.audience || 'General',
+        goal: templatedBrief.brief.goal || 'Inform',
+        tone: templatedBrief.brief.tone,
+        language: templatedBrief.brief.language,
+        aspect: templatedBrief.brief.aspect as Brief['aspect'],
+        scriptGuidance: combinedScript,
+      });
+
+      setPlanSpec({
+        targetDurationMinutes: templatedBrief.planSpec.targetDurationSeconds / 60,
+        pacing: templatedBrief.planSpec.pacing as PlanSpec['pacing'],
+        density: templatedBrief.planSpec.density as PlanSpec['density'],
+        style: templatedBrief.planSpec.style,
+      });
+
+      // Switch to scratch mode at step 3 (review)
+      setCreateMode('scratch');
+      setCurrentStep(3);
+
+      showSuccessToast({
+        title: 'Template Applied',
+        message: 'Your brief has been generated from the template. Review and generate your video.',
+      });
+    },
+    [showSuccessToast]
+  );
+
+  // If in template selection mode
+  if (createMode === 'template' && !selectedTemplate) {
+    return (
+      <TemplateGallery
+        onSelectTemplate={handleSelectTemplate}
+        onBack={() => setCreateMode('select')}
+      />
+    );
+  }
+
+  // If configuring a template
+  if (createMode === 'template' && selectedTemplate) {
+    return (
+      <TemplateConfigurator
+        template={selectedTemplate}
+        onBack={() => setSelectedTemplate(null)}
+        onGenerate={handleTemplateGenerate}
+      />
+    );
+  }
+
+  // Mode selection screen
+  if (createMode === 'select') {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title1>Create Video</Title1>
+          <Text className={styles.subtitle}>Choose how you want to get started</Text>
+        </div>
+
+        <div className={styles.modeSelection}>
+          <Card className={styles.modeCard} onClick={() => setCreateMode('template')}>
+            <div className={styles.modeCardHeader}>
+              <div
+                className={styles.modeIcon}
+                style={{ backgroundColor: tokens.colorBrandBackground, color: 'white' }}
+              >
+                <DocumentBulletList24Regular />
+              </div>
+              <div>
+                <Text className={styles.modeTitle}>Start with Template</Text>
+                <Badge appearance="tint" color="success" style={{ marginLeft: '8px' }}>
+                  Recommended
+                </Badge>
+              </div>
+            </div>
+            <Text className={styles.modeDescription}>
+              Choose from pre-built video structures like Explainers, Listicles, Tutorials, and
+              more. Perfect for following proven formats that engage viewers.
+            </Text>
+          </Card>
+
+          <Card className={styles.modeCard} onClick={() => setCreateMode('scratch')}>
+            <div className={styles.modeCardHeader}>
+              <div
+                className={styles.modeIcon}
+                style={{ backgroundColor: tokens.colorNeutralBackground3 }}
+              >
+                <Compose24Regular />
+              </div>
+              <Text className={styles.modeTitle}>Start from Scratch</Text>
+            </div>
+            <Text className={styles.modeDescription}>
+              Build your video with complete creative freedom. Define your own topic, audience, and
+              structure without any template constraints.
+            </Text>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <Title1>Create Video</Title1>
         <Text className={styles.subtitle}>Step {currentStep} of 3</Text>
       </div>
+
+      <JobRecoveryBanner />
 
       <div className={styles.form}>
         {currentStep === 1 && (
@@ -605,6 +831,18 @@ export function CreatePage() {
               </div>
             </Card>
 
+            {/* Image Provider Selection */}
+            <Card className={styles.section}>
+              <Title2 className={styles.sectionTitle}>Visual Content</Title2>
+              <Text size={200} className={styles.sectionDescription}>
+                Choose where to source images for your video
+              </Text>
+              <ImageProviderSelector
+                selectedProvider={selectedImageProvider}
+                onProviderSelect={setSelectedImageProvider}
+              />
+            </Card>
+
             {showRecommendations && recommendations && (
               <Card
                 className={styles.section}
@@ -768,6 +1006,10 @@ export function CreatePage() {
                 <div>
                   <Text weight="semibold">Aspect:</Text> <Text>{brief.aspect}</Text>
                 </div>
+                <div>
+                  <Text weight="semibold">Image Provider:</Text>{' '}
+                  <Text>{selectedImageProvider || 'Default'}</Text>
+                </div>
               </div>
             </Card>
 
@@ -800,7 +1042,7 @@ export function CreatePage() {
                 <div style={{ marginTop: tokens.spacingVerticalL }}>
                   <Checkbox
                     checked={overridePreflightGate}
-                    onChange={(_, data) => setOverridePreflightGate(data.checked === true)}
+                    onChange={(_, data) => handleOverrideToggle(data.checked === true)}
                     label={
                       <Tooltip
                         content="Some preflight checks failed, but you can still proceed at your own risk"
@@ -858,7 +1100,9 @@ export function CreatePage() {
                   (!preflightReport.ok && !overridePreflightGate) ||
                   isOfflineDisabled
                 }
-                aria-label={isOfflineDisabled ? 'Generate Video (Backend offline)' : 'Generate Video'}
+                aria-label={
+                  isOfflineDisabled ? 'Generate Video (Backend offline)' : 'Generate Video'
+                }
               >
                 {generating ? 'Generating...' : 'Generate Video'}
               </Button>
@@ -866,6 +1110,20 @@ export function CreatePage() {
           )}
         </div>
       </div>
+
+      <PreflightOverrideDialog
+        open={showOverrideDialog}
+        onOpenChange={setShowOverrideDialog}
+        errors={
+          preflightReport?.stages
+            .filter((stage) => stage.status === 'fail')
+            .map((stage) => stage.message) || []
+        }
+        onConfirm={() => {
+          setOverridePreflightGate(true);
+          setShowOverrideDialog(false);
+        }}
+      />
     </div>
   );
 }

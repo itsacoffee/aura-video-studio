@@ -85,43 +85,69 @@ public static class ServiceCollectionExtensions
         // This allows direct resolution by provider name: sp.GetKeyedService<ILlmProvider>("OpenAI")
 
         // RuleBased provider (ALWAYS AVAILABLE - offline fallback)
+        // This provider has NO dependencies and should NEVER fail to register
         services.AddKeyedSingleton<ILlmProvider>("RuleBased", (sp, key) =>
         {
-            var logger = sp.GetRequiredService<ILogger<RuleBasedLlmProvider>>();
-            return new RuleBasedLlmProvider(logger);
+            try
+            {
+                var logger = sp.GetRequiredService<ILogger<RuleBasedLlmProvider>>();
+                var provider = new RuleBasedLlmProvider(logger);
+                logger.LogInformation("RuleBased LLM provider successfully created (this should always succeed)");
+                return provider;
+            }
+            catch (Exception ex)
+            {
+                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("ProviderRegistration");
+                logger.LogCritical(ex, "CRITICAL: RuleBased provider failed to instantiate - this should NEVER happen!");
+                throw new InvalidOperationException("Failed to create RuleBased provider - system is in invalid state", ex);
+            }
         });
 
         // Ollama provider (local, checks availability at runtime)
         // GPU configuration is read from provider settings
         services.AddKeyedSingleton<ILlmProvider>("Ollama", (sp, key) =>
         {
-            var logger = sp.GetRequiredService<ILogger<OllamaLlmProvider>>();
-            // Use the configured "OllamaClient" with proper timeout and handler settings
-            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-            var httpClient = httpClientFactory.CreateClient("OllamaClient");
-            var providerSettings = sp.GetRequiredService<ProviderSettings>();
-            var baseUrl = providerSettings.GetOllamaUrl();
-            var model = providerSettings.GetOllamaModel();
+            try
+            {
+                var logger = sp.GetRequiredService<ILogger<OllamaLlmProvider>>();
+                // Use the configured "OllamaClient" with proper timeout and handler settings
+                var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+                var httpClient = httpClientFactory.CreateClient("OllamaClient");
+                var providerSettings = sp.GetRequiredService<ProviderSettings>();
+                var baseUrl = providerSettings.GetOllamaUrl();
+                var model = providerSettings.GetOllamaModel();
 
-            // Get GPU configuration from settings
-            var gpuEnabled = providerSettings.GetOllamaGpuEnabled();
-            var numGpu = providerSettings.GetOllamaNumGpu();
-            var numCtx = providerSettings.GetOllamaNumCtx();
+                // Get GPU configuration from settings
+                var gpuEnabled = providerSettings.GetOllamaGpuEnabled();
+                var numGpu = providerSettings.GetOllamaNumGpu();
+                var numCtx = providerSettings.GetOllamaNumCtx();
 
-            logger.LogInformation("Creating OllamaLlmProvider with GPU config: Enabled={GpuEnabled}, NumGpu={NumGpu}, NumCtx={NumCtx}",
-                gpuEnabled, numGpu, numCtx);
+                logger.LogInformation(
+                    "Creating OllamaLlmProvider: BaseUrl={BaseUrl}, Model={Model}, " +
+                    "GPU={GpuEnabled}/{NumGpu}, Context={NumCtx}",
+                    baseUrl, model, gpuEnabled, numGpu, numCtx);
 
-            return new OllamaLlmProvider(
-                logger, 
-                httpClient, 
-                baseUrl, 
-                model,
-                maxRetries: 2,
-                timeoutSeconds: 900,
-                promptCustomizationService: null,
-                gpuEnabled: gpuEnabled,
-                numGpu: numGpu,
-                numCtx: numCtx);
+                var provider = new OllamaLlmProvider(
+                    logger,
+                    httpClient,
+                    baseUrl,
+                    model,
+                    maxRetries: 2,
+                    timeoutSeconds: 900,
+                    promptCustomizationService: null,
+                    gpuEnabled: gpuEnabled,
+                    numGpu: numGpu,
+                    numCtx: numCtx);
+                
+                logger.LogInformation("✓ Ollama LLM provider successfully created");
+                return provider;
+            }
+            catch (Exception ex)
+            {
+                var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("ProviderRegistration");
+                logger.LogError(ex, "✗ Failed to create Ollama provider - provider will be unavailable");
+                throw;
+            }
         });
 
         // OpenAI provider (requires API key)
@@ -415,59 +441,107 @@ public static class ServiceCollectionExtensions
         // These serve as fallback options when generation fails or for cost optimization
 
         // Unsplash provider (requires API key)
+        // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
+        // KeyStore may have keys stored as "Unsplash" (from UI) or "unsplash" (from legacy code)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedUnsplashProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var providerSettings = sp.GetRequiredService<ProviderSettings>();
             var keyStore = sp.GetRequiredService<IKeyStore>();
 
-            var apiKeys = keyStore.GetAllKeys();
-            apiKeys.TryGetValue("unsplash", out var apiKey);
+            // Try ProviderSettings first (where UI saves API keys), then fallback to KeyStore
+            var apiKey = providerSettings.GetUnsplashAccessKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                var apiKeys = keyStore.GetAllKeys();
+                // Try both "Unsplash" (UI storage name) and "unsplash" (legacy) for compatibility
+                if (!apiKeys.TryGetValue("Unsplash", out apiKey))
+                {
+                    apiKeys.TryGetValue("unsplash", out apiKey);
+                }
+            }
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                logger.LogDebug("Unsplash API key not configured, skipping provider registration");
+                logger.LogDebug("Unsplash API key not configured in ProviderSettings or KeyStore, skipping provider registration");
                 return null!;
             }
 
+            logger.LogInformation("Unsplash provider registered with API key from settings");
             return new Images.EnhancedUnsplashProvider(logger, httpClient, apiKey);
         });
 
         // Pexels provider - using consolidated PexelsProvider (requires API key)
-        services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
+        // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
+        // KeyStore may have keys stored as "Pexels" (from UI) or "pexels" (from legacy code)
+        // Note: Registered as IEnhancedStockProvider only. For IStockProvider compatibility,
+        // StockToImageProviderAdapter explicitly resolves PexelsProvider and falls back to PlaceholderImageProvider.
+        services.AddSingleton<Images.PexelsProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.PexelsProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var providerSettings = sp.GetRequiredService<ProviderSettings>();
             var keyStore = sp.GetRequiredService<IKeyStore>();
 
-            var apiKeys = keyStore.GetAllKeys();
-            apiKeys.TryGetValue("pexels", out var apiKey);
+            // Try ProviderSettings first (where UI saves API keys), then fallback to KeyStore
+            var apiKey = providerSettings.GetPexelsApiKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                var apiKeys = keyStore.GetAllKeys();
+                // Try both "Pexels" (UI storage name) and "pexels" (legacy) for compatibility
+                if (!apiKeys.TryGetValue("Pexels", out apiKey))
+                {
+                    apiKeys.TryGetValue("pexels", out apiKey);
+                }
+            }
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                logger.LogDebug("Pexels API key not configured, skipping provider registration");
+                logger.LogDebug("Pexels API key not configured in ProviderSettings or KeyStore, skipping provider registration");
                 return null!;
             }
 
+            logger.LogInformation("Pexels provider registered with API key from settings");
             return new Images.PexelsProvider(logger, httpClient, apiKey);
+        });
+        // Register Pexels as IEnhancedStockProvider (forwards to singleton, null-forgiving is intentional
+        // because the factory above can return null when API key is not configured)
+        services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
+        {
+            var pexels = sp.GetService<Images.PexelsProvider>();
+            return pexels!;
         });
 
         // Pixabay provider (requires API key)
+        // Check both ProviderSettings and IKeyStore for API key (ProviderSettings takes precedence)
+        // KeyStore may have keys stored as "Pixabay" (from UI) or "pixabay" (from legacy code)
         services.AddSingleton<Aura.Core.Providers.IEnhancedStockProvider>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<Images.EnhancedPixabayProvider>>();
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var providerSettings = sp.GetRequiredService<ProviderSettings>();
             var keyStore = sp.GetRequiredService<IKeyStore>();
 
-            var apiKeys = keyStore.GetAllKeys();
-            apiKeys.TryGetValue("pixabay", out var apiKey);
+            // Try ProviderSettings first (where UI saves API keys), then fallback to KeyStore
+            var apiKey = providerSettings.GetPixabayApiKey();
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                var apiKeys = keyStore.GetAllKeys();
+                // Try both "Pixabay" (UI storage name) and "pixabay" (legacy) for compatibility
+                if (!apiKeys.TryGetValue("Pixabay", out apiKey))
+                {
+                    apiKeys.TryGetValue("pixabay", out apiKey);
+                }
+            }
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                logger.LogDebug("Pixabay API key not configured, skipping provider registration");
+                logger.LogDebug("Pixabay API key not configured in ProviderSettings or KeyStore, skipping provider registration");
                 return null!;
             }
 
+            logger.LogInformation("Pixabay provider registered with API key from settings");
             return new Images.EnhancedPixabayProvider(logger, httpClient, apiKey);
         });
 
@@ -497,6 +571,39 @@ public static class ServiceCollectionExtensions
 
         // Register UnifiedStockProviderService with fallback chain support
         services.AddSingleton<IUnifiedStockProvider, Images.UnifiedStockProviderService>();
+
+        // Register StockToImageProviderAdapter as IImageProvider to bridge stock providers to VisualsStage
+        // This enables stock image providers (Pexels, Unsplash, Pixabay) to be used for visual generation
+        // Priority: Configured stock providers (Pexels, etc.) > Placeholder fallback
+        services.AddSingleton<IImageProvider>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<Images.StockToImageProviderAdapter>>();
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
+            var settings = sp.GetRequiredService<ProviderSettings>();
+
+            // Try to get a configured stock provider first (Pexels implements both interfaces)
+            // Pexels is preferred since it's the primary free stock provider
+            IStockProvider? stockProvider = sp.GetService<Images.PexelsProvider>();
+            
+            if (stockProvider == null)
+            {
+                // Fall back to any other registered IStockProvider (like PlaceholderImageProvider)
+                stockProvider = sp.GetService<IStockProvider>();
+            }
+
+            // Only register if we have a valid stock provider
+            if (stockProvider == null)
+            {
+                logger.LogDebug("No stock provider available, StockToImageProviderAdapter not registered");
+                return null!;
+            }
+
+            var tempDirectory = Path.Combine(settings.GetAuraDataDirectory(), "temp", "stock-images");
+            logger.LogInformation("Registered StockToImageProviderAdapter with {StockProvider}",
+                stockProvider.GetType().Name);
+
+            return new Images.StockToImageProviderAdapter(logger, stockProvider, httpClient, tempDirectory);
+        });
 
         return services;
     }

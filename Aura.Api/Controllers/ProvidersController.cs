@@ -2,6 +2,7 @@ using Aura.Api.Models.ApiModels.V1;
 using Aura.Core.Configuration;
 using Aura.Core.Hardware;
 using Aura.Core.Models.Providers;
+using Aura.Core.Providers;
 using Aura.Core.Services.Providers;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
@@ -947,7 +948,310 @@ public class ProvidersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Get all available image providers with their configuration and availability status
+    /// </summary>
+    [HttpGet("images")]
+    public async Task<IActionResult> GetImageProviders(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("Fetching image providers, CorrelationId: {CorrelationId}", correlationId);
 
+            var providers = new List<ImageProviderDto>();
+            string? defaultProvider = null;
+
+            // Check Pexels
+            var pexelsKey = _settings.GetPexelsApiKey();
+            var hasPexelsKey = !string.IsNullOrWhiteSpace(pexelsKey);
+            if (hasPexelsKey)
+            {
+                defaultProvider ??= "pexels";
+            }
+            providers.Add(new ImageProviderDto(
+                Id: "pexels",
+                Name: "Pexels",
+                Type: "stock",
+                Available: hasPexelsKey,
+                HasApiKey: hasPexelsKey,
+                Status: hasPexelsKey ? "Configured" : "API key required",
+                QuotaRemaining: hasPexelsKey ? 200 : null,
+                QuotaLimit: hasPexelsKey ? 200 : null,
+                QuotaResetTime: hasPexelsKey ? DateTime.UtcNow.AddHours(1) : null,
+                Capabilities: new List<string> { "images", "videos", "free" },
+                Description: "Free stock photos and videos. 200 requests/hour."
+            ));
+
+            // Check Pixabay
+            var pixabayKey = _settings.GetPixabayApiKey();
+            var hasPixabayKey = !string.IsNullOrWhiteSpace(pixabayKey);
+            if (hasPixabayKey)
+            {
+                defaultProvider ??= "pixabay";
+            }
+            providers.Add(new ImageProviderDto(
+                Id: "pixabay",
+                Name: "Pixabay",
+                Type: "stock",
+                Available: hasPixabayKey,
+                HasApiKey: hasPixabayKey,
+                Status: hasPixabayKey ? "Configured" : "API key required",
+                QuotaRemaining: hasPixabayKey ? 5000 : null,
+                QuotaLimit: hasPixabayKey ? 5000 : null,
+                QuotaResetTime: hasPixabayKey ? DateTime.UtcNow.AddHours(1) : null,
+                Capabilities: new List<string> { "images", "videos", "vectors", "free" },
+                Description: "Free images, videos, and vectors. 5000 requests/hour."
+            ));
+
+            // Check Unsplash
+            var unsplashKey = _settings.GetUnsplashAccessKey();
+            var hasUnsplashKey = !string.IsNullOrWhiteSpace(unsplashKey);
+            if (hasUnsplashKey)
+            {
+                defaultProvider ??= "unsplash";
+            }
+            providers.Add(new ImageProviderDto(
+                Id: "unsplash",
+                Name: "Unsplash",
+                Type: "stock",
+                Available: hasUnsplashKey,
+                HasApiKey: hasUnsplashKey,
+                Status: hasUnsplashKey ? "Configured" : "API key required",
+                QuotaRemaining: hasUnsplashKey ? 50 : null,
+                QuotaLimit: hasUnsplashKey ? 50 : null,
+                QuotaResetTime: hasUnsplashKey ? DateTime.UtcNow.AddHours(1) : null,
+                Capabilities: new List<string> { "images", "high-quality", "free" },
+                Description: "High-quality free photos. 50 requests/hour (free tier)."
+            ));
+
+            // Check Stable Diffusion local
+            var sdUrl = _settings.GetStableDiffusionUrl();
+            var hasSdUrl = !string.IsNullOrWhiteSpace(sdUrl);
+            providers.Add(new ImageProviderDto(
+                Id: "stable-diffusion",
+                Name: "Stable Diffusion (Local)",
+                Type: "generative",
+                Available: hasSdUrl,
+                HasApiKey: false,
+                Status: hasSdUrl ? "Configured" : "URL required",
+                QuotaRemaining: null,
+                QuotaLimit: null,
+                QuotaResetTime: null,
+                Capabilities: new List<string> { "images", "ai-generation", "local", "unlimited" },
+                Description: "Local AI image generation. Requires Stable Diffusion WebUI."
+            ));
+
+            // Placeholder provider (always available)
+            defaultProvider ??= "placeholder";
+            providers.Add(new ImageProviderDto(
+                Id: "placeholder",
+                Name: "Placeholder Colors",
+                Type: "fallback",
+                Available: true,
+                HasApiKey: false,
+                Status: "Available",
+                QuotaRemaining: null,
+                QuotaLimit: null,
+                QuotaResetTime: null,
+                Capabilities: new List<string> { "images", "fallback", "offline" },
+                Description: "Simple color placeholder images. Always available offline."
+            ));
+
+            await Task.CompletedTask.ConfigureAwait(false);
+            
+            return Ok(new ImageProvidersResponse(providers, defaultProvider));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error fetching image providers, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Image Providers Error",
+                detail: "An error occurred while fetching image providers.",
+                statusCode: 500,
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#image-providers-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Test image search with a specific provider
+    /// </summary>
+    [HttpPost("images/preview")]
+    public async Task<IActionResult> PreviewImageSearch(
+        [FromBody] ImageProviderPreviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.ProviderId))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "Provider ID is required",
+                    correlationId
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Query))
+            {
+                return BadRequest(new { 
+                    success = false,
+                    message = "Query is required",
+                    correlationId
+                });
+            }
+
+            Log.Information(
+                "Preview image search for provider {ProviderId} with query {Query}, CorrelationId: {CorrelationId}",
+                request.ProviderId, request.Query, correlationId);
+
+            var images = new List<ImagePreviewResult>();
+            string? errorMessage = null;
+            var providerId = request.ProviderId.ToLowerInvariant();
+
+            try
+            {
+                // Resolve stock provider from DI
+                var stockProvider = HttpContext.RequestServices.GetService<IStockProvider>();
+                if (stockProvider != null && 
+                    (providerId == "pexels" || providerId == "pixabay" || providerId == "unsplash"))
+                {
+                    var results = await stockProvider.SearchAsync(
+                        request.Query, 
+                        Math.Min(request.Count, 10), 
+                        cancellationToken).ConfigureAwait(false);
+
+                    foreach (var result in results)
+                    {
+                        images.Add(new ImagePreviewResult(
+                            Id: Guid.NewGuid().ToString("N")[..8],
+                            ThumbnailUrl: result.PathOrUrl,
+                            PreviewUrl: result.PathOrUrl,
+                            Width: 800,
+                            Height: 600,
+                            Attribution: result.Attribution
+                        ));
+                    }
+                }
+                else if (providerId == "placeholder")
+                {
+                    // Return placeholder previews
+                    var colors = new[] { "#4A90D9", "#50C878", "#FFB347", "#FF6B6B", "#A78BFA" };
+                    for (int i = 0; i < Math.Min(request.Count, 5); i++)
+                    {
+                        images.Add(new ImagePreviewResult(
+                            Id: $"placeholder-{i}",
+                            ThumbnailUrl: $"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='150'%3E%3Crect fill='{colors[i % colors.Length].Replace("#", "%23")}' width='200' height='150'/%3E%3C/svg%3E",
+                            PreviewUrl: $"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600'%3E%3Crect fill='{colors[i % colors.Length].Replace("#", "%23")}' width='800' height='600'/%3E%3C/svg%3E",
+                            Width: 800,
+                            Height: 600,
+                            Attribution: "Placeholder Color"
+                        ));
+                    }
+                }
+                else
+                {
+                    errorMessage = $"Provider '{request.ProviderId}' not configured or not available";
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Preview search failed for provider {ProviderId}", request.ProviderId);
+                errorMessage = $"Search failed: {ex.Message}";
+            }
+
+            return Ok(new ImageProviderPreviewResponse(
+                Images: images,
+                Provider: request.ProviderId,
+                TotalResults: images.Count,
+                ErrorMessage: errorMessage
+            ));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error in preview image search, CorrelationId: {CorrelationId}", correlationId);
+            return Problem(
+                title: "Preview Search Error",
+                detail: "An error occurred while searching for images.",
+                statusCode: 500,
+                type: "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#preview-search-error",
+                instance: correlationId);
+        }
+    }
+
+    /// <summary>
+    /// Validate a specific image provider's API key
+    /// </summary>
+    [HttpPost("images/{providerId}/validate")]
+    public async Task<IActionResult> ValidateImageProvider(
+        string providerId,
+        CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            Log.Information("Validating image provider {ProviderId}, CorrelationId: {CorrelationId}", 
+                providerId, correlationId);
+
+            var providerIdLower = providerId.ToLowerInvariant();
+            bool isValid = false;
+            string message = "Unknown provider";
+            string? apiKey = null;
+
+            switch (providerIdLower)
+            {
+                case "pexels":
+                    apiKey = _settings.GetPexelsApiKey();
+                    isValid = !string.IsNullOrWhiteSpace(apiKey);
+                    message = isValid ? "Pexels API key configured" : "Pexels API key not configured";
+                    break;
+                case "pixabay":
+                    apiKey = _settings.GetPixabayApiKey();
+                    isValid = !string.IsNullOrWhiteSpace(apiKey);
+                    message = isValid ? "Pixabay API key configured" : "Pixabay API key not configured";
+                    break;
+                case "unsplash":
+                    apiKey = _settings.GetUnsplashAccessKey();
+                    isValid = !string.IsNullOrWhiteSpace(apiKey);
+                    message = isValid ? "Unsplash API key configured" : "Unsplash API key not configured";
+                    break;
+                case "stable-diffusion":
+                    var sdValidationUrl = _settings.GetStableDiffusionUrl();
+                    isValid = !string.IsNullOrWhiteSpace(sdValidationUrl);
+                    message = isValid ? "Stable Diffusion URL configured" : "Stable Diffusion URL not configured";
+                    break;
+                case "placeholder":
+                    isValid = true;
+                    message = "Placeholder provider always available";
+                    break;
+            }
+
+            await Task.CompletedTask.ConfigureAwait(false);
+
+            return Ok(new {
+                success = isValid,
+                provider = providerId,
+                message,
+                hasApiKey = !string.IsNullOrWhiteSpace(apiKey),
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error validating image provider {ProviderId}, CorrelationId: {CorrelationId}", 
+                providerId, correlationId);
+            return Problem(
+                title: "Validation Error",
+                detail: $"An error occurred while validating the image provider: {ex.Message}",
+                statusCode: 500,
+                instance: correlationId);
+        }
+    }
 
     /// <summary>
     /// Get current provider recommendation preferences
@@ -1356,6 +1660,82 @@ public class ProvidersController : ControllerBase
                 success = false,
                 message = $"Error fetching Ollama models: {ex.Message}",
                 installationInstructions = "Install Ollama: curl -fsSL https://ollama.com/install.sh | sh",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get the recommended default Ollama model based on available models
+    /// </summary>
+    [HttpGet("ollama/recommended-model")]
+    public async Task<IActionResult> GetRecommendedOllamaModel(CancellationToken cancellationToken)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+        
+        try
+        {
+            var ollamaDetectionService = HttpContext.RequestServices.GetService<Aura.Core.Services.Providers.OllamaDetectionService>();
+
+            if (ollamaDetectionService == null)
+            {
+                return StatusCode(503, new
+                {
+                    success = false,
+                    recommendedModel = (string?)null,
+                    message = "Ollama detection service not initialized",
+                    correlationId
+                });
+            }
+
+            var status = await ollamaDetectionService.GetStatusAsync(cancellationToken).ConfigureAwait(false);
+            
+            if (!status.IsRunning)
+            {
+                return Ok(new
+                {
+                    success = false,
+                    recommendedModel = (string?)null,
+                    message = "Ollama service not running. To get started:\n1. Ensure Ollama is running (ollama serve)\n2. Install a model: ollama pull llama3.1:8b\n3. Refresh the model list in the AI Model dropdown",
+                    installationInstructions = "Start Ollama: ollama serve (or install: curl -fsSL https://ollama.com/install.sh | sh)",
+                    correlationId
+                });
+            }
+
+            var recommendedModel = await ollamaDetectionService.GetRecommendedDefaultModelAsync(cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(recommendedModel))
+            {
+                return Ok(new
+                {
+                    success = false,
+                    recommendedModel = (string?)null,
+                    message = "No Ollama models detected. To get started:\n1. Ensure Ollama is running (ollama serve)\n2. Install a model: ollama pull llama3.1:8b\n3. Refresh the model list in the AI Model dropdown",
+                    correlationId
+                });
+            }
+
+            Log.Information(
+                "Recommended Ollama model: {RecommendedModel}, CorrelationId: {CorrelationId}",
+                recommendedModel,
+                correlationId);
+
+            return Ok(new
+            {
+                success = true,
+                recommendedModel,
+                message = $"Recommended model: {recommendedModel}",
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting recommended Ollama model, CorrelationId: {CorrelationId}", correlationId);
+            return StatusCode(500, new
+            {
+                success = false,
+                recommendedModel = (string?)null,
+                message = $"Error getting recommended model: {ex.Message}",
                 correlationId
             });
         }

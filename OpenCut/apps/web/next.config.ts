@@ -55,6 +55,47 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Configure headers for embedding in Aura Video Studio
+  async headers() {
+    // Check if running embedded in Aura
+    const isEmbedded = process.env.NEXT_PUBLIC_AURA_EMBEDDED === "true";
+    
+    return [
+      {
+        // Apply to all routes
+        source: "/:path*",
+        headers: [
+          // Use Content-Security-Policy frame-ancestors for iframe embedding control
+          // This is the modern standard, replacing X-Frame-Options
+          {
+            key: "Content-Security-Policy",
+            value: isEmbedded
+              ? "frame-ancestors *"
+              : "frame-ancestors 'self'",
+          },
+        ],
+      },
+      {
+        // API routes get CORS headers - restricted to localhost for embedded mode security
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            // Allow requests from localhost when embedded, otherwise restrict
+            value: isEmbedded ? "http://127.0.0.1:*" : "*",
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET, POST, PUT, DELETE, OPTIONS",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value: "Content-Type, Authorization",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default withBotId(nextConfig);

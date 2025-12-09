@@ -99,6 +99,7 @@ scripts/ffmpeg/ffprobe.exe
 
 # Temporary TTS output
 **/TTS/
+!**/Services/TTS/
 **/Cache/
 **/Renders/
 **/Downloads/

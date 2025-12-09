@@ -30,11 +30,12 @@ class ShutdownOrchestrator {
   /**
    * Set component references
    */
-  setComponents({ backendService, windowManager, trayManager, processManager }) {
+  setComponents({ backendService, windowManager, trayManager, processManager, openCutManager }) {
     this.backendService = backendService;
     this.windowManager = windowManager;
     this.trayManager = trayManager;
     this.processManager = processManager;
+    this.openCutManager = openCutManager;
   }
 
   /**
@@ -248,25 +249,29 @@ class ShutdownOrchestrator {
       }
     }
 
-    // Step 2: Close windows gracefully
+    // Step 1: Close windows gracefully
     const windowStep = await this.closeWindows();
-    this.logger.info(`Step 1/5 Complete: ${windowStep}`);
+    this.logger.info(`Step 1/6 Complete: ${windowStep}`);
+
+    // Step 2: Stop OpenCut server
+    const openCutStep = await this.stopOpenCut();
+    this.logger.info(`Step 2/6 Complete: ${openCutStep}`);
 
     // Step 3: Signal backend to shutdown
     const backendSignalStep = await this.signalBackendShutdown();
-    this.logger.info(`Step 2/5 Complete: ${backendSignalStep}`);
+    this.logger.info(`Step 3/6 Complete: ${backendSignalStep}`);
 
     // Step 4: Stop backend service
     const backendStep = await this.stopBackend(force);
-    this.logger.info(`Step 3/5 Complete: ${backendStep}`);
+    this.logger.info(`Step 4/6 Complete: ${backendStep}`);
 
     // Step 5: Terminate all tracked child processes
     const processStep = await this.terminateAllProcesses(force);
-    this.logger.info(`Step 4/5 Complete: ${processStep}`);
+    this.logger.info(`Step 5/6 Complete: ${processStep}`);
 
     // Step 6: Cleanup resources
     const cleanupStep = await this.cleanup();
-    this.logger.info(`Step 5/5 Complete: ${cleanupStep}`);
+    this.logger.info(`Step 6/6 Complete: ${cleanupStep}`);
   }
 
   /**
@@ -321,6 +326,24 @@ class ShutdownOrchestrator {
     } catch (error) {
       this.logger.error('Error closing windows:', error);
       return `Windows close error: ${error.message}`;
+    }
+  }
+
+  /**
+   * Stop OpenCut server gracefully
+   */
+  async stopOpenCut() {
+    if (!this.openCutManager) {
+      return 'No OpenCut manager';
+    }
+
+    try {
+      this.logger.info('Stopping OpenCut server...');
+      this.openCutManager.stop();
+      return 'OpenCut stopped';
+    } catch (error) {
+      this.logger.warn('Error stopping OpenCut:', error.message);
+      return `OpenCut stop error: ${error.message}`;
     }
   }
 

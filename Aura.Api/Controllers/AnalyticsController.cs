@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -8,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Data;
 using Aura.Core.Services.Analytics;
+using Aura.Core.Telemetry;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -450,6 +452,69 @@ public class AnalyticsController : ControllerBase
             _logger.LogError(ex, "Failed to export data");
             return StatusCode(500, new { error = "Failed to export data" });
         }
+    }
+
+    /// <summary>
+    /// Get a specific pipeline summary by ID
+    /// </summary>
+    [HttpGet("pipelines/{pipelineId}")]
+    [ProducesResponseType(typeof(PipelineSummaryTelemetry), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<PipelineSummaryTelemetry> GetPipelineSummary(string pipelineId)
+    {
+        try
+        {
+            var artifactsPath = GetArtifactsBasePath();
+            var summary = PipelineTelemetryCollector.LoadSummary(artifactsPath, pipelineId);
+            
+            if (summary == null)
+            {
+                _logger.LogDebug("Pipeline summary not found: {PipelineId}", pipelineId);
+                return NotFound(new { error = $"Pipeline summary '{pipelineId}' not found" });
+            }
+
+            return Ok(summary);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get pipeline summary {PipelineId}", pipelineId);
+            return StatusCode(500, new { error = "Failed to retrieve pipeline summary" });
+        }
+    }
+
+    /// <summary>
+    /// Get recent pipeline summaries
+    /// </summary>
+    [HttpGet("pipelines")]
+    [ProducesResponseType(typeof(List<PipelineSummaryTelemetry>), StatusCodes.Status200OK)]
+    public ActionResult<List<PipelineSummaryTelemetry>> GetRecentPipelines(
+        [FromQuery] int limit = 20,
+        [FromQuery] DateTime? since = null)
+    {
+        try
+        {
+            var artifactsPath = GetArtifactsBasePath();
+            var summaries = PipelineTelemetryCollector.ListRecentSummaries(artifactsPath, limit, since);
+
+            _logger.LogDebug("Returning {Count} pipeline summaries", summaries.Count);
+            return Ok(summaries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get recent pipeline summaries");
+            return StatusCode(500, new { error = "Failed to retrieve pipeline summaries" });
+        }
+    }
+
+    /// <summary>
+    /// Gets the base path for artifacts storage
+    /// </summary>
+    private static string GetArtifactsBasePath()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AuraVideoStudio",
+            "Artifacts");
     }
 
     private static string GenerateCSV(

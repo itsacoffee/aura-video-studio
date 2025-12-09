@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +14,7 @@ using Aura.Core.Models.Export;
 using Aura.Core.Providers;
 using Aura.Core.Runtime;
 using Aura.Core.Services.FFmpeg;
+using Aura.Core.Services.FFmpeg.Filters;
 using Aura.Core.Services.Render;
 using Microsoft.Extensions.Logging;
 
@@ -19,6 +22,21 @@ namespace Aura.Providers.Video;
 
 public class FfmpegVideoComposer : IVideoComposer
 {
+    // Progress milestone constants for render initialization stages
+    private const float ProgressInitializing = 0f;
+    private const float ProgressLocatingFfmpeg = 1f;
+    private const float ProgressValidatingFfmpeg = 2f;
+    private const float ProgressValidatingAudio = 3f;
+    private const float ProgressBuildingCommand = 4f;
+    private const float ProgressStartingEncode = 5f;
+
+    // Default Ken Burns effect settings - subtle zoom from 1.0 to 1.1 for professional look
+    private const double DefaultKenBurnsZoomStart = 1.0;
+    private const double DefaultKenBurnsZoomEnd = 1.1;
+
+    // Default fade transition duration between scenes (in seconds)
+    private const double DefaultFadeTransitionDuration = 0.5;
+
     private readonly ILogger<FfmpegVideoComposer> _logger;
     private readonly IFfmpegLocator _ffmpegLocator;
     private readonly string? _configuredFfmpegPath;
@@ -76,20 +94,44 @@ public class FfmpegVideoComposer : IVideoComposer
 
     public async Task<string> RenderAsync(Timeline timeline, RenderSpec spec, IProgress<RenderProgress> progress, CancellationToken ct)
     {
-        var jobId = Guid.NewGuid().ToString("N");
+        var jobId = spec.JobId ?? Guid.NewGuid().ToString("N");
         var correlationId = System.Diagnostics.Activity.Current?.Id ?? jobId;
 
         _logger.LogInformation("Starting FFmpeg render (JobId={JobId}, CorrelationId={CorrelationId}) at {Resolution}p",
             jobId, correlationId, spec.Res.Height);
 
+        // Report initial progress immediately to indicate render has started
+        progress.Report(new RenderProgress(ProgressInitializing, TimeSpan.Zero, TimeSpan.Zero, "Initializing video render..."));
+
         // Set up FFmpeg log file path
         var ffmpegLogPath = Path.Combine(_logsDirectory, $"{jobId}.log");
         StreamWriter? logWriter = null;
 
-        // Resolve FFmpeg path once at the start - this is the single source of truth for this render job
+        // Open log file early so both managed and manual runners capture output
+        try
+        {
+            logWriter = new StreamWriter(ffmpegLogPath, append: false, encoding: Encoding.UTF8)
+            {
+                AutoFlush = true
+            };
+            logWriter.WriteLine("FFmpeg Render Log");
+            logWriter.WriteLine($"Job ID: {jobId}");
+            logWriter.WriteLine($"Correlation ID: {correlationId}");
+            logWriter.WriteLine($"Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            logWriter.WriteLine(new string('-', 80));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create FFmpeg log file at {LogPath}", ffmpegLogPath);
+        }
+
+        try
+        {
+            // Resolve FFmpeg path once at the start - this is the single source of truth for this render job
         string ffmpegPath;
         try
         {
+            progress.Report(new RenderProgress(ProgressLocatingFfmpeg, TimeSpan.Zero, TimeSpan.Zero, "Locating FFmpeg..."));
             ffmpegPath = await _ffmpegLocator.GetEffectiveFfmpegPathAsync(_configuredFfmpegPath, ct).ConfigureAwait(false);
             _logger.LogInformation("Resolved FFmpeg path for job {JobId}: {FfmpegPath}", jobId, ffmpegPath);
         }
@@ -100,10 +142,15 @@ public class FfmpegVideoComposer : IVideoComposer
         }
 
         // Validate FFmpeg binary before starting
+        progress.Report(new RenderProgress(ProgressValidatingFfmpeg, TimeSpan.Zero, TimeSpan.Zero, "Validating FFmpeg..."));
         await ValidateFfmpegBinaryAsync(ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
 
         // Pre-validate audio files - pass the resolved ffmpeg path
+        progress.Report(new RenderProgress(ProgressValidatingAudio, TimeSpan.Zero, TimeSpan.Zero, "Validating audio files..."));
         await PreValidateAudioAsync(timeline, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
+
+        // VALIDATE INPUT FILES FIRST - fail fast if files are bad
+        await ValidateInputFilesAsync(timeline, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
 
         // Create output file path using configured output directory
         string outputFilePath = Path.Combine(
@@ -111,10 +158,14 @@ public class FfmpegVideoComposer : IVideoComposer
             $"AuraVideoStudio_{DateTime.Now:yyyyMMddHHmmss}.{spec.Container}");
 
         // Build the FFmpeg command with hardware acceleration support
+        progress.Report(new RenderProgress(ProgressBuildingCommand, TimeSpan.Zero, TimeSpan.Zero, "Building FFmpeg command..."));
         string ffmpegCommand = await BuildFfmpegCommandAsync(timeline, spec, outputFilePath, ffmpegPath, ct).ConfigureAwait(false);
 
         _logger.LogInformation("FFmpeg command (JobId={JobId}): {FFmpegPath} {Command}",
             jobId, ffmpegPath, ffmpegCommand);
+
+        // Report that we're about to start encoding
+        progress.Report(new RenderProgress(ProgressStartingEncode, TimeSpan.Zero, TimeSpan.Zero, "Starting video encoding..."));
 
         // Track progress
         var totalDuration = timeline.Scenes.Count > 0
@@ -160,30 +211,86 @@ public class FfmpegVideoComposer : IVideoComposer
             EnableRaisingEvents = true
         };
 
-        // Initialize log writer for FFmpeg output
-        try
+        // Log run metadata (only if log writer is available)
+        logWriter?.WriteLine($"Resolution: {spec.Res.Width}x{spec.Res.Height}");
+        logWriter?.WriteLine($"FFmpeg Path: {ffmpegPath}");
+        logWriter?.WriteLine($"Command: {ffmpegCommand}");
+        logWriter?.WriteLine(new string('-', 80));
+
+        // Track FFmpeg activity for watchdog timer
+        DateTime lastFfmpegActivity = DateTime.UtcNow;
+        float lastProgressPercent = 0f;
+        string? lastStderrLine = null;
+
+        // Watchdog timer to detect FFmpeg hanging (no output for 90 seconds)
+        var watchdogTimer = new System.Timers.Timer(10000); // Check every 10 seconds
+        watchdogTimer.Elapsed += (sender, args) =>
         {
-            logWriter = new StreamWriter(ffmpegLogPath, append: false, encoding: Encoding.UTF8)
+            if (!process.HasExited)
             {
-                AutoFlush = true
-            };
-            logWriter.WriteLine($"FFmpeg Render Log - Job ID: {jobId}");
-            logWriter.WriteLine($"Correlation ID: {correlationId}");
-            logWriter.WriteLine($"Started: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-            logWriter.WriteLine($"Resolution: {spec.Res.Width}x{spec.Res.Height}");
-            logWriter.WriteLine($"FFmpeg Path: {ffmpegPath}");
-            logWriter.WriteLine($"Command: {ffmpegCommand}");
-            logWriter.WriteLine(new string('-', 80));
-        }
-        catch (Exception ex)
+                var inactivityDuration = DateTime.UtcNow - lastFfmpegActivity;
+
+                if (inactivityDuration.TotalSeconds > 30 && inactivityDuration.TotalSeconds < 90)
+                {
+                    _logger.LogWarning(
+                        "DIAGNOSTIC: FFmpeg no output for {Sec}s at {Prog}%. Memory: {Mem}MB",
+                        (int)inactivityDuration.TotalSeconds, lastProgressPercent,
+                        process.WorkingSet64 / 1024 / 1024);
+                }
+
+                if (inactivityDuration.TotalSeconds > 90)
+                {
+                    _logger.LogError(
+                        "WATCHDOG: No output for {Sec}s at {Prog}%. Last line: {Line}",
+                        (int)inactivityDuration.TotalSeconds, lastProgressPercent,
+                        lastStderrLine ?? "N/A");
+
+                    try
+                    {
+                        process.Kill(entireProcessTree: true);
+                        watchdogTimer.Stop();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to kill hung FFmpeg process");
+                    }
+                }
+            }
+        };
+        watchdogTimer.Start();
+
+        // Heartbeat timer for visibility (every 5 seconds)
+        var heartbeatTimer = new System.Timers.Timer(5000);
+        heartbeatTimer.Elapsed += (sender, args) =>
         {
-            _logger.LogWarning(ex, "Failed to create FFmpeg log file at {LogPath}", ffmpegLogPath);
-        }
+            if (!process.HasExited)
+            {
+                try
+                {
+                    _logger.LogInformation(
+                        "FFmpeg HEARTBEAT: JobId={JobId}, Progress={Progress}%, Elapsed={Elapsed}s, " +
+                        "ProcessId={Pid}, Memory={MemoryMB}MB, CPU={CpuSeconds}s",
+                        jobId, lastProgressPercent, (DateTime.UtcNow - startTime).TotalSeconds,
+                        process.Id,
+                        process.WorkingSet64 / 1024 / 1024,
+                        process.TotalProcessorTime.TotalSeconds);
+                }
+                catch
+                {
+                    // Process may have exited, ignore
+                }
+            }
+        };
+        heartbeatTimer.Start();
 
         // Set up output handler to parse progress and capture output
         process.ErrorDataReceived += (sender, args) =>
         {
             if (string.IsNullOrEmpty(args.Data)) return;
+
+            // Reset watchdog timer on any stderr output
+            lastFfmpegActivity = DateTime.UtcNow;
+            lastStderrLine = args.Data;
 
             // Capture for error reporting
             stderrBuilder.AppendLine(args.Data);
@@ -221,6 +328,7 @@ public class FfmpegVideoComposer : IVideoComposer
                             // Calculate progress percentage
                             float percentage = (float)(currentTime.TotalSeconds / totalDuration.TotalSeconds * 100);
                             percentage = Math.Clamp(percentage, 0, 100);
+                            lastProgressPercent = percentage; // Track for watchdog
 
                             // Calculate time remaining
                             var elapsed = now - startTime;
@@ -266,6 +374,12 @@ public class FfmpegVideoComposer : IVideoComposer
 
         process.Exited += (sender, args) =>
         {
+            // Stop watchdog and heartbeat timers
+            watchdogTimer.Stop();
+            watchdogTimer.Dispose();
+            heartbeatTimer.Stop();
+            heartbeatTimer.Dispose();
+
             if (process.ExitCode == 0)
             {
                 tcs.SetResult(true);
@@ -383,6 +497,19 @@ public class FfmpegVideoComposer : IVideoComposer
             // Dispose cancellation registration
             cancellationRegistration.Dispose();
 
+            // Stop and dispose timers
+            try
+            {
+                watchdogTimer?.Stop();
+                watchdogTimer?.Dispose();
+                heartbeatTimer?.Stop();
+                heartbeatTimer?.Dispose();
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+
             // Ensure process is cleaned up
             try
             {
@@ -400,7 +527,7 @@ public class FfmpegVideoComposer : IVideoComposer
             try
             {
                 logWriter?.WriteLine(new string('-', 80));
-                logWriter?.WriteLine($"Completed: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                logWriter?.WriteLine($"Completed: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 logWriter?.WriteLine($"Exit Code: {process.ExitCode}");
                 logWriter?.Dispose();
             }
@@ -413,6 +540,31 @@ public class FfmpegVideoComposer : IVideoComposer
             process.Dispose();
         }
 
+        // Verify output file exists before returning
+        if (!File.Exists(outputFilePath))
+        {
+            _logger.LogError("Render reported success but output file does not exist: {Path}", outputFilePath);
+            throw new InvalidOperationException($"Video render failed: output file not created at {outputFilePath}");
+        }
+
+        var fileInfo = new FileInfo(outputFilePath);
+        _logger.LogInformation("Render verified: {Path} ({SizeMB:F2} MB, {SizeBytes} bytes)",
+            outputFilePath, fileInfo.Length / 1024.0 / 1024.0, fileInfo.Length);
+
+        if (fileInfo.Length == 0)
+        {
+            _logger.LogError("Render created empty file: {Path}", outputFilePath);
+            throw new InvalidOperationException($"Video render failed: output file is empty at {outputFilePath}");
+        }
+
+        // Add minimum size check (video should be at least 100KB for even shortest videos)
+        if (fileInfo.Length < 100 * 1024)
+        {
+            _logger.LogWarning(
+                "Output file is suspiciously small: {SizeKB} KB. May be corrupted.",
+                fileInfo.Length / 1024);
+        }
+
         _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
         _logger.LogInformation("FFmpeg log written to: {LogPath}", ffmpegLogPath);
 
@@ -423,7 +575,19 @@ public class FfmpegVideoComposer : IVideoComposer
             TimeSpan.Zero,
             "Render complete"));
 
-        return outputFilePath;
+            return outputFilePath;
+        }
+        finally
+        {
+            try
+            {
+                logWriter?.Dispose();
+            }
+            catch
+            {
+                // Ignore cleanup errors during finalization
+            }
+        }
     }
 
     /// <summary>
@@ -533,7 +697,7 @@ public class FfmpegVideoComposer : IVideoComposer
             try
             {
                 logWriter?.WriteLine(new string('-', 80));
-                logWriter?.WriteLine($"Completed: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                logWriter?.WriteLine($"Completed: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 logWriter?.WriteLine($"Exit Code: {result.ExitCode}");
                 logWriter?.Dispose();
             }
@@ -547,6 +711,22 @@ public class FfmpegVideoComposer : IVideoComposer
                     stderr,
                     jobId,
                     correlationId);
+            }
+
+            // Verify output file exists before returning
+            if (!File.Exists(outputFilePath))
+            {
+                _logger.LogError("Render reported success but output file does not exist: {Path}", outputFilePath);
+                throw new InvalidOperationException($"Video render failed: output file not created at {outputFilePath}");
+            }
+
+            var fileInfo = new FileInfo(outputFilePath);
+            _logger.LogInformation("Render verified: {Path} ({Size} bytes)", outputFilePath, fileInfo.Length);
+
+            if (fileInfo.Length == 0)
+            {
+                _logger.LogError("Render created empty file: {Path}", outputFilePath);
+                throw new InvalidOperationException($"Video render failed: output file is empty at {outputFilePath}");
             }
 
             _logger.LogInformation("Render completed successfully (JobId={JobId}): {OutputPath}", jobId, outputFilePath);
@@ -603,7 +783,8 @@ public class FfmpegVideoComposer : IVideoComposer
     }
 
     /// <summary>
-    /// Build FFmpeg command using FFmpegCommandBuilder with hardware acceleration support
+    /// Build FFmpeg command using FFmpegCommandBuilder with hardware acceleration support.
+    /// Applies Ken Burns effects to static images and fade transitions between scenes by default.
     /// </summary>
     private async Task<string> BuildFfmpegCommandAsync(Timeline timeline, RenderSpec spec, string outputPath, string ffmpegPath, CancellationToken ct)
     {
@@ -620,6 +801,11 @@ public class FfmpegVideoComposer : IVideoComposer
         {
             _logger.LogWarning("Music file not found, will skip music: {Path}", timeline.MusicPath);
         }
+
+        // Collect visual assets from scenes for video composition
+        var visualAssets = CollectVisualAssets(timeline);
+        _logger.LogInformation("Collected {AssetCount} visual assets from {SceneCount} scenes",
+            visualAssets.Count, timeline.Scenes.Count);
 
         // Determine aspect ratio from resolution
         var aspectRatio = spec.Res.Width == spec.Res.Height ? AspectRatio.OneByOne :
@@ -699,13 +885,52 @@ public class FfmpegVideoComposer : IVideoComposer
             }
         }
 
-        // Add input files
-        builder.AddInput(timeline.NarrationPath);
+        // Track input file indices for complex filter graph
+        int inputIndex = 0;
 
+        // Add visual asset inputs first (images/videos for scenes)
+        foreach (var asset in visualAssets)
+        {
+            builder.AddInput(asset.Path);
+            inputIndex++;
+        }
+
+        // Add narration audio input
+        int narrationInputIndex = inputIndex;
+        builder.AddInput(timeline.NarrationPath);
+        inputIndex++;
+
+        // Add music input if available
+        int musicInputIndex = -1;
         bool hasMusicInput = !string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath);
         if (hasMusicInput)
         {
+            musicInputIndex = inputIndex;
             builder.AddInput(timeline.MusicPath);
+            inputIndex++;
+        }
+
+        // Build complex filter graph for visual composition with effects
+        if (visualAssets.Count > 0)
+        {
+            var filterGraph = BuildVisualCompositionFilter(
+                visualAssets,
+                timeline.Scenes,
+                spec.Res.Width,
+                spec.Res.Height,
+                spec.Fps,
+                narrationInputIndex,
+                musicInputIndex);
+
+            if (!string.IsNullOrEmpty(filterGraph))
+            {
+                builder.AddFilter(filterGraph);
+                _logger.LogInformation("Applied Ken Burns effects and fade transitions to {Count} visual assets", visualAssets.Count);
+            }
+        }
+        else
+        {
+            _logger.LogWarning("No visual assets found in timeline - video will be audio-only with black screen");
         }
 
         // Set video codec (use hardware encoder if available)
@@ -765,10 +990,187 @@ public class FfmpegVideoComposer : IVideoComposer
         // Build the command
         var command = builder.Build();
 
+        // Enhanced logging for diagnostics
         _logger.LogInformation("FFmpeg command built successfully: {Length} characters", command.Length);
         _logger.LogDebug("Full command: ffmpeg {Command}", command);
 
+        // Log detailed input file information
+        try
+        {
+            var narrationFileInfo = new FileInfo(timeline.NarrationPath);
+            var musicInfo = !string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath)
+                ? $"{timeline.MusicPath} ({new FileInfo(timeline.MusicPath).Length / 1024.0 / 1024.0:F2} MB)"
+                : "None";
+
+            _logger.LogInformation(
+                "FFmpeg input files:\n" +
+                "  Narration: {NarrationPath} ({NarrationSizeMB:F2} MB)\n" +
+                "  Music: {MusicPath}\n" +
+                "  Visual Assets: {AssetCount} files\n" +
+                "  Output: {OutputPath}",
+                timeline.NarrationPath,
+                narrationFileInfo.Length / 1024.0 / 1024.0,
+                musicInfo,
+                visualAssets.Count,
+                outputPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to log input file details");
+        }
+
         return command;
+    }
+
+    /// <summary>
+    /// Represents a visual asset with its associated scene timing
+    /// </summary>
+    private record VisualAssetInfo(string Path, int SceneIndex, TimeSpan Start, TimeSpan Duration, bool IsImage);
+
+    /// <summary>
+    /// Collects visual assets from the timeline's scene assets dictionary
+    /// </summary>
+    private List<VisualAssetInfo> CollectVisualAssets(Timeline timeline)
+    {
+        var assets = new List<VisualAssetInfo>();
+
+        foreach (var scene in timeline.Scenes)
+        {
+            if (timeline.SceneAssets.TryGetValue(scene.Index, out var sceneAssets) && sceneAssets.Count > 0)
+            {
+                // Take the first valid asset for each scene
+                var primaryAsset = sceneAssets.FirstOrDefault(a =>
+                    !string.IsNullOrEmpty(a.PathOrUrl) &&
+                    File.Exists(a.PathOrUrl));
+
+                if (primaryAsset != null)
+                {
+                    var isImage = IsImageFile(primaryAsset.PathOrUrl);
+                    assets.Add(new VisualAssetInfo(
+                        primaryAsset.PathOrUrl,
+                        scene.Index,
+                        scene.Start,
+                        scene.Duration,
+                        isImage));
+                }
+            }
+        }
+
+        return assets;
+    }
+
+    /// <summary>
+    /// Checks if a file is an image based on extension
+    /// </summary>
+    private static bool IsImageFile(string path)
+    {
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        return extension is ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" or ".tiff" or ".tif";
+    }
+
+    /// <summary>
+    /// Builds a complex filter graph for visual composition with Ken Burns effects and fade transitions.
+    /// Applies subtle Ken Burns effect (1.0 to 1.1 zoom) to static images by default.
+    /// Applies fade transitions (0.5s) between scenes.
+    /// </summary>
+    private string BuildVisualCompositionFilter(
+        List<VisualAssetInfo> assets,
+        IReadOnlyList<Scene> scenes,
+        int width,
+        int height,
+        int fps,
+        int narrationInputIndex,
+        int musicInputIndex)
+    {
+        if (assets.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var filterParts = new List<string>();
+
+        // Phase 1: Process each visual asset (Ken Burns for images, scale for videos)
+        for (int i = 0; i < assets.Count; i++)
+        {
+            var asset = assets[i];
+            var durationSeconds = asset.Duration.TotalSeconds;
+
+            if (asset.IsImage)
+            {
+                var kenBurnsFilter = EffectBuilder.BuildKenBurns(
+                    duration: durationSeconds,
+                    fps: fps,
+                    zoomStart: DefaultKenBurnsZoomStart,
+                    zoomEnd: DefaultKenBurnsZoomEnd,
+                    panX: 0.0,
+                    panY: 0.0,
+                    width: width,
+                    height: height);
+
+                filterParts.Add($"[{i}:v]{kenBurnsFilter}[v{i}]");
+            }
+            else
+            {
+                filterParts.Add($"[{i}:v]scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1[v{i}]");
+            }
+        }
+
+        // Phase 2: Build transition chain with SAFE offset calculation
+        if (assets.Count == 1)
+        {
+            filterParts.Add("[v0]null[vout]");
+        }
+        else
+        {
+            double currentOffset = 0.0;
+
+            for (int i = 0; i < assets.Count - 1; i++)
+            {
+                // FIX: Accumulate offset BEFORE calculating transition
+                currentOffset += assets[i].Duration.TotalSeconds;
+
+                // FIX: Ensure transition offset is never negative
+                var transitionDuration = DefaultFadeTransitionDuration;
+                var safeTransitionOffset = Math.Max(0, currentOffset - transitionDuration);
+
+                // FIX: If scene is too short, reduce transition duration
+                if (assets[i].Duration.TotalSeconds < transitionDuration)
+                {
+                    transitionDuration = Math.Max(0.1, assets[i].Duration.TotalSeconds * 0.5);
+                    safeTransitionOffset = currentOffset - transitionDuration;
+                    _logger.LogWarning(
+                        "Scene {Index} duration ({Duration}s) shorter than default transition. " +
+                        "Reduced transition to {Adjusted}s",
+                        i, assets[i].Duration.TotalSeconds, transitionDuration);
+                }
+
+                var fadeTransition = TransitionBuilder.BuildCrossfade(
+                    transitionDuration,
+                    safeTransitionOffset,
+                    TransitionBuilder.TransitionType.Fade);
+
+                var inputLabel1 = i == 0 ? "v0" : $"vt{i - 1}";
+                var inputLabel2 = $"v{i + 1}";
+                var outputLabel = i == assets.Count - 2 ? "vout" : $"vt{i}";
+
+                filterParts.Add($"[{inputLabel1}][{inputLabel2}]{fadeTransition}[{outputLabel}]");
+            }
+        }
+
+        // Phase 3: Audio mixing (AFTER video chain is complete)
+        if (musicInputIndex >= 0)
+        {
+            filterParts.Add($"[{narrationInputIndex}:a]volume=1.0[voice];[{musicInputIndex}:a]volume=0.3[music];[voice][music]amix=inputs=2:duration=shortest[aout]");
+        }
+
+        var filterGraph = string.Join(";", filterParts);
+
+        // FIX: Log the full filter graph for debugging
+        _logger.LogDebug("Generated filter graph ({Length} chars): {Graph}",
+            filterGraph.Length,
+            filterGraph.Length > 500 ? filterGraph.Substring(0, 500) + "..." : filterGraph);
+
+        return filterGraph;
     }
 
     /// <summary>
@@ -1027,6 +1429,151 @@ public class FfmpegVideoComposer : IVideoComposer
         throw new InvalidOperationException(
             $"{audioType} audio validation failed: {validation.ErrorMessage}. " +
             $"CorrelationId: {correlationId}, JobId: {jobId}");
+    }
+
+    /// <summary>
+    /// Validates all input files before FFmpeg execution to fail fast on corrupted files
+    /// </summary>
+    private async Task ValidateInputFilesAsync(Timeline timeline, string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
+    {
+        _logger.LogInformation("Pre-validating input files before FFmpeg execution (JobId={JobId})...", jobId);
+
+        // Validate narration file
+        if (string.IsNullOrEmpty(timeline.NarrationPath) || !File.Exists(timeline.NarrationPath))
+        {
+            throw new InvalidOperationException($"Narration file not found: {timeline.NarrationPath}");
+        }
+
+        var narrationInfo = new FileInfo(timeline.NarrationPath);
+        if (narrationInfo.Length == 0)
+        {
+            throw new InvalidOperationException($"Narration file is empty: {timeline.NarrationPath}");
+        }
+
+        // Use ffprobe to validate narration is valid audio
+        await ValidateMediaFileAsync(timeline.NarrationPath, "audio", ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
+
+        // Validate music file if present
+        if (!string.IsNullOrEmpty(timeline.MusicPath) && File.Exists(timeline.MusicPath))
+        {
+            try
+            {
+                await ValidateMediaFileAsync(timeline.MusicPath, "audio", ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Music file validation failed, will skip music: {Path}", timeline.MusicPath);
+            }
+        }
+
+        // Validate visual assets
+        var visualAssets = CollectVisualAssets(timeline);
+        foreach (var asset in visualAssets)
+        {
+            if (!File.Exists(asset.Path))
+            {
+                throw new FileNotFoundException($"Visual asset not found: {asset.Path}");
+            }
+
+            var assetInfo = new FileInfo(asset.Path);
+            if (assetInfo.Length == 0)
+            {
+                throw new InvalidOperationException($"Visual asset is empty: {asset.Path}");
+            }
+
+            // Determine expected type - be explicit about what we expect
+            string expectedType;
+            if (asset.IsImage)
+            {
+                expectedType = "image";
+            }
+            else
+            {
+                // For video files, accept both image and video codec types since
+                // some video files may also contain image streams
+                expectedType = "image|video";
+            }
+
+            await ValidateMediaFileAsync(asset.Path, expectedType, ffmpegPath, jobId, correlationId, ct).ConfigureAwait(false);
+        }
+
+        _logger.LogInformation("All input files validated successfully (JobId={JobId})", jobId);
+    }
+
+    /// <summary>
+    /// Validates a media file using ffprobe
+    /// </summary>
+    private async Task ValidateMediaFileAsync(string filePath, string expectedType, string ffmpegPath, string jobId, string correlationId, CancellationToken ct)
+    {
+        // Get ffprobe path (same directory as ffmpeg)
+        var ffmpegDir = Path.GetDirectoryName(ffmpegPath);
+        string ffprobePath;
+
+        if (string.IsNullOrEmpty(ffmpegDir))
+        {
+            // FFmpeg is in PATH, assume ffprobe is too
+            ffprobePath = "ffprobe";
+        }
+        else
+        {
+            // FFmpeg has a full path, look for ffprobe in the same directory
+            ffprobePath = Path.Combine(ffmpegDir, "ffprobe.exe");
+            if (!File.Exists(ffprobePath))
+            {
+                // Try without .exe extension (Linux/Mac)
+                ffprobePath = Path.Combine(ffmpegDir, "ffprobe");
+                if (!File.Exists(ffprobePath))
+                {
+                    // Fall back to PATH
+                    ffprobePath = "ffprobe";
+                }
+            }
+        }
+
+        var args = $"-v error -show_entries stream=codec_type -of default=noprint_wrappers=1:nokey=1 \"{filePath}\"";
+
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = ffprobePath,
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            }
+        };
+
+        try
+        {
+            process.Start();
+            var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
+            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Media file validation failed for {filePath}: {stderr}");
+            }
+
+            var codecTypes = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var isValid = codecTypes.Any(type => expectedType.Contains(type.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (!isValid)
+            {
+                throw new InvalidOperationException(
+                    $"Media file {filePath} is not a valid {expectedType} file. " +
+                    $"Detected types: {string.Join(", ", codecTypes)}");
+            }
+
+            _logger.LogDebug("Media file validated: {Path} (Type: {Type})", filePath, string.Join(", ", codecTypes));
+        }
+        finally
+        {
+            process.Dispose();
+        }
     }
 
 

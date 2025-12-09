@@ -126,12 +126,19 @@ export interface RagConfigurationDto {
   tightenClaims?: boolean; // Default: false
 }
 
+export interface BrainstormMetadata {
+  providerUsed: string;
+  isOfflineFallback: boolean;
+  fallbackReason?: string;
+}
+
 export interface BrainstormResponse {
   success: boolean;
   concepts: ConceptIdea[];
   originalTopic: string;
   generatedAt: string;
   count: number;
+  metadata?: BrainstormMetadata;
 }
 
 export interface ExpandBriefRequest {
@@ -256,11 +263,18 @@ export interface EnhanceTopicResponse {
 
 const API_BASE = '/api/ideation';
 
+// Extended timeout for LLM operations (15 minutes in milliseconds)
+const LLM_TIMEOUT_MS = 15 * 60 * 1000;
+
 export const ideationService = {
   /**
    * Generate creative concept variations from a topic
    */
   async brainstorm(request: BrainstormRequest): Promise<BrainstormResponse> {
+    // Use AbortController with extended timeout for LLM operations
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+
     try {
       const response = await fetch(apiUrl(`${API_BASE}/brainstorm`), {
         method: 'POST',
@@ -268,17 +282,49 @@ export const ideationService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(request),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         // Try to get error details from response
         let errorMessage = 'Failed to brainstorm concepts';
         let suggestions: string[] = [];
+        let errorCode: string | undefined;
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorData.error || errorMessage;
+          errorCode = errorData.errorCode;
           if (errorData.suggestions && Array.isArray(errorData.suggestions)) {
             suggestions = errorData.suggestions;
+          }
+
+          // Parse model-not-found errors specifically
+          const errorMessageLower = errorMessage.toLowerCase();
+          if (
+            errorMessageLower.includes('model') &&
+            (errorMessageLower.includes('not found') || errorMessageLower.includes('not installed'))
+          ) {
+            // Extract model name from error message if possible (matches 'name' or "name")
+            const modelMatch = errorMessage.match(/['"]([^'"]+)['"]/);
+            const modelName = modelMatch ? modelMatch[1] : request.llmModel || 'the selected model';
+
+            // Create a more user-friendly error message
+            errorMessage = `The model '${modelName}' is not installed. Please run \`ollama pull ${modelName}\` to install it, or select a different model from the toolbar.`;
+
+            // Add Ollama-specific suggestions if not already present
+            const hasOllamaPullSuggestion = suggestions.some((s) =>
+              s.toLowerCase().includes('ollama pull')
+            );
+            if (!hasOllamaPullSuggestion) {
+              suggestions = [
+                `Install the model: Run \`ollama pull ${modelName}\` in your terminal`,
+                'Select a different model from the AI Model dropdown in the toolbar',
+                'List installed models: Run `ollama list` in your terminal',
+                ...suggestions,
+              ];
+            }
           }
         } catch {
           // If response isn't JSON, use status text
@@ -288,21 +334,34 @@ export const ideationService = {
           status: response.status,
           statusText: response.statusText,
           errorMessage,
+          errorCode,
           suggestions,
         });
 
-        // Create error with suggestions attached
+        // Create error with suggestions and error code attached
         const error = new Error(errorMessage) as Error & {
-          response?: { data?: { suggestions?: string[] } };
+          response?: { data?: { suggestions?: string[]; errorCode?: string } };
+          errorCode?: string;
         };
-        if (suggestions.length > 0) {
-          error.response = { data: { suggestions } };
+        error.errorCode = errorCode;
+        if (suggestions.length > 0 || errorCode) {
+          error.response = { data: { suggestions, errorCode } };
         }
         throw error;
       }
 
       return await response.json();
     } catch (error) {
+      clearTimeout(timeoutId);
+
+      // Handle AbortError (timeout)
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(
+          'Request timed out. The AI is taking longer than expected. ' +
+            'If using Ollama with a large model, this may be normal. Please try again.'
+        );
+      }
+
       // Re-throw if it's already an Error with a message
       if (error instanceof Error) {
         throw error;

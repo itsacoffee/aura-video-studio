@@ -1,7 +1,17 @@
-import { makeStyles, tokens, Text, Button, Input, shorthands } from '@fluentui/react-components';
+import {
+  makeStyles,
+  tokens,
+  Text,
+  Button,
+  Input,
+  shorthands,
+  Card,
+  Spinner,
+} from '@fluentui/react-components';
 import { LightbulbRegular, LightbulbFilamentRegular } from '@fluentui/react-icons';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FallbackModeNotification } from '../../components/common/FallbackModeNotification';
 import { BrainstormInput, BrainstormOptions } from '../../components/ideation/BrainstormInput';
 import { ConceptCard } from '../../components/ideation/ConceptCard';
 import { SkeletonCard, ErrorState } from '../../components/Loading';
@@ -9,6 +19,7 @@ import {
   ideationService,
   type ConceptIdea,
   type BrainstormRequest,
+  type BrainstormMetadata,
 } from '../../services/ideationService';
 
 const useStyles = makeStyles({
@@ -122,6 +133,27 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     marginLeft: tokens.spacingHorizontalS,
   },
+  loadingCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shorthands.padding(tokens.spacingVerticalXXL, tokens.spacingHorizontalXXL),
+    gap: tokens.spacingVerticalM,
+    backgroundColor: tokens.colorNeutralBackground2,
+    ...shorthands.borderRadius(tokens.borderRadiusLarge),
+    minHeight: '200px',
+  },
+  loadingTip: {
+    color: tokens.colorNeutralForeground3,
+    fontSize: tokens.fontSizeBase200,
+    textAlign: 'center' as const,
+    maxWidth: '400px',
+    marginTop: tokens.spacingVerticalM,
+    ...shorthands.padding(tokens.spacingVerticalS, tokens.spacingHorizontalM),
+    backgroundColor: tokens.colorNeutralBackground3,
+    ...shorthands.borderRadius(tokens.borderRadiusSmall),
+  },
 });
 
 interface HotkeyConfig {
@@ -146,6 +178,24 @@ const DEFAULT_HOTKEY: HotkeyConfig = {
 
 const clampIdeaCount = (value: number) => Math.min(9, Math.max(3, value));
 
+/**
+ * Get the appropriate loading status message based on elapsed time
+ */
+const getLoadingStatusMessage = (elapsedSeconds: number): string => {
+  if (elapsedSeconds < 30) {
+    return 'Analyzing your topic...';
+  }
+  if (elapsedSeconds < 60) {
+    return 'Generating creative variations...';
+  }
+  if (elapsedSeconds < 120) {
+    return 'This is taking a while - complex topics need more time...';
+  }
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const seconds = elapsedSeconds % 60;
+  return `Still working... (${minutes}m ${seconds}s)`;
+};
+
 export const IdeationDashboard: React.FC = () => {
   const styles = useStyles();
   const navigate = useNavigate();
@@ -157,6 +207,31 @@ export const IdeationDashboard: React.FC = () => {
   const [ideaCount, setIdeaCount] = useState<number>(6);
   const [refreshHotkey, setRefreshHotkey] = useState<HotkeyConfig>(DEFAULT_HOTKEY);
   const [isCapturingHotkey, setIsCapturingHotkey] = useState(false);
+
+  // Fallback mode tracking
+  const [fallbackMetadata, setFallbackMetadata] = useState<BrainstormMetadata | null>(null);
+
+  // Elapsed time tracking for loading state
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Timer effect for tracking elapsed time during loading
+  useEffect(() => {
+    if (loading) {
+      setElapsedSeconds(0);
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [loading]);
 
   const formatHotkeyLabel = useCallback((config: HotkeyConfig) => {
     const segments: string[] = [];
@@ -199,6 +274,7 @@ export const IdeationDashboard: React.FC = () => {
     async (topic: string, options: BrainstormOptions) => {
       setLoading(true);
       setError(null);
+      setFallbackMetadata(null);
       setOriginalTopic(topic);
 
       const normalizedOptions: BrainstormOptions = {
@@ -223,14 +299,59 @@ export const IdeationDashboard: React.FC = () => {
         const response = await ideationService.brainstorm(request);
         setConcepts(response.concepts);
         setError(null);
+
+        // Track if fallback mode was used
+        if (response.metadata) {
+          setFallbackMetadata(response.metadata);
+        }
       } catch (err) {
         console.error('Brainstorm error:', err);
 
         let errorMessage = 'Failed to generate concepts';
+        let errorType: 'connection' | 'parsing' | 'generation' | 'generic' = 'generic';
         let suggestions: string[] = [];
 
         if (err instanceof Error) {
           errorMessage = err.message;
+
+          // Categorize error type based on message content
+          if (
+            errorMessage.toLowerCase().includes('cannot connect') ||
+            errorMessage.toLowerCase().includes('connection') ||
+            errorMessage.toLowerCase().includes('not available') ||
+            errorMessage.toLowerCase().includes('ollama is not running')
+          ) {
+            errorType = 'connection';
+            suggestions = [
+              'Ensure Ollama is running (open terminal and run: ollama serve)',
+              'Check if Ollama is accessible at http://127.0.0.1:11434',
+              'Verify a model is installed (run: ollama list)',
+              'Try selecting a different AI model from the toolbar',
+            ];
+          } else if (
+            errorMessage.toLowerCase().includes('json') ||
+            errorMessage.toLowerCase().includes('parse') ||
+            errorMessage.toLowerCase().includes('invalid response')
+          ) {
+            errorType = 'parsing';
+            suggestions = [
+              'The AI provider returned an unexpected format',
+              'Try again - this is often a temporary issue',
+              'If the issue persists, try a different AI model',
+              'Check the browser console for detailed error information',
+            ];
+          } else if (
+            errorMessage.toLowerCase().includes('generic') ||
+            errorMessage.toLowerCase().includes('placeholder')
+          ) {
+            errorType = 'generation';
+            suggestions = [
+              'The AI model may not be suitable for ideation tasks',
+              'Try using a larger or more capable AI model',
+              "Ensure you're using Ollama with a capable model (llama3.1, qwen2.5, or mistral)",
+              'Check if your AI provider is properly configured in Settings',
+            ];
+          }
         }
 
         // Try to extract suggestions from API response
@@ -238,7 +359,10 @@ export const IdeationDashboard: React.FC = () => {
           const apiError = err as {
             response?: { data?: { suggestions?: string[]; error?: string } };
           };
-          if (apiError.response?.data?.suggestions) {
+          if (
+            apiError.response?.data?.suggestions &&
+            apiError.response.data.suggestions.length > 0
+          ) {
             suggestions = apiError.response.data.suggestions;
           }
           if (apiError.response?.data?.error) {
@@ -246,11 +370,27 @@ export const IdeationDashboard: React.FC = () => {
           }
         }
 
-        // Build comprehensive error message
-        const fullError =
-          suggestions.length > 0
-            ? `${errorMessage}\n\nSuggestions:\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`
-            : errorMessage;
+        // Add default suggestions if none were provided
+        if (suggestions.length === 0) {
+          suggestions = [
+            'Check your AI provider configuration in Settings',
+            'Ensure your AI provider is running and accessible',
+            'Try a different topic or simplify your request',
+            'Check the browser console for detailed error information',
+          ];
+        }
+
+        // Build comprehensive error message with error type indicator
+        const errorTypeLabel =
+          errorType === 'connection'
+            ? '🔌 Connection Error'
+            : errorType === 'parsing'
+              ? '📋 Response Format Error'
+              : errorType === 'generation'
+                ? '🤖 AI Generation Error'
+                : '❌ Error';
+
+        const fullError = `${errorTypeLabel}\n\n${errorMessage}\n\n💡 Suggestions:\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
 
         setError(fullError);
       } finally {
@@ -398,6 +538,13 @@ export const IdeationDashboard: React.FC = () => {
           onIdeaCountChange={(value) => setIdeaCount(clampIdeaCount(value))}
         />
 
+        {/* Show fallback mode notification when using offline fallback */}
+        <FallbackModeNotification
+          isVisible={fallbackMetadata?.isOfflineFallback ?? false}
+          providerUsed={fallbackMetadata?.providerUsed}
+          fallbackReason={fallbackMetadata?.fallbackReason}
+        />
+
         {error && (
           <ErrorState
             title="Failed to generate concepts"
@@ -470,11 +617,26 @@ export const IdeationDashboard: React.FC = () => {
         )}
 
         {loading && (
-          <div className={styles.conceptsGrid}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={`skeleton-${i}`} hasImage={false} />
-            ))}
-          </div>
+          <>
+            <Card className={styles.loadingCard}>
+              <Spinner size="large" />
+              <Text size={400} weight="semibold">
+                Generating concepts with AI...
+              </Text>
+              <Text size={300}>{getLoadingStatusMessage(elapsedSeconds)}</Text>
+              {elapsedSeconds > 60 && (
+                <Text className={styles.loadingTip}>
+                  💡 Tip: Local AI models like Ollama may take several minutes for detailed
+                  concepts. The GPU indicator shows the model is actively working.
+                </Text>
+              )}
+            </Card>
+            <div className={styles.conceptsGrid}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={`skeleton-${i}`} hasImage={false} />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

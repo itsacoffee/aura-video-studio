@@ -77,7 +77,9 @@ test('main.js imports ProcessManager', () => {
     'utf8'
   );
   
-  if (!mainJs.includes("require('./process-manager')")) {
+  // Handle both single and double quote styles
+  if (!mainJs.includes("require('./process-manager')") && 
+      !mainJs.includes('require("./process-manager")')) {
     throw new Error('main.js does not import ProcessManager');
   }
 });

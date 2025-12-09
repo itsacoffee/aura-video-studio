@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Errors;
@@ -11,6 +14,7 @@ using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Assets;
 using Aura.Core.Services.Audio;
+using Aura.Core.Services.Fallback;
 using Aura.Core.Services.Generation;
 using Aura.Core.Services.Orchestration;
 using Aura.Core.Services.PacingServices;
@@ -28,6 +32,15 @@ namespace Aura.Core.Orchestrator;
 /// </summary>
 public class VideoOrchestrator
 {
+    // Stall detection constants
+    private const float StallProgressThreshold = 0.1f;
+    private const int StallTimeoutSeconds = 60;
+
+    // Output path extraction constants
+    private const string OutputDirectoryName = "AuraVideoStudio";
+    private const string OutputSubdirectoryName = "Output";
+    private const int RecentFileThresholdMinutes = 10;
+
     private readonly ILogger<VideoOrchestrator> _logger;
     private readonly ILlmProvider _llmProvider;
     private readonly ITtsProvider _ttsProvider;
@@ -52,6 +65,10 @@ public class VideoOrchestrator
     private readonly Telemetry.RunTelemetryCollector _telemetryCollector;
     private readonly Dependencies.FFmpegResolver? _ffmpegResolver;
     private readonly AssetTaggingService? _assetTaggingService;
+    private readonly TopicAwareFallbackGenerator _fallbackGenerator;
+    private readonly Services.AudioIntelligence.IVoiceEnhancementService? _voiceEnhancementService;
+    private readonly Services.AudioIntelligence.IMusicMatchingService? _musicMatchingService;
+    private readonly Services.AudioIntelligence.IIntelligentDuckingService? _intelligentDuckingService;
 
     public VideoOrchestrator(
         ILogger<VideoOrchestrator> logger,
@@ -77,7 +94,11 @@ public class VideoOrchestrator
         PipelineOrchestrationEngine? pipelineEngine = null,
         Services.RAG.RagScriptEnhancer? ragScriptEnhancer = null,
         Dependencies.FFmpegResolver? ffmpegResolver = null,
-        AssetTaggingService? assetTaggingService = null)
+        AssetTaggingService? assetTaggingService = null,
+        TopicAwareFallbackGenerator? fallbackGenerator = null,
+        Services.AudioIntelligence.IVoiceEnhancementService? voiceEnhancementService = null,
+        Services.AudioIntelligence.IMusicMatchingService? musicMatchingService = null,
+        Services.AudioIntelligence.IIntelligentDuckingService? intelligentDuckingService = null)
     {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(llmProvider);
@@ -120,10 +141,108 @@ public class VideoOrchestrator
         _ragScriptEnhancer = ragScriptEnhancer;
         _ffmpegResolver = ffmpegResolver;
         _assetTaggingService = assetTaggingService;
+        _fallbackGenerator = fallbackGenerator ?? new TopicAwareFallbackGenerator();
+        _voiceEnhancementService = voiceEnhancementService;
+        _musicMatchingService = musicMatchingService;
+        _intelligentDuckingService = intelligentDuckingService;
 
         if (_assetTaggingService != null)
         {
             _logger.LogInformation("AssetTaggingService configured for intelligent asset selection");
+        }
+
+        if (_voiceEnhancementService != null || _musicMatchingService != null || _intelligentDuckingService != null)
+        {
+            _logger.LogInformation("Audio Intelligence Suite configured for enhanced audio processing");
+        }
+    }
+
+    /// <summary>
+    /// Execute a pipeline stage with proper error handling, cancellation, and timeout
+    /// </summary>
+    private async Task<T> ExecuteStageAsync<T>(
+        string stageName,
+        Func<CancellationToken, Task<T>> stageAction,
+        Action<string>? progressCallback,
+        CancellationToken ct,
+        int timeoutSeconds = 600)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        _logger.LogInformation("[{StageName}] Starting stage execution", stageName);
+
+        try
+        {
+            SafeReportProgress(progressCallback, "Starting " + stageName + "...");
+
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+            var result = await stageAction(linkedCts.Token).ConfigureAwait(false);
+
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "[{StageName}] Stage completed successfully in {Elapsed}ms",
+                stageName, stopwatch.ElapsedMilliseconds);
+
+            SafeReportProgress(progressCallback, stageName + " completed");
+
+            return result;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("[{StageName}] Stage cancelled by user", stageName);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            stopwatch.Stop();
+            var message = "Stage '" + stageName + "' timed out after " + timeoutSeconds + " seconds. " +
+                "This may indicate the provider is not responding.";
+            var error = new VideoGenerationException(message, stageName, new TimeoutException());
+
+            _logger.LogError(error, "[{StageName}] Stage timed out", stageName);
+            throw error;
+        }
+        catch (HttpRequestException ex)
+        {
+            stopwatch.Stop();
+            var message = "Stage '" + stageName + "' failed due to network error: " + ex.Message + ". " +
+                "Please check that all required services are running.";
+            var error = new VideoGenerationException(message, stageName, ex);
+
+            _logger.LogError(error, "[{StageName}] Network error", stageName);
+            throw error;
+        }
+        catch (VideoGenerationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            var message = "Stage '" + stageName + "' failed: " + ex.Message;
+            var error = new VideoGenerationException(message, stageName, ex);
+
+            _logger.LogError(error, "[{StageName}] Unexpected error after {Elapsed}ms", stageName, stopwatch.ElapsedMilliseconds);
+            throw error;
+        }
+    }
+
+    /// <summary>
+    /// Safely report progress without breaking the pipeline if callback throws
+    /// </summary>
+    private void SafeReportProgress(Action<string>? progressCallback, string message)
+    {
+        if (progressCallback == null) return;
+
+        try
+        {
+            progressCallback(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Progress callback threw exception for message: {Message}", message);
         }
     }
 
@@ -148,7 +267,7 @@ public class VideoOrchestrator
             else
             {
                 _logger.LogDebug("✓ LLM Provider available: {Type}", _llmProvider.GetType().Name);
-                
+
                 // For Ollama, check if it's actually running using reflection since we don't have a direct reference
                 var providerType = _llmProvider.GetType();
                 if (providerType.Name == "OllamaLlmProvider")
@@ -202,7 +321,7 @@ public class VideoOrchestrator
                 }
                 else
                 {
-                    _logger.LogDebug("✓ TTS Provider available: {Type} with {Count} voices", 
+                    _logger.LogDebug("✓ TTS Provider available: {Type} with {Count} voices",
                         _ttsProvider.GetType().Name, voices.Count);
                 }
             }
@@ -222,12 +341,12 @@ public class VideoOrchestrator
             else
             {
                 _logger.LogDebug("✓ Video Composer available: {Type}", _videoComposer.GetType().Name);
-                
+
                 // Use FFmpeg resolver if available
                 if (_ffmpegResolver != null)
                 {
                     var ffmpegResult = await _ffmpegResolver.ResolveAsync(ct: ct).ConfigureAwait(false);
-                    
+
                     if (!ffmpegResult.Found)
                     {
                         errors.Add($"FFmpeg not found. Checked {ffmpegResult.AttemptedPaths.Count} locations. Please install FFmpeg or run setup.");
@@ -238,7 +357,7 @@ public class VideoOrchestrator
                     }
                     else
                     {
-                        _logger.LogInformation("✓ FFmpeg found at: {Path} (version: {Version})", 
+                        _logger.LogInformation("✓ FFmpeg found at: {Path} (version: {Version})",
                             ffmpegResult.Path, ffmpegResult.Version);
                     }
                 }
@@ -271,12 +390,12 @@ public class VideoOrchestrator
             {
                 Directory.CreateDirectory(outputDir);
             }
-            
+
             // Test write permissions
             var testFile = Path.Combine(outputDir, $"write_test_{Guid.NewGuid()}.tmp");
             File.WriteAllText(testFile, "test");
             File.Delete(testFile);
-            
+
             _logger.LogDebug("✓ Output directory writable: {Path}", outputDir);
         }
         catch (Exception ex)
@@ -285,7 +404,7 @@ public class VideoOrchestrator
         }
 
         var isValid = errors.Count == 0;
-        
+
         if (!isValid)
         {
             _logger.LogError("Pipeline validation FAILED with {Count} errors:", errors.Count);
@@ -317,7 +436,8 @@ public class VideoOrchestrator
         string? jobId = null,
         string? correlationId = null,
         bool isQuickDemo = false,
-        IProgress<GenerationProgress>? detailedProgress = null)
+        IProgress<GenerationProgress>? detailedProgress = null,
+        IImageProvider? imageProviderOverride = null)
     {
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(planSpec);
@@ -325,8 +445,20 @@ public class VideoOrchestrator
         ArgumentNullException.ThrowIfNull(renderSpec);
         ArgumentNullException.ThrowIfNull(systemProfile);
 
+        // Ensure RenderSpec carries a job identifier so FFmpeg log naming aligns with JobRunner.
+        var resolvedJobId = jobId ?? renderSpec.JobId;
+        var resolvedCorrelationId = correlationId ?? resolvedJobId ?? Guid.NewGuid().ToString();
+        var renderSpecWithJob = renderSpec.JobId == null && resolvedJobId != null
+            ? renderSpec with { JobId = resolvedJobId }
+            : renderSpec;
+        correlationId = resolvedCorrelationId;
+
+        // Use the resolved render spec for downstream operations
+        renderSpec = renderSpecWithJob;
+
         var startTime = DateTime.UtcNow;
         var providerFailures = new List<ProviderException>();
+        var activeImageProvider = imageProviderOverride ?? _imageProvider;
 
         try
         {
@@ -358,7 +490,17 @@ public class VideoOrchestrator
 
             // Create task executor that maps generation tasks to providers
             _logger.LogInformation("[Orchestrator] Creating task executor for generation tasks");
-            var executorContext = CreateTaskExecutor(brief, planSpec, voiceSpec, renderSpec, ct, isQuickDemo);
+            var executorContext = CreateTaskExecutor(
+                brief,
+                planSpec,
+                voiceSpec,
+                renderSpec,
+                ct,
+                isQuickDemo,
+                progress,
+                detailedProgress,
+                correlationId,
+                activeImageProvider);
             var taskExecutor = executorContext.Executor;
 
             // Map progress events from orchestration to both string and detailed progress
@@ -407,16 +549,162 @@ public class VideoOrchestrator
                     elapsedBeforeFailure: elapsedTime);
             }
 
-            // Extract final video path from composition task result
-            if (!result.TaskResults.TryGetValue("composition", out var compositionTask) || compositionTask.Result == null)
+            // Extract final video path from composition task result with multiple fallback strategies
+            // CRITICAL FIX: Check executorContext.FinalVideoPath FIRST as it's set directly by the render operation
+            string? outputPath = null;
+            string extractionMethod = "unknown";
+
+            _logger.LogInformation("Extracting output path. Available task result keys: {Keys}, ExecutorState.FinalVideoPath: {FinalVideoPath}",
+                string.Join(", ", result.TaskResults.Keys),
+                executorContext.FinalVideoPath ?? "(null)");
+
+            // Strategy 1: Check TaskExecutorState.FinalVideoPath (PRIMARY - most reliable)
+            // This is set directly by the VideoComposition task executor at line 1965
+            if (!string.IsNullOrEmpty(executorContext.FinalVideoPath))
             {
-                throw new InvalidOperationException("Composition task did not produce output path");
+                if (File.Exists(executorContext.FinalVideoPath))
+                {
+                    outputPath = executorContext.FinalVideoPath;
+                    extractionMethod = "executor_state_final_video_path";
+                    _logger.LogInformation("Extracted output path from executor state (Strategy 1 - Primary): {Path}", outputPath);
+                }
+                else
+                {
+                    _logger.LogWarning("Executor state FinalVideoPath does not exist: {Path}", executorContext.FinalVideoPath);
+                }
             }
 
-            var outputPath = compositionTask.Result as string
-                ?? throw new InvalidOperationException("Composition result is not a valid path");
+            // Strategy 2: Try primary "composition" task result key
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                if (result.TaskResults.TryGetValue("composition", out var compositionTask))
+                {
+                    if (compositionTask.Result is string compositionPath &&
+                        !string.IsNullOrEmpty(compositionPath) &&
+                        File.Exists(compositionPath))
+                    {
+                        outputPath = compositionPath;
+                        extractionMethod = "composition_task_result";
+                        _logger.LogInformation("Extracted output path from composition task result (Strategy 2): {Path}", outputPath);
+                    }
+                    else
+                    {
+                        var pathValue = compositionTask.Result as string;
+                        if (!string.IsNullOrEmpty(pathValue) && !File.Exists(pathValue))
+                        {
+                            _logger.LogWarning("Composition task returned path that does not exist: {Path}", pathValue);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Composition task exists but result is not a valid string. Result type: {Type}, Value: {Value}",
+                                compositionTask.Result?.GetType()?.Name ?? "null",
+                                compositionTask.Result?.ToString() ?? "null");
+                        }
+                    }
+                }
+            }
 
-            _logger.LogInformation("Smart orchestration completed. Video at: {Path}", outputPath);
+            // Strategy 3: Try alternate task result keys
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                string[] alternateKeys = { "render", "video_output", "final_video", "output" };
+                foreach (var key in alternateKeys)
+                {
+                    if (result.TaskResults.TryGetValue(key, out var taskResult) &&
+                        taskResult.Result is string altPath &&
+                        !string.IsNullOrEmpty(altPath) &&
+                        File.Exists(altPath))
+                    {
+                        outputPath = altPath;
+                        extractionMethod = $"{key}_task_result";
+                        _logger.LogInformation("Extracted output path from alternate task result key '{Key}' (Strategy 3): {Path}", key, outputPath);
+                        break;
+                    }
+                    else if (taskResult?.Result is string nonExistentPath && !string.IsNullOrEmpty(nonExistentPath) && !File.Exists(nonExistentPath))
+                    {
+                        _logger.LogWarning("Task result key '{Key}' returned path that does not exist: {Path}", key, nonExistentPath);
+                    }
+                }
+            }
+
+            // Strategy 4: Scan output directory for recently created .mp4 files
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                try
+                {
+                    var outputDir = Path.Combine(Path.GetTempPath(), OutputDirectoryName, OutputSubdirectoryName);
+                    if (Directory.Exists(outputDir))
+                    {
+                        var recentFiles = Directory.GetFiles(outputDir, "*.mp4")
+                            .Select(f => new FileInfo(f))
+                            .Where(fi => fi.Exists && (DateTime.UtcNow - fi.CreationTimeUtc).TotalMinutes < RecentFileThresholdMinutes)
+                            .OrderByDescending(fi => fi.CreationTimeUtc)
+                            .ToList();
+
+                        if (recentFiles.Count > 0)
+                        {
+                            outputPath = recentFiles[0].FullName;
+                            extractionMethod = "directory_scan_fallback";
+                            _logger.LogWarning(
+                                "Output path extracted via directory scan fallback. Found {Count} recent .mp4 files, using: {Path}",
+                                recentFiles.Count, outputPath);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Directory scan found no recent .mp4 files in {OutputDir}", outputDir);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Output directory does not exist: {OutputDir}", outputDir);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to scan output directory for video files");
+                }
+            }
+
+            // If still no path found, provide detailed error with available task keys
+            if (string.IsNullOrEmpty(outputPath))
+            {
+                var availableKeys = string.Join(", ", result.TaskResults.Keys);
+
+                // CRITICAL FIX: Enhanced error message with directory diagnostic information
+                var outputDir = Path.Combine(Path.GetTempPath(), OutputDirectoryName, OutputSubdirectoryName);
+                var dirExists = Directory.Exists(outputDir);
+                var fileCount = dirExists ? Directory.GetFiles(outputDir, "*.mp4").Length : 0;
+
+                var errorMessage = string.Format(
+                    "Video generation completed but output path not returned. " +
+                    "Checked all extraction strategies but found no valid path. " +
+                    "Available task result keys: [{0}]. " +
+                    "Job ID: {1}. " +
+                    "Output directory: {2} (exists: {3}, mp4 files: {4}). " +
+                    "Check backend logs for the actual file location.",
+                    availableKeys,
+                    jobId ?? "unknown",
+                    outputDir,
+                    dirExists,
+                    fileCount);
+
+                _logger.LogError(
+                    "Output path extraction failed. TaskResults keys: {Keys}, ExecutorState.FinalVideoPath: {FinalVideoPath}, OutputDir: {OutputDir}, DirExists: {DirExists}, Mp4Count: {Mp4Count}",
+                    availableKeys, executorContext.FinalVideoPath ?? "(null)", outputDir, dirExists, fileCount);
+
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            // Validate output file exists before returning (critical for job completion)
+            if (!File.Exists(outputPath))
+            {
+                throw new InvalidOperationException(
+                    $"Video render completed but output file not found. Expected path: {outputPath}. Extraction method: {extractionMethod}");
+            }
+
+            _logger.LogInformation(
+                "Smart orchestration completed. Video at: {Path} (verified exists). Extraction method: {Method}",
+                outputPath, extractionMethod);
 
             var providerTimeline = executorContext.Timeline;
             if (providerTimeline == null)
@@ -499,7 +787,8 @@ public class VideoOrchestrator
         string? jobId = null,
         string? correlationId = null,
         bool isQuickDemo = false,
-        IProgress<GenerationProgress>? detailedProgress = null)
+        IProgress<GenerationProgress>? detailedProgress = null,
+        IImageProvider? imageProviderOverride = null)
     {
         var result = await GenerateVideoResultAsync(
             brief,
@@ -512,7 +801,8 @@ public class VideoOrchestrator
             jobId,
             correlationId,
             isQuickDemo,
-            detailedProgress).ConfigureAwait(false);
+            detailedProgress,
+            imageProviderOverride).ConfigureAwait(false);
 
         return result.OutputPath;
     }
@@ -531,7 +821,8 @@ public class VideoOrchestrator
         string? jobId = null,
         string? correlationId = null,
         bool isQuickDemo = false,
-        IProgress<GenerationProgress>? detailedProgress = null)
+        IProgress<GenerationProgress>? detailedProgress = null,
+        IImageProvider? imageProviderOverride = null)
     {
         ArgumentNullException.ThrowIfNull(brief);
         ArgumentNullException.ThrowIfNull(planSpec);
@@ -634,7 +925,7 @@ public class VideoOrchestrator
                 _logger.LogWarning("Script validation failed for Quick Demo: {Message}. Using safe fallback script.", vex.Message);
                 progress?.Report("Using safe fallback script...");
 
-                script = GenerateSafeFallbackScript(brief.Topic ?? "Welcome to Aura Video Studio", planSpec.TargetDuration);
+                script = GenerateSafeFallbackScript(brief, planSpec);
                 usedFallback = true;
 
                 _logger.LogInformation("Safe fallback script generated: {Length} characters", script.Length);
@@ -836,29 +1127,105 @@ public class VideoOrchestrator
                 _telemetryCollector.Record(ttsTelemetry);
             }
 
+            // Audio Intelligence: Enhance narration if service is available
+            string enhancedNarrationPath = narrationPath;
+            if (_voiceEnhancementService != null)
+            {
+                try
+                {
+                    _logger.LogInformation("Applying voice enhancement to narration");
+                    progress?.Report("Enhancing voice audio...");
+
+                    var enhanceOptions = _voiceEnhancementService.GetPreset(
+                        Services.AudioIntelligence.VoiceEnhancementPreset.VideoNarration);
+                    var enhancedPath = Path.Combine(
+                        Path.GetDirectoryName(narrationPath) ?? Path.GetTempPath(),
+                        $"enhanced_{Path.GetFileName(narrationPath)}");
+
+                    var enhanceResult = await _voiceEnhancementService.EnhanceVoiceAsync(
+                        narrationPath,
+                        enhancedPath,
+                        enhanceOptions,
+                        ct
+                    ).ConfigureAwait(false);
+
+                    if (enhanceResult.Success)
+                    {
+                        enhancedNarrationPath = enhanceResult.OutputPath;
+                        _cleanupManager.RegisterTempFile(enhancedPath);
+                        _logger.LogInformation(
+                            "Voice enhancement applied. Before: {BeforeLUFS:F1} LUFS, After: {AfterLUFS:F1} LUFS",
+                            enhanceResult.BeforeAnalysis.IntegratedLoudness,
+                            enhanceResult.AfterAnalysis?.IntegratedLoudness ?? 0);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Voice enhancement failed: {Error}, using original narration",
+                            enhanceResult.ErrorMessage);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Voice enhancement failed, using original narration");
+                }
+            }
+
             // Stage 4: Build timeline (placeholder for music/assets)
             progress?.Report("Stage 4/5: Building timeline...");
             var timeline = new Providers.Timeline(
                 Scenes: scenes,
                 SceneAssets: new Dictionary<int, IReadOnlyList<Asset>>(),
-                NarrationPath: narrationPath,
+                NarrationPath: enhancedNarrationPath,
                 MusicPath: string.Empty,
                 SubtitlesPath: null
             );
 
             // Stage 5: Render video
             progress?.Report("Stage 5/5: Rendering video...");
+
+            // Explicit logging at stage transition (70% mark) for debugging hangs
+            _logger.LogInformation(
+                "[Stage Transition] Starting video render at 70%% mark. " +
+                "Scenes: {SceneCount}, NarrationPath: {NarrationPath}, JobId: {JobId}",
+                scenes.Count, enhancedNarrationPath, jobId ?? "N/A");
+
             var renderBuilder = jobId != null && correlationId != null
                 ? Telemetry.TelemetryBuilder.Start(jobId, correlationId, Telemetry.RunStage.Render)
                 : null;
 
+            // Track render progress with detailed logging
+            var lastProgressTime = DateTime.UtcNow;
+            var lastProgressPercent = 0f;
             var renderProgress = new Progress<RenderProgress>(p =>
             {
                 progress?.Report($"Rendering: {p.Percentage:F1}% - {p.CurrentStage}");
+
+                // Log at Information level for visibility
+                _logger.LogInformation(
+                    "[Render Progress] {Percentage:F1}% - Stage: {Stage}, Elapsed: {Elapsed}",
+                    p.Percentage, p.CurrentStage, p.Elapsed);
+
+                var now = DateTime.UtcNow;
+                var timeSinceLastProgress = now - lastProgressTime;
+
+                // Detect potential stalls
+                if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
+                {
+                    _logger.LogWarning(
+                        "[Render Stall Warning] No progress change for {Seconds:F0}s at {Percentage:F1}%",
+                        timeSinceLastProgress.TotalSeconds, p.Percentage);
+                }
+                else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
+                {
+                    lastProgressTime = now;
+                    lastProgressPercent = p.Percentage;
+                }
             });
 
+            _logger.LogInformation("[Render Start] Beginning FFmpeg render operation for job {JobId}", jobId ?? "N/A");
+
             string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
-            _logger.LogInformation("Video rendered to: {Path}", outputPath);
+            _logger.LogInformation("[Render Complete] Video rendered to: {Path}", outputPath);
 
             // Record render telemetry
             if (renderBuilder != null)
@@ -1036,13 +1403,45 @@ public class VideoOrchestrator
         );
 
         progress?.Report("Stage 5/5: Rendering video...");
+
+        // Explicit logging at stage transition (70% mark) for debugging hangs
+        _logger.LogInformation(
+            "[Stage Transition] Starting video render at 70%% mark. " +
+            "Scenes: {SceneCount}, NarrationPath: {NarrationPath}",
+            scenes.Count, narrationPath);
+
+        // Track render progress with detailed logging
+        var lastProgressTime = DateTime.UtcNow;
+        var lastProgressPercent = 0f;
         var renderProgress = new Progress<RenderProgress>(p =>
         {
             progress?.Report($"Rendering: {p.Percentage:F1}% - {p.CurrentStage}");
+
+            _logger.LogInformation(
+                "[Render Progress] {Percentage:F1}% - Stage: {Stage}",
+                p.Percentage, p.CurrentStage);
+
+            var now = DateTime.UtcNow;
+            var timeSinceLastProgress = now - lastProgressTime;
+
+            // Detect potential stalls
+            if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
+            {
+                _logger.LogWarning(
+                    "[Render Stall Warning] No progress change for {Seconds:F0}s at {Percentage:F1}%",
+                    timeSinceLastProgress.TotalSeconds, p.Percentage);
+            }
+            else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
+            {
+                lastProgressTime = now;
+                lastProgressPercent = p.Percentage;
+            }
         });
 
+        _logger.LogInformation("[Render Start] Beginning FFmpeg render operation");
+
         string outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
-        _logger.LogInformation("Video rendered to: {Path}", outputPath);
+        _logger.LogInformation("[Render Complete] Video rendered to: {Path}", outputPath);
 
         progress?.Report("Video generation complete!");
         return new VideoGenerationResult(outputPath, timeline, ConvertToEditableTimeline(timeline), narrationPath, timeline.SubtitlesPath, null);
@@ -1062,7 +1461,8 @@ public class VideoOrchestrator
         string? jobId = null,
         string? correlationId = null,
         bool isQuickDemo = false,
-        IProgress<GenerationProgress>? detailedProgress = null)
+        IProgress<GenerationProgress>? detailedProgress = null,
+        IImageProvider? imageProviderOverride = null)
     {
         var result = await GenerateVideoResultAsync(
             brief,
@@ -1074,7 +1474,8 @@ public class VideoOrchestrator
             jobId,
             correlationId,
             isQuickDemo,
-            detailedProgress).ConfigureAwait(false);
+            detailedProgress,
+            imageProviderOverride).ConfigureAwait(false);
 
         return result.OutputPath;
     }
@@ -1110,7 +1511,7 @@ public class VideoOrchestrator
             {
                 // Skip metadata lines - only add actual narrative content
                 var trimmedLine = line.Trim();
-                if (!LlmScriptCleanup.IsMetadataLine(trimmedLine) && 
+                if (!LlmScriptCleanup.IsMetadataLine(trimmedLine) &&
                     !LlmScriptCleanup.IsLlmMetaCommentary(trimmedLine))
                 {
                     currentScriptLines.Add(line);
@@ -1160,7 +1561,7 @@ public class VideoOrchestrator
         {
             // Apply final cleanup to ensure no metadata remains
             var cleanedScript = LlmScriptCleanup.CleanNarration(scene.Script);
-            
+
             scriptLines.Add(new ScriptLine(
                 SceneIndex: scene.Index,
                 Text: cleanedScript,
@@ -1247,7 +1648,7 @@ public class VideoOrchestrator
         {
             // Combine scene heading and script for semantic matching
             var sceneDescription = $"{scene.Heading}. {scene.Script}";
-            
+
             // Use the tagging service to find matching assets
             var matches = await _assetTaggingService.MatchAssetsToSceneAsync(
                 scene.Heading,
@@ -1302,7 +1703,11 @@ public class VideoOrchestrator
         VoiceSpec voiceSpec,
         RenderSpec renderSpec,
         CancellationToken outerCt,
-        bool isQuickDemo = false)
+        bool isQuickDemo = false,
+        IProgress<string>? progress = null,
+        IProgress<GenerationProgress>? detailedProgress = null,
+        string? correlationId = null,
+        IImageProvider? imageProvider = null)
     {
         var state = new TaskExecutorState();
         // Shared state for task results
@@ -1310,6 +1715,7 @@ public class VideoOrchestrator
         List<Scene>? parsedScenes = null;
         string? narrationPath = null;
         Dictionary<int, IReadOnlyList<Asset>> sceneAssets = new();
+        var resolvedImageProvider = imageProvider ?? _imageProvider;
 
         state.Executor = async (node, ct) =>
         {
@@ -1351,7 +1757,7 @@ public class VideoOrchestrator
                         // For Quick Demo, use safe fallback script instead of failing
                         _logger.LogWarning("Script validation failed for Quick Demo: {Message}. Using safe fallback script.", vex.Message);
 
-                        generatedScript = GenerateSafeFallbackScript(brief.Topic ?? "Welcome to Aura Video Studio", planSpec.TargetDuration);
+                        generatedScript = GenerateSafeFallbackScript(brief, planSpec);
                         // usedFallback = true; // Fallback tracking currently unused
 
                         _logger.LogInformation("Safe fallback script generated: {Length} characters", generatedScript.Length);
@@ -1448,7 +1854,7 @@ public class VideoOrchestrator
 
                 case GenerationTaskType.ImageGeneration:
                     // Generate images for specific scene
-                    if (parsedScenes == null || _imageProvider == null)
+                    if (parsedScenes == null || resolvedImageProvider == null)
                     {
                         // Return empty asset list if no image provider available
                         return Array.Empty<Asset>();
@@ -1474,7 +1880,7 @@ public class VideoOrchestrator
                     var assets = await _retryWrapper.ExecuteWithRetryAsync(
                         async (ctRetry) =>
                         {
-                            var generatedAssets = await _imageProvider.FetchOrGenerateAsync(scene, visualSpec, ctRetry).ConfigureAwait(false);
+                            var generatedAssets = await resolvedImageProvider.FetchOrGenerateAsync(scene, visualSpec, ctRetry).ConfigureAwait(false);
 
                             // Validate image assets
                             var imageValidation = _imageValidator.ValidateImageAssets(generatedAssets, expectedMinCount: 1);
@@ -1521,6 +1927,26 @@ public class VideoOrchestrator
                         throw new InvalidOperationException("Script and audio must be generated before composition");
                     }
 
+                    // Report progress BEFORE starting render - this ensures frontend sees the transition
+                    var renderStartMsg = "Starting video composition and rendering...";
+                    _logger.LogInformation("[Stage Transition] {Message}", renderStartMsg);
+                    progress?.Report(renderStartMsg);
+                    detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(0, renderStartMsg, correlationId: correlationId));
+
+                    // Explicit logging at stage transition (70% mark) - helps diagnose hangs
+                    _logger.LogInformation(
+                        "[Stage Transition] Starting video composition at 70%% mark. " +
+                        "Scenes: {SceneCount}, Assets: {AssetCount}, NarrationPath: {NarrationPath}",
+                        parsedScenes.Count,
+                        sceneAssets.Values.Sum(assets => assets.Count),
+                        narrationPath);
+
+                    // Validate all required inputs exist before starting render
+                    if (!File.Exists(narrationPath))
+                    {
+                        throw new InvalidOperationException($"Narration file not found at: {narrationPath}");
+                    }
+
                     var timeline = new Providers.Timeline(
                         Scenes: parsedScenes,
                         SceneAssets: sceneAssets,
@@ -1530,13 +1956,68 @@ public class VideoOrchestrator
                     );
                     state.Timeline = timeline;
 
+                    // Report timeline creation progress
+                    var timelineCreatedMsg = "Timeline created, preparing FFmpeg render...";
+                    _logger.LogInformation("[Render Prep] {Message}", timelineCreatedMsg);
+                    progress?.Report(timelineCreatedMsg);
+                    detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(10, timelineCreatedMsg, correlationId: correlationId));
+
+                    // Track render progress with explicit logging and report to main progress
+                    var renderStartTime = DateTime.UtcNow;
+                    var lastProgressTime = DateTime.UtcNow;
+                    var lastProgressPercent = 0f;
                     var renderProgress = new Progress<RenderProgress>(p =>
                     {
-                        _logger.LogDebug("Rendering: {Percentage:F1}% - {Stage}", p.Percentage, p.CurrentStage);
+                        var now = DateTime.UtcNow;
+                        var timeSinceLastProgress = now - lastProgressTime;
+
+                        // Log at Information level (not Debug) so progress is visible
+                        _logger.LogInformation(
+                            "[Render Progress] {Percentage:F1}% - Stage: {Stage}, Elapsed: {Elapsed}, Remaining: {Remaining}",
+                            p.Percentage, p.CurrentStage, p.Elapsed, p.Remaining);
+
+                        // Report to main progress reporters so frontend sees updates
+                        var renderProgressMsg = $"Rendering: {p.Percentage:F1}% - {p.CurrentStage}";
+                        progress?.Report(renderProgressMsg);
+                        detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(
+                            p.Percentage,
+                            p.CurrentStage,
+                            elapsed: now - renderStartTime,
+                            remaining: p.Remaining,
+                            correlationId: correlationId));
+
+                        // Detect potential stalls
+                        if (Math.Abs(p.Percentage - lastProgressPercent) < StallProgressThreshold && timeSinceLastProgress.TotalSeconds > StallTimeoutSeconds)
+                        {
+                            _logger.LogWarning(
+                                "[Render Stall Warning] No progress change detected for {Seconds:F0} seconds at {Percentage:F1}%",
+                                timeSinceLastProgress.TotalSeconds, p.Percentage);
+                        }
+                        else if (Math.Abs(p.Percentage - lastProgressPercent) >= StallProgressThreshold)
+                        {
+                            lastProgressTime = now;
+                            lastProgressPercent = p.Percentage;
+                        }
                     });
 
+                    _logger.LogInformation("[Render Start] Beginning FFmpeg render operation");
+                    progress?.Report("Executing FFmpeg render...");
+
                     var outputPath = await _videoComposer.RenderAsync(timeline, renderSpec, renderProgress, ct).ConfigureAwait(false);
-                    _logger.LogInformation("Video rendered to: {Path}", outputPath);
+
+                    _logger.LogInformation("[Render Complete] Video rendered successfully to: {Path}", outputPath);
+                    progress?.Report("Video rendering complete");
+                    detailedProgress?.Report(ProgressBuilder.CreateRenderProgress(100, "Video rendering complete", correlationId: correlationId));
+
+                    // Store final video path in state for reliable fallback extraction
+                    state.FinalVideoPath = outputPath;
+
+                    // CRITICAL FIX: Log the output path being returned to ensure it's captured
+                    // The return value should automatically be stored in TaskResults["composition"]
+                    _logger.LogInformation(
+                        "[Composition Complete] Output path: {Path}, Exists: {Exists}, Length: {Length} bytes",
+                        outputPath, File.Exists(outputPath), File.Exists(outputPath) ? new FileInfo(outputPath).Length : 0);
+
                     return outputPath;
 
                 default:
@@ -1552,35 +2033,41 @@ public class VideoOrchestrator
         public Func<GenerationNode, CancellationToken, Task<object>> Executor { get; set; } = default!;
         public Providers.Timeline? Timeline { get; set; }
         public string? NarrationPath { get; set; }
+        public string? FinalVideoPath { get; set; }
     }
 
     /// <summary>
-    /// Generates a minimal, safe fallback script for Quick Demo when LLM generation fails.
-    /// Creates 2-3 short scenes with simple narration that doesn't rely on image providers.
+    /// Generates a topic-aware fallback script for Quick Demo when LLM generation fails.
+    /// Uses the TopicAwareFallbackGenerator to create contextually appropriate content
+    /// based on the topic category (technology, business, education, health, or default).
     /// </summary>
-    private string GenerateSafeFallbackScript(string topic, TimeSpan targetDuration)
+    private string GenerateSafeFallbackScript(Brief brief, PlanSpec planSpec)
     {
-        _logger.LogInformation("Generating safe fallback script for topic: {Topic}, duration: {Duration}s",
-            topic, targetDuration.TotalSeconds);
+        var topic = brief.Topic ?? "Welcome to Aura Video Studio";
+        _logger.LogInformation("Generating topic-aware fallback script for topic: {Topic}, duration: {Duration}s",
+            topic, planSpec.TargetDuration.TotalSeconds);
 
-        // Sanitize topic to prevent script injection - remove any markdown/special characters
-        var safeTopic = System.Text.RegularExpressions.Regex.Replace(topic, @"[#*_\[\]<>]", "");
-        safeTopic = safeTopic.Trim();
-        if (string.IsNullOrWhiteSpace(safeTopic))
-        {
-            safeTopic = "Aura Video Studio";
-        }
-
-        // Create a simple 2-scene script that's always valid
-        var script = $@"## Introduction
-
-Welcome to {safeTopic}. This is a demonstration video created with Aura Video Studio.
-
-## Overview
-
-Aura Video Studio helps you create professional videos quickly and easily. Thank you for trying our Quick Demo feature.";
+        var script = _fallbackGenerator.GenerateFallbackScript(
+            topic: topic,
+            goal: brief.Goal,
+            audience: brief.Audience,
+            targetDuration: planSpec.TargetDuration,
+            sceneCount: EstimateSceneCount(planSpec.TargetDuration));
 
         return script;
+    }
+
+    /// <summary>
+    /// Estimates an appropriate scene count based on target duration.
+    /// Uses approximately 30 seconds per scene as a baseline.
+    /// </summary>
+    private static int EstimateSceneCount(TimeSpan duration)
+    {
+        if (duration == default || duration.TotalSeconds < 30)
+            return 3;
+
+        var estimated = (int)(duration.TotalSeconds / 30);
+        return Math.Max(3, Math.Min(estimated, 8));
     }
 
     /// <summary>
@@ -1593,8 +2080,11 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
         string? correlationId)
     {
         var currentStage = orchestrationProgress.CurrentStage.ToLowerInvariant();
-        
+
         // Map stage name to GenerationProgress stage format
+        // Note: Order matters! More specific checks must come before generic ones.
+        // The "batch" check must come before "completed/complete" to avoid
+        // incorrectly mapping "Batch completed (6/8 tasks done)" to PostProcess.
         var stage = currentStage switch
         {
             var s when s.Contains("starting") || s.Contains("analyzing") || s.Contains("task graph") => "Brief",
@@ -1602,15 +2092,20 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
             var s when s.Contains("audio") || s.Contains("tts") || s.Contains("narration") => "TTS",
             var s when s.Contains("image") || s.Contains("visual") || s.Contains("asset") => "Images",
             var s when s.Contains("render") || s.Contains("compose") || s.Contains("composition") => "Rendering",
-            var s when s.Contains("post") || s.Contains("completed") || s.Contains("complete") => "PostProcess",
-            var s when s.Contains("batch") => DetermineStageFromProgress(orchestrationProgress.ProgressPercentage),
+            // Check batch BEFORE completed/complete to handle "Batch completed (X/Y tasks done)"
+            var s when s.Contains("batch") => DetermineStageFromBatchProgress(s, currentItem, totalItems, orchestrationProgress.ProgressPercentage),
+            // Only transition to PostProcess when explicitly post-processing or truly complete
+            var s when s.Contains("post") => "PostProcess",
+            // "completed" or "complete" without "batch" - check if all tasks are done
+            var s when (s.Contains("completed") || s.Contains("complete")) && totalItems > 0 && currentItem >= totalItems => "PostProcess",
+            var s when s.Contains("completed") || s.Contains("complete") => DetermineStageFromProgress(orchestrationProgress.ProgressPercentage),
             _ => "Processing"
         };
 
         // Calculate stage-specific percent based on completed/total tasks
         double stagePercent;
         double overallPercent;
-        
+
         if (totalItems > 0)
         {
             // Use task completion ratio for progress
@@ -1650,5 +2145,34 @@ Aura Video Studio helps you create professional videos quickly and easily. Thank
             < 95 => "Rendering",
             _ => "PostProcess"
         };
+    }
+
+    /// <summary>
+    /// Determines stage from batch progress message.
+    /// Only transitions to PostProcess when ALL batch tasks are complete.
+    /// </summary>
+    /// <param name="stageMessage">The original stage message (currently unused, reserved for future parsing)</param>
+    /// <param name="currentItem">Number of completed tasks</param>
+    /// <param name="totalItems">Total number of tasks</param>
+    /// <param name="progressPercent">Overall progress percentage</param>
+    /// <returns>The appropriate stage name</returns>
+    private static string DetermineStageFromBatchProgress(
+        string stageMessage,
+        int currentItem,
+        int totalItems,
+        double progressPercent)
+    {
+        // stageMessage is kept for potential future use (e.g., extracting task type from message)
+        _ = stageMessage;
+
+        // If we have valid task counts and all tasks are complete, allow PostProcess
+        if (totalItems > 0 && currentItem >= totalItems)
+        {
+            return "PostProcess";
+        }
+
+        // Otherwise, determine stage based on progress percentage
+        // This prevents premature transition to PostProcess when batch tasks are incomplete
+        return DetermineStageFromProgress(progressPercent);
     }
 }

@@ -52,6 +52,7 @@ import type {
 } from '../types';
 import type { BatchGenerateProgress, VisualProvider } from '@/api/visualsClient';
 import { VisualsClient, getVisualsClient } from '@/api/visualsClient';
+import { GenerationCostEstimate } from '@/components/CostTracking/GenerationCostEstimate';
 import apiClient from '@/services/api/apiClient';
 import { ttsService, type TtsProvider, type TtsVoice } from '@/services/ttsService';
 
@@ -273,7 +274,8 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
   const [currentStage, setCurrentStage] = useState('');
   const [regeneratingScene, setRegeneratingScene] = useState<string | null>(null);
   const [providers, setProviders] = useState<VisualProvider[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  // Initialize selectedProvider with styleData.imageProvider if available (from Step 2 - StyleSelection)
+  const [selectedProvider, setSelectedProvider] = useState<string>(styleData.imageProvider || '');
   const [imageStyle, setImageStyle] = useState<string>(styleData.imageStyle || 'photorealistic');
   const [imageQuality, setImageQuality] = useState<number>(styleData.imageQuality || 80);
   const [aspectRatio, setAspectRatio] = useState<string>(styleData.imageAspectRatio || '16:9');
@@ -307,6 +309,21 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
   // Use ref to track if providers have been selected to avoid stale closure issues
   const hasSelectedProviderRef = useRef(false);
+
+  // Sync selectedProvider when styleData.imageProvider changes (e.g., user goes back to StyleSelection and changes provider)
+  const prevImageProviderRef = useRef(styleData.imageProvider);
+  useEffect(() => {
+    // Only sync if styleData.imageProvider has changed from its previous value
+    if (styleData.imageProvider && styleData.imageProvider !== prevImageProviderRef.current) {
+      console.info(
+        '[PreviewGeneration] Syncing image provider from style data:',
+        styleData.imageProvider
+      );
+      setSelectedProvider(styleData.imageProvider);
+      hasSelectedProviderRef.current = true;
+      prevImageProviderRef.current = styleData.imageProvider;
+    }
+  }, [styleData.imageProvider]);
 
   // Validate script data before proceeding
   const hasValidScriptData = useMemo(() => {
@@ -375,7 +392,49 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
 
       // Only set provider if one hasn't been selected yet
       if (!hasSelectedProviderRef.current) {
-        // Prefer non-placeholder providers, but always fall back to Placeholder if needed
+        // Priority 1: Use styleData.imageProvider if set (from Step 2) and available
+        if (styleData.imageProvider && styleData.imageProvider !== 'Placeholder') {
+          // Check for exact match first
+          let providerFromStyle = response.providers.find(
+            (p) => p.name.toLowerCase() === styleData.imageProvider?.toLowerCase() && p.isAvailable
+          );
+
+          // Special handling for "Stock" - map to any available stock provider
+          // Stock is a meta-category that includes Pexels, Unsplash, etc.
+          if (!providerFromStyle && styleData.imageProvider.toLowerCase() === 'stock') {
+            // Look for Stock meta-provider (preferred) or individual stock providers
+            // Note: This list matches the stock providers registered in VisualsController.cs
+            // If new stock providers are added, update both locations
+            const stockProviderNames = ['stock', 'pexels', 'unsplash'];
+            providerFromStyle = response.providers.find(
+              (p) => stockProviderNames.includes(p.name.toLowerCase()) && p.isAvailable
+            );
+
+            if (providerFromStyle) {
+              console.info(
+                '[PreviewGeneration] Mapped "Stock" selection to available provider:',
+                providerFromStyle.name
+              );
+            }
+          }
+
+          if (providerFromStyle) {
+            setSelectedProvider(providerFromStyle.name);
+            hasSelectedProviderRef.current = true;
+            console.info(
+              '[PreviewGeneration] Using image provider from style data:',
+              providerFromStyle.name
+            );
+            return;
+          } else {
+            console.info(
+              '[PreviewGeneration] Style data provider not available:',
+              styleData.imageProvider
+            );
+          }
+        }
+
+        // Priority 2: Find first available non-placeholder provider
         const availableProvider = response.providers.find(
           (p) => p.isAvailable && p.name !== 'Placeholder'
         );
@@ -386,6 +445,10 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
         if (availableProvider) {
           setSelectedProvider(availableProvider.name);
           hasSelectedProviderRef.current = true;
+          console.info(
+            '[PreviewGeneration] Using first available provider:',
+            availableProvider.name
+          );
         } else if (placeholderProvider) {
           // Placeholder is always available as guaranteed fallback
           setSelectedProvider('Placeholder');
@@ -427,7 +490,7 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     } finally {
       setIsLoadingProviders(false);
     }
-  }, [visualsClient]);
+  }, [visualsClient, styleData.imageProvider]);
 
   // Load styles callback
   const loadStyles = useCallback(async () => {
@@ -1505,70 +1568,116 @@ export const PreviewGeneration: FC<PreviewGenerationProps> = ({
     </Card>
   );
 
-  const renderGenerationView = () => (
-    <div className={styles.container}>
-      {renderProviderSettings()}
+  const renderGenerationView = () => {
+    // Calculate estimated script length from scenes
+    const estimatedScriptLength = scriptData.scenes.reduce(
+      (total, scene) => total + scene.text.length,
+      0
+    );
 
-      <div className={styles.generationCard}>
-        <Title3>Generate Scene Previews</Title3>
-        <Text>
-          Create preview thumbnails and audio samples for each scene to review before final
-          generation.
-        </Text>
+    // Get current LLM provider info from script metadata if available
+    // Use type guard to safely access extended metadata property
+    const getScriptMetadata = (): { providerName?: string; modelName?: string } | undefined => {
+      if (
+        scriptData &&
+        typeof scriptData === 'object' &&
+        'metadata' in scriptData &&
+        scriptData.metadata &&
+        typeof scriptData.metadata === 'object'
+      ) {
+        const meta = scriptData.metadata as Record<string, unknown>;
+        return {
+          providerName: typeof meta.providerName === 'string' ? meta.providerName : undefined,
+          modelName: typeof meta.modelName === 'string' ? meta.modelName : undefined,
+        };
+      }
+      return undefined;
+    };
+    const scriptMetadata = getScriptMetadata();
+    const llmProvider = scriptMetadata?.providerName || 'Ollama';
+    const llmModel = scriptMetadata?.modelName || 'default';
 
-        <div className={styles.statsRow}>
-          <div className={styles.statItem}>
-            <Image24Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
-            <Text weight="semibold">{scriptData.scenes.length}</Text>
-            <Text size={200}>Scenes</Text>
-          </div>
-          <div className={styles.statItem}>
-            <Speaker224Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
-            <Text weight="semibold">
-              {selectedTtsProvider || styleData.voiceProvider || 'Not selected'}
-            </Text>
-            <Text size={200}>TTS Provider</Text>
-            {selectedTtsVoice && (
-              <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-                Voice: {selectedTtsVoice}
-              </Text>
-            )}
-          </div>
-          {selectedProvider && (
+    return (
+      <div className={styles.container}>
+        {renderProviderSettings()}
+
+        <div className={styles.generationCard}>
+          <Title3>Generate Scene Previews</Title3>
+          <Text>
+            Create preview thumbnails and audio samples for each scene to review before final
+            generation.
+          </Text>
+
+          <div className={styles.statsRow}>
             <div className={styles.statItem}>
               <Image24Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
-              <Text weight="semibold">{selectedProvider}</Text>
-              <Text size={200}>Image Provider</Text>
+              <Text weight="semibold">{scriptData.scenes.length}</Text>
+              <Text size={200}>Scenes</Text>
+            </div>
+            <div className={styles.statItem}>
+              <Speaker224Regular
+                style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }}
+              />
+              <Text weight="semibold">
+                {selectedTtsProvider || styleData.voiceProvider || 'Not selected'}
+              </Text>
+              <Text size={200}>TTS Provider</Text>
+              {selectedTtsVoice && (
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  Voice: {selectedTtsVoice}
+                </Text>
+              )}
+            </div>
+            {selectedProvider && (
+              <div className={styles.statItem}>
+                <Image24Regular style={{ fontSize: '32px', color: tokens.colorBrandForeground1 }} />
+                <Text weight="semibold">{selectedProvider}</Text>
+                <Text size={200}>Image Provider</Text>
+              </div>
+            )}
+          </div>
+
+          {/* Cost Estimation Section */}
+          {estimatedScriptLength > 0 && (selectedTtsProvider || styleData.voiceProvider) && (
+            <div style={{ width: '100%', maxWidth: '500px', marginTop: tokens.spacingVerticalL }}>
+              <GenerationCostEstimate
+                estimatedScriptLength={estimatedScriptLength}
+                sceneCount={scriptData.scenes.length}
+                llmProvider={llmProvider}
+                llmModel={llmModel}
+                ttsProvider={selectedTtsProvider || styleData.voiceProvider || 'Windows'}
+                imageProvider={selectedProvider || 'Placeholder'}
+              />
             </div>
           )}
-        </div>
 
-        <Button
-          appearance="primary"
-          size="large"
-          onClick={generatePreviews}
-          disabled={!selectedProvider && providers.length === 0}
-        >
-          Generate Previews
-        </Button>
-
-        {!selectedProvider && providers.length > 0 && (
-          <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
-            Please select an image provider
-          </Text>
-        )}
-
-        {selectedProvider === 'Placeholder' && (
-          <Text
-            size={200}
-            style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalS }}
+          <Button
+            appearance="primary"
+            size="large"
+            onClick={generatePreviews}
+            disabled={!selectedProvider && providers.length === 0}
           >
-            Using Placeholder provider - will generate solid color images for preview
-          </Text>
-        )}
+            Generate Previews
+          </Button>
+
+          {!selectedProvider && providers.length > 0 && (
+            <Text size={200} style={{ color: tokens.colorPaletteRedForeground1 }}>
+              Please select an image provider
+            </Text>
+          )}
+
+          {selectedProvider === 'Placeholder' && (
+            <Text
+              size={200}
+              style={{ color: tokens.colorNeutralForeground3, marginTop: tokens.spacingVerticalS }}
+            >
+              Using Placeholder provider - will generate solid color images for preview
+            </Text>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderGeneratingView = () => (
     <div className={styles.generationCard}>

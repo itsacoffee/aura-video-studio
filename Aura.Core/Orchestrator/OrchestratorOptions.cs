@@ -63,6 +63,33 @@ public class OrchestratorOptions
     public TimeSpan PipelineTimeout { get; set; } = TimeSpan.FromHours(1);
 
     /// <summary>
+    /// Timeout for individual task execution within a batch.
+    /// This prevents single tasks from hanging indefinitely.
+    /// </summary>
+    public TimeSpan TaskTimeout { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Timeout for entire batch execution.
+    /// </summary>
+    public TimeSpan BatchTimeout { get; set; } = TimeSpan.FromMinutes(15);
+
+    /// <summary>
+    /// Threshold in seconds after which a task is considered stuck if no progress is made.
+    /// Used by the task-level watchdog for stuck detection.
+    /// </summary>
+    public int StuckDetectionThresholdSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Enable automatic task recovery when tasks are detected as stuck.
+    /// </summary>
+    public bool EnableTaskRecovery { get; set; } = true;
+
+    /// <summary>
+    /// Maximum number of retry attempts for stuck or failed tasks.
+    /// </summary>
+    public int MaxTaskRetries { get; set; } = 2;
+
+    /// <summary>
     /// Enable automatic cleanup of temporary files
     /// </summary>
     public bool EnableAutoCleanup { get; set; } = true;
@@ -130,6 +157,21 @@ public class OrchestratorOptions
 
         if (CheckpointFrequency < 1)
             throw new ArgumentException("CheckpointFrequency must be at least 1", nameof(CheckpointFrequency));
+
+        if (TaskTimeout <= TimeSpan.Zero)
+            throw new ArgumentException("TaskTimeout must be positive", nameof(TaskTimeout));
+
+        if (BatchTimeout <= TimeSpan.Zero)
+            throw new ArgumentException("BatchTimeout must be positive", nameof(BatchTimeout));
+
+        if (TaskTimeout > BatchTimeout)
+            throw new ArgumentException("TaskTimeout cannot exceed BatchTimeout");
+
+        if (StuckDetectionThresholdSeconds <= 0)
+            throw new ArgumentException("StuckDetectionThresholdSeconds must be positive", nameof(StuckDetectionThresholdSeconds));
+
+        if (MaxTaskRetries < 0)
+            throw new ArgumentException("MaxTaskRetries must be non-negative", nameof(MaxTaskRetries));
     }
 
     /// <summary>
@@ -150,7 +192,10 @@ public class OrchestratorOptions
             EnableDetailedLogging = true,
             RetainIntermediateArtifacts = true,
             StageTimeout = TimeSpan.FromMinutes(30),
-            PipelineTimeout = TimeSpan.FromHours(2)
+            PipelineTimeout = TimeSpan.FromHours(2),
+            TaskTimeout = TimeSpan.FromMinutes(15),
+            BatchTimeout = TimeSpan.FromMinutes(45),
+            StuckDetectionThresholdSeconds = 120
         };
     }
 
@@ -166,9 +211,14 @@ public class OrchestratorOptions
             MaxRetryAttempts = 1,
             StageTimeout = TimeSpan.FromMinutes(2),
             PipelineTimeout = TimeSpan.FromMinutes(10),
+            TaskTimeout = TimeSpan.FromMinutes(2),
+            BatchTimeout = TimeSpan.FromMinutes(5),
+            StuckDetectionThresholdSeconds = 30,
             EnableAutoCleanup = true,
             RetainIntermediateArtifacts = false,
-            EnableFallbackMode = true
+            EnableFallbackMode = true,
+            EnableTaskRecovery = true,
+            MaxTaskRetries = 1
         };
     }
 }

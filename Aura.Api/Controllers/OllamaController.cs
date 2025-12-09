@@ -21,19 +21,22 @@ public class OllamaController : ControllerBase
     private readonly HttpClient _httpClient;
     private readonly OllamaDetectionService? _detectionService;
     private readonly IGpuDetectionService? _gpuDetectionService;
+    private readonly OllamaHealthCheckService? _ollamaHealthService;
 
     public OllamaController(
         OllamaService ollamaService,
         ProviderSettings settings,
         IHttpClientFactory httpClientFactory,
         OllamaDetectionService? detectionService = null,
-        IGpuDetectionService? gpuDetectionService = null)
+        IGpuDetectionService? gpuDetectionService = null,
+        OllamaHealthCheckService? ollamaHealthService = null)
     {
         _ollamaService = ollamaService;
         _settings = settings;
         _httpClient = httpClientFactory.CreateClient();
         _detectionService = detectionService;
         _gpuDetectionService = gpuDetectionService;
+        _ollamaHealthService = ollamaHealthService;
     }
 
     /// <summary>
@@ -86,6 +89,117 @@ public class OllamaController : ControllerBase
             Log.Error(ex, "Error checking Ollama status, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
             return Problem(
                 title: "Error checking Ollama status",
+                detail: ex.Message,
+                statusCode: 500,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+    }
+
+    /// <summary>
+    /// Perform a comprehensive health check on Ollama service
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Detailed health status including version and available models</returns>
+    [HttpGet("health")]
+    [ProducesResponseType(typeof(OllamaHealthStatus), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> CheckHealth(CancellationToken ct = default)
+    {
+        if (_ollamaHealthService == null)
+        {
+            return Problem(
+                title: "Health service not available",
+                detail: "Ollama health check service is not configured",
+                statusCode: 503,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+
+        try
+        {
+            var status = await _ollamaHealthService.CheckHealthAsync(ct).ConfigureAwait(false);
+            
+            Log.Information(
+                "Ollama health check: IsHealthy={IsHealthy}, Version={Version}, Models={ModelCount}, CorrelationId={CorrelationId}",
+                status.IsHealthy, status.Version, status.AvailableModels.Count, HttpContext.TraceIdentifier);
+
+            return Ok(status);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error performing Ollama health check, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Error performing health check",
+                detail: ex.Message,
+                statusCode: 500,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+    }
+
+    /// <summary>
+    /// Wait for Ollama to become available with configurable retry logic
+    /// </summary>
+    /// <param name="maxRetries">Maximum number of retry attempts (default: 10)</param>
+    /// <param name="retryDelayMs">Delay between retries in milliseconds (default: 2000)</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Health status if available, or 503 if Ollama did not become available</returns>
+    [HttpPost("wait")]
+    [ProducesResponseType(typeof(OllamaHealthStatus), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(OllamaHealthStatus), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> WaitForOllama(
+        [FromQuery] int maxRetries = 10,
+        [FromQuery] int retryDelayMs = 2000,
+        CancellationToken ct = default)
+    {
+        if (_ollamaHealthService == null)
+        {
+            return Problem(
+                title: "Health service not available",
+                detail: "Ollama health check service is not configured",
+                statusCode: 503,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+
+        try
+        {
+            Log.Information(
+                "Waiting for Ollama with maxRetries={MaxRetries}, retryDelayMs={RetryDelayMs}, CorrelationId={CorrelationId}",
+                maxRetries, retryDelayMs, HttpContext.TraceIdentifier);
+
+            var available = await _ollamaHealthService.WaitForOllamaAsync(maxRetries, retryDelayMs, ct).ConfigureAwait(false);
+            var status = await _ollamaHealthService.CheckHealthAsync(ct).ConfigureAwait(false);
+
+            if (available)
+            {
+                Log.Information(
+                    "Ollama is now available: Version={Version}, Models={ModelCount}, CorrelationId={CorrelationId}",
+                    status.Version, status.AvailableModels.Count, HttpContext.TraceIdentifier);
+                return Ok(status);
+            }
+
+            Log.Warning(
+                "Ollama did not become available after {MaxRetries} attempts, CorrelationId={CorrelationId}",
+                maxRetries, HttpContext.TraceIdentifier);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, status);
+        }
+        catch (OperationCanceledException)
+        {
+            Log.Warning("Wait for Ollama was cancelled, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Operation cancelled",
+                detail: "Wait for Ollama was cancelled",
+                statusCode: 499,
+                instance: HttpContext.TraceIdentifier
+            );
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error waiting for Ollama, CorrelationId={CorrelationId}", HttpContext.TraceIdentifier);
+            return Problem(
+                title: "Error waiting for Ollama",
                 detail: ex.Message,
                 statusCode: 500,
                 instance: HttpContext.TraceIdentifier
@@ -435,6 +549,108 @@ public class OllamaController : ControllerBase
                 modelName, HttpContext.TraceIdentifier);
             return Problem($"Error pulling model {modelName}", statusCode: 500);
         }
+    }
+
+    /// <summary>
+    /// Delete a model from local storage
+    /// </summary>
+    [HttpDelete("models/{modelName}")]
+    public async Task<IActionResult> DeleteModel(string modelName, CancellationToken ct)
+    {
+        try
+        {
+            Log.Information("Deleting Ollama model: {ModelName}, CorrelationId={CorrelationId}",
+                modelName, HttpContext.TraceIdentifier);
+
+            var baseUrl = _settings.GetOllamaUrl();
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
+
+            var requestBody = new { name = modelName };
+            var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"{baseUrl}/api/delete")
+            {
+                Content = content
+            };
+
+            var response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("Model {ModelName} deleted successfully, CorrelationId={CorrelationId}",
+                    modelName, HttpContext.TraceIdentifier);
+
+                return Ok(new {
+                    message = $"Model '{modelName}' deleted successfully",
+                    modelName,
+                    success = true
+                });
+            }
+
+            var error = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            Log.Warning("Failed to delete model {ModelName}: {Error}, CorrelationId={CorrelationId}",
+                modelName, error, HttpContext.TraceIdentifier);
+
+            return BadRequest(new {
+                message = $"Failed to delete model: {error}",
+                modelName,
+                success = false
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error deleting Ollama model: {ModelName}, CorrelationId={CorrelationId}",
+                modelName, HttpContext.TraceIdentifier);
+            return Problem($"Error deleting model {modelName}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Get recommended models for video script generation
+    /// </summary>
+    [HttpGet("models/recommended")]
+    public IActionResult GetRecommendedModels()
+    {
+        var models = new[]
+        {
+            new {
+                name = "llama3.2:3b",
+                displayName = "Llama 3.2 (3B)",
+                description = "Fast and efficient. Best for systems with limited resources.",
+                size = "2.0 GB",
+                sizeBytes = 2L * 1024 * 1024 * 1024,
+                isRecommended = true
+            },
+            new {
+                name = "llama3.1:8b",
+                displayName = "Llama 3.1 (8B)",
+                description = "Balanced performance and quality. Recommended for most users.",
+                size = "4.7 GB",
+                sizeBytes = (long)(4.7 * 1024 * 1024 * 1024),
+                isRecommended = true
+            },
+            new {
+                name = "mistral:7b",
+                displayName = "Mistral (7B)",
+                description = "Excellent for creative writing and script generation.",
+                size = "4.1 GB",
+                sizeBytes = (long)(4.1 * 1024 * 1024 * 1024),
+                isRecommended = true
+            },
+            new {
+                name = "llama3.1:70b",
+                displayName = "Llama 3.1 (70B)",
+                description = "Highest quality, requires powerful hardware (32GB+ RAM).",
+                size = "40 GB",
+                sizeBytes = 40L * 1024 * 1024 * 1024,
+                isRecommended = false
+            }
+        };
+
+        return Ok(new { models });
     }
 
     private static string FormatSize(long bytes)

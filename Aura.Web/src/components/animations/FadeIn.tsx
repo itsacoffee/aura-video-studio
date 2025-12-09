@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ReactNode } from 'react';
-import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { useAnimationsDisabled } from '../../hooks/useAnimationsDisabled';
 import { fadeVariants } from '../../utils/animations';
 
 interface FadeInProps {
@@ -12,12 +12,12 @@ interface FadeInProps {
 
 /**
  * Simple fade-in animation component
- * Useful for quick animations without needing to configure variants
+ * Respects system reduced motion preferences via CSS variables
  */
 export function FadeIn({ children, className, delay = 0, duration = 0.25 }: FadeInProps) {
-  const prefersReducedMotion = useReducedMotion();
+  const animationsDisabled = useAnimationsDisabled();
 
-  if (prefersReducedMotion) {
+  if (animationsDisabled) {
     return <div className={className}>{children}</div>;
   }
 

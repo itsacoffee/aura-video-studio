@@ -85,6 +85,32 @@ public record RagContext
     public string FormattedContext { get; init; } = string.Empty;
     public List<Citation> Citations { get; init; } = new();
     public int TotalTokens { get; init; }
+
+    /// <summary>
+    /// Status indicating why RAG context may be empty or limited
+    /// </summary>
+    public RagContextStatus Status { get; init; } = RagContextStatus.Success;
+
+    /// <summary>
+    /// Whether this context contains meaningful information for the LLM
+    /// </summary>
+    public bool HasMeaningfulContext =>
+        Status == RagContextStatus.Success && Chunks != null && Chunks.Count > 0;
+
+    /// <summary>
+    /// Create an empty context with a specific status
+    /// </summary>
+    public static RagContext Empty(string query, RagContextStatus status)
+    {
+        return new RagContext
+        {
+            Query = query,
+            Status = status,
+            Chunks = new List<ContextChunk>(),
+            FormattedContext = string.Empty,
+            TotalTokens = 0
+        };
+    }
 }
 
 /// <summary>

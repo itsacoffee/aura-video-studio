@@ -27,6 +27,13 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
     private readonly Dictionary<string, ILlmProvider> _providers;
     private readonly ProviderMixer _providerMixer;
     private readonly ProviderSettings? _providerSettings;
+    
+    /// <summary>
+    /// Tracks if the current operation is a translation request.
+    /// Used to prevent RuleBased provider from being used for translation.
+    /// ThreadLocal ensures thread safety for concurrent operations.
+    /// </summary>
+    private readonly ThreadLocal<bool> _isTranslationOperation = new(() => false);
 
     public LlmStageAdapter(
         ILogger<LlmStageAdapter> logger,
@@ -134,6 +141,62 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
             result.ProviderUsed);
     }
 
+    /// <summary>
+    /// Generate chat completion using orchestrated LLM call.
+    /// This is the unified path for ideation, translation, and other chat-based LLM operations.
+    /// Routes through the same orchestration as script generation for consistent provider selection,
+    /// fallback logic, timeout configuration, and model override handling.
+    /// </summary>
+    public async Task<OrchestrationResult<string>> GenerateChatCompletionAsync(
+        string systemPrompt,
+        string userPrompt,
+        string preferredTier,
+        bool offlineOnly,
+        LlmParameters? llmParameters = null,
+        CancellationToken ct = default)
+    {
+        // Detect if this is a translation operation based on system prompt
+        // This is used to prevent RuleBased provider from being used for translation
+        _isTranslationOperation.Value = systemPrompt.Contains("translator", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("translation", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("source language", StringComparison.OrdinalIgnoreCase) ||
+                                        systemPrompt.Contains("target language", StringComparison.OrdinalIgnoreCase);
+
+        var request = new LlmStageRequest
+        {
+            StageType = LlmStageType.ChatCompletion,
+            SystemPrompt = systemPrompt,
+            UserPrompt = userPrompt,
+            LlmParameters = llmParameters
+        };
+
+        var config = new OrchestrationConfig
+        {
+            PreferredTier = preferredTier,
+            OfflineOnly = offlineOnly,
+            EnableCache = true,
+            ValidateSchema = false
+        };
+
+        var result = await ExecuteAsync(request, config, ct).ConfigureAwait(false);
+
+        if (!result.IsSuccess || result.Data == null)
+        {
+            return OrchestrationResult<string>.Failure(
+                result.OperationId,
+                result.ElapsedMs,
+                result.ErrorMessage ?? "Chat completion failed");
+        }
+
+        return OrchestrationResult<string>.Success(
+            result.Data.Content,
+            result.OperationId,
+            result.ElapsedMs,
+            result.WasCached,
+            result.ProviderUsed);
+    }
+
     protected override string GetStageName() => "LLM";
 
     protected override async Task<ProviderInfo[]> GetProvidersAsync(
@@ -151,33 +214,56 @@ public class LlmStageAdapter : UnifiedGenerationOrchestrator<LlmStageRequest, Ll
         var decision = _providerMixer.ResolveLlm(_providers, preferredTier, offlineOnly, preferredProvider);
         _providerMixer.LogDecision(decision);
 
-        if (decision.ProviderName == "None")
-        {
-            return Array.Empty<ProviderInfo>();
-        }
-
         var providerInfos = new List<ProviderInfo>();
-        
-        foreach (var providerName in decision.DowngradeChain)
+
+        // If decision is "None", skip to fallback logic
+        if (decision.ProviderName != "None")
         {
-            if (_providers.TryGetValue(providerName, out var provider))
+            foreach (var providerName in decision.DowngradeChain)
             {
-                providerInfos.Add(new ProviderInfo(
-                    providerName,
-                    "default",
-                    providerInfos.Count,
-                    provider));
+                if (_providers.TryGetValue(providerName, out var provider))
+                {
+                    providerInfos.Add(new ProviderInfo(
+                        providerName,
+                        "default",
+                        providerInfos.Count,
+                        provider));
+                }
             }
         }
 
-        if (providerInfos.Count == 0 && _providers.TryGetValue("RuleBased", out var value))
+        // Only add RuleBased fallback for non-translation operations
+        // RuleBased provider cannot perform translations - it requires an actual LLM
+        if (providerInfos.Count == 0)
         {
-            providerInfos.Add(new ProviderInfo(
-                "RuleBased",
-                "default",
-                0,
-value));
+            if (_isTranslationOperation.Value)
+            {
+                Logger.LogError(
+                    "No LLM providers available for translation. " +
+                    "Translation requires Ollama or another LLM provider. " +
+                    "Please ensure Ollama is running: ollama serve");
+                
+                // Reset the flag before throwing
+                _isTranslationOperation.Value = false;
+                
+                throw new InvalidOperationException(
+                    "Translation requires an LLM provider (Ollama). " +
+                    "RuleBased provider cannot perform translations. " +
+                    "Please ensure Ollama is running and configured.");
+            }
+            else if (_providers.TryGetValue("RuleBased", out var ruleBasedProvider))
+            {
+                Logger.LogInformation("No providers available from ProviderMixer decision, falling back to RuleBased provider");
+                providerInfos.Add(new ProviderInfo(
+                    "RuleBased",
+                    "default",
+                    0,
+                    ruleBasedProvider));
+            }
         }
+
+        // Reset the flag after use
+        _isTranslationOperation.Value = false;
 
         return providerInfos.ToArray();
     }
@@ -226,6 +312,18 @@ value));
                 content = await llmProvider.CompleteAsync(request.Prompt, ct).ConfigureAwait(false);
                 break;
 
+            case LlmStageType.ChatCompletion:
+                if (request.SystemPrompt == null || request.UserPrompt == null)
+                {
+                    throw new InvalidOperationException("SystemPrompt and UserPrompt required for chat completion");
+                }
+                content = await llmProvider.GenerateChatCompletionAsync(
+                    request.SystemPrompt,
+                    request.UserPrompt,
+                    request.LlmParameters,
+                    ct).ConfigureAwait(false);
+                break;
+
             default:
                 throw new NotSupportedException($"Stage type {request.StageType} not supported");
         }
@@ -252,6 +350,7 @@ value));
             LlmStageType.ScriptGeneration => $"script:{request.Brief?.Topic}:{request.Brief?.Tone}:{request.PlanSpec?.TargetDuration}",
             LlmStageType.VisualPrompt => $"visual:{request.SceneText}:{request.VideoTone}:{request.TargetStyle}",
             LlmStageType.RawCompletion => $"completion:{request.Prompt}",
+            LlmStageType.ChatCompletion => $"chat:{request.SystemPrompt}:{request.UserPrompt}",
             _ => null
         };
 
@@ -281,6 +380,21 @@ public record LlmStageRequest
     public VisualStyle? TargetStyle { get; init; }
     
     public string? Prompt { get; init; }
+    
+    /// <summary>
+    /// System prompt for ChatCompletion stage type
+    /// </summary>
+    public string? SystemPrompt { get; init; }
+    
+    /// <summary>
+    /// User prompt for ChatCompletion stage type
+    /// </summary>
+    public string? UserPrompt { get; init; }
+    
+    /// <summary>
+    /// Optional LLM parameters for customizing generation
+    /// </summary>
+    public LlmParameters? LlmParameters { get; init; }
 }
 
 /// <summary>
@@ -300,5 +414,6 @@ public enum LlmStageType
 {
     ScriptGeneration,
     VisualPrompt,
-    RawCompletion
+    RawCompletion,
+    ChatCompletion
 }

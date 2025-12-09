@@ -3,18 +3,19 @@
  * Provides methods for script translation, cultural adaptation, and glossary management
  */
 
+import { timeoutConfig } from '../../config/timeouts';
 import type {
-  TranslateScriptRequest,
-  TranslationResultDto,
+  AddGlossaryEntryRequest,
   BatchTranslateRequest,
   BatchTranslationResultDto,
+  CreateGlossaryRequest,
   CulturalAnalysisRequest,
   CulturalAnalysisResultDto,
+  GlossaryEntryDto,
   LanguageInfoDto,
   ProjectGlossaryDto,
-  CreateGlossaryRequest,
-  AddGlossaryEntryRequest,
-  GlossaryEntryDto,
+  TranslateScriptRequest,
+  TranslationResultDto,
 } from '../../types/api-v1';
 import apiClient from './apiClient';
 
@@ -24,9 +25,11 @@ import apiClient from './apiClient';
 export async function translateScript(
   request: TranslateScriptRequest
 ): Promise<TranslationResultDto> {
+  const timeout = timeoutConfig.getTimeout('localization');
   const response = await apiClient.post<TranslationResultDto>(
     '/api/localization/translate',
-    request
+    request,
+    { timeout }
   );
   return response.data;
 }
@@ -37,9 +40,11 @@ export async function translateScript(
 export async function batchTranslate(
   request: BatchTranslateRequest
 ): Promise<BatchTranslationResultDto> {
+  const timeout = timeoutConfig.getTimeout('localization');
   const response = await apiClient.post<BatchTranslationResultDto>(
     '/api/localization/translate/batch',
-    request
+    request,
+    { timeout }
   );
   return response.data;
 }
@@ -50,9 +55,11 @@ export async function batchTranslate(
 export async function analyzeCulturalContent(
   request: CulturalAnalysisRequest
 ): Promise<CulturalAnalysisResultDto> {
+  const timeout = timeoutConfig.getTimeout('localization');
   const response = await apiClient.post<CulturalAnalysisResultDto>(
     '/api/localization/analyze-culture',
-    request
+    request,
+    { timeout }
   );
   return response.data;
 }

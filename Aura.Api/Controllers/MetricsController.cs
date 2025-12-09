@@ -18,7 +18,7 @@ public class MetricsController : ControllerBase
     private readonly ILogger<MetricsController> _logger;
 
     public MetricsController(
-        PerformanceMetrics metrics, 
+        PerformanceMetrics metrics,
         ILogger<MetricsController> logger,
         SystemResourceMonitor? resourceMonitor = null,
         ResourceThrottler? resourceThrottler = null)
@@ -57,14 +57,14 @@ public class MetricsController : ControllerBase
         {
             // Decode the endpoint parameter (e.g., "GET:/api/jobs" might be URL encoded)
             var decodedEndpoint = Uri.UnescapeDataString(endpoint);
-            
+
             var metrics = _metrics.GetEndpointMetrics(decodedEndpoint);
-            
+
             if (metrics == null)
             {
                 return NotFound(new { error = $"No metrics found for endpoint: {decodedEndpoint}" });
             }
-            
+
             return Ok(metrics);
         }
         catch (Exception ex)
@@ -132,7 +132,23 @@ public class MetricsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving system metrics");
-            return StatusCode(500, new { error = "Failed to retrieve system metrics" });
+            // Fallback to last known metrics if available to avoid breaking UI widgets
+            if (_resourceMonitor?.GetLastSystemMetrics() is { } last)
+            {
+                _logger.LogWarning("Returning last known system metrics due to collection failure");
+                return Ok(last);
+            }
+
+            // Return minimal stub rather than 500 so UI stays functional
+            return StatusCode(503, new
+            {
+                error = "System metrics unavailable",
+                cpu = new { overallUsagePercent = 0.0 },
+                memory = new { usagePercent = 0.0 },
+                gpu = (object?)null,
+                disks = Array.Empty<object>(),
+                network = new { bytesSentPerSecond = 0L, bytesReceivedPerSecond = 0L }
+            });
         }
     }
 

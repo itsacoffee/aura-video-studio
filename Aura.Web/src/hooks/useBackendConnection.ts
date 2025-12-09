@@ -2,9 +2,9 @@
  * Hook to check backend connection status and disable actions when offline
  */
 
-import { useBackendHealth } from './useBackendHealth';
-import { useConnectionStore } from '../stores/connectionStore';
 import { useEffect } from 'react';
+import { useConnectionStore } from '../stores/connectionStore';
+import { useBackendHealth } from './useBackendHealth';
 
 /**
  * Hook to check if backend is connected
@@ -31,4 +31,3 @@ export function useBackendConnection() {
     shouldDisableActions: isOffline,
   };
 }
-

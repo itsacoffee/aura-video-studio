@@ -48,11 +48,15 @@ public class LlmProviderFactory
         // List of provider keys to attempt resolution
         var providerKeys = new[] { "RuleBased", "Ollama", "OpenAI", "Azure", "Gemini", "Anthropic" };
 
+        _logger.LogInformation("========================================");
+        _logger.LogInformation("Starting LLM Provider Registration");
+        _logger.LogInformation("========================================");
+
         foreach (var providerKey in providerKeys)
         {
             try
             {
-                _logger.LogInformation("Attempting to resolve {Provider} provider...", providerKey);
+                _logger.LogInformation("Attempting to resolve {Provider} provider from keyed services...", providerKey);
 
                 // Try to get provider from keyed services
                 var provider = _serviceProvider.GetKeyedService<ILlmProvider>(providerKey);
@@ -60,37 +64,50 @@ public class LlmProviderFactory
                 if (provider != null)
                 {
                     providers[providerKey] = provider;
-                    _logger.LogInformation("✓ {Provider} provider registered successfully", providerKey);
+                    _logger.LogInformation("✓ {Provider} provider registered successfully (Type: {Type})", 
+                        providerKey, provider.GetType().Name);
                 }
                 else
                 {
-                    _logger.LogDebug("✗ {Provider} provider not available (returned null)", providerKey);
+                    _logger.LogWarning("✗ {Provider} provider returned NULL from keyed service registration", providerKey);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "✗ {Provider} provider registration failed", providerKey);
+                _logger.LogError(ex, "✗ {Provider} provider registration threw exception", providerKey);
             }
         }
 
         // Ensure RuleBased is always available as final fallback
         if (!providers.ContainsKey("RuleBased"))
         {
-            _logger.LogWarning("RuleBased provider not found in keyed services, attempting fallback creation");
+            _logger.LogWarning("========================================");
+            _logger.LogWarning("CRITICAL: RuleBased provider not found in keyed services!");
+            _logger.LogWarning("This should NEVER happen - RuleBased has no dependencies");
+            _logger.LogWarning("Attempting manual fallback creation...");
+            _logger.LogWarning("========================================");
             try
             {
                 providers["RuleBased"] = CreateRuleBasedProvider(loggerFactory);
-                _logger.LogInformation("✓ RuleBased provider created as fallback");
+                _logger.LogInformation("✓ RuleBased provider created successfully via fallback");
             }
             catch (Exception ex)
             {
-                _logger.LogCritical(ex, "✗ CRITICAL: Failed to create RuleBased fallback provider");
+                _logger.LogCritical(ex, "✗ CRITICAL SYSTEM FAILURE: Failed to create RuleBased fallback provider - NO LLM providers available!");
+                _logger.LogCritical("Application will have NO functioning LLM providers");
+                _logger.LogCritical("All AI-powered features will fail");
             }
         }
 
         _logger.LogInformation("========================================");
-        _logger.LogInformation("Registered {Count} LLM providers: {Providers}",
-            providers.Count, string.Join(", ", providers.Keys));
+        _logger.LogInformation("LLM Provider Registration Complete");
+        _logger.LogInformation("Registered {Count} providers: {Providers}",
+            providers.Count, 
+            providers.Count > 0 ? string.Join(", ", providers.Keys) : "NONE");
+        if (providers.Count == 0)
+        {
+            _logger.LogCritical("CRITICAL: ZERO providers registered - all AI features will fail!");
+        }
         _logger.LogInformation("========================================");
 
         return providers;

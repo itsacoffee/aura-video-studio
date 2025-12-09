@@ -1,36 +1,39 @@
 "use client";
 
-import { useTimelineStore } from "@/stores/timeline-store";
-import { TimelineElement, TimelineTrack } from "@/types/timeline";
-import { useMediaStore } from "@/stores/media-store";
-import { MediaFile } from "@/types/media";
-import { usePlaybackStore } from "@/stores/playback-store";
-import { useEditorStore } from "@/stores/editor-store";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Expand, SkipBack, SkipForward } from "lucide-react";
-import { useState, useRef, useEffect, useCallback } from "react";
-import { renderTimelineFrame } from "@/lib/timeline-renderer";
-import { cn } from "@/lib/utils";
-import { formatTimeCode } from "@/lib/time";
+import { Checkbox } from "@/components/ui/checkbox";
 import { EditableTimecode } from "@/components/ui/editable-timecode";
-import { useFrameCache } from "@/hooks/use-frame-cache";
-import { useSceneStore } from "@/stores/scene-store";
-import {
-  DEFAULT_CANVAS_SIZE,
-  DEFAULT_FPS,
-  useProjectStore,
-} from "@/stores/project-store";
-import { TextElementDragState } from "@/types/editor";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { LayoutGuideOverlay } from "./layout-guide-overlay";
-import { Label } from "../ui/label";
+import { useFrameCache } from "@/hooks/use-frame-cache";
+import { formatTimeCode } from "@/lib/time";
+import { renderTimelineFrame } from "@/lib/timeline-renderer";
+import { cn } from "@/lib/utils";
+import {
+  PLATFORM_LAYOUTS,
+  useEditorStore,
+  type PlatformLayout,
+} from "@/stores/editor-store";
+import { useMediaStore } from "@/stores/media-store";
+import { usePlaybackStore } from "@/stores/playback-store";
+import {
+  DEFAULT_CANVAS_SIZE,
+  DEFAULT_FPS,
+  useProjectStore,
+} from "@/stores/project-store";
+import { useSceneStore } from "@/stores/scene-store";
+import { useTimelineStore } from "@/stores/timeline-store";
+import { TextElementDragState } from "@/types/editor";
+import { MediaFile } from "@/types/media";
+import { TimelineElement, TimelineTrack } from "@/types/timeline";
+import { Expand, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SocialsIcon } from "../icons";
-import { PLATFORM_LAYOUTS, type PlatformLayout } from "@/stores/editor-store";
+import { Label } from "../ui/label";
+import { LayoutGuideOverlay } from "./layout-guide-overlay";
 
 interface ActiveElement {
   element: TimelineElement;
@@ -41,8 +44,15 @@ interface ActiveElement {
 export function PreviewPanel() {
   const { tracks, getTotalDuration, updateTextElement } = useTimelineStore();
   const { mediaFiles } = useMediaStore();
-  const { currentTime, toggle, setCurrentTime } = usePlaybackStore();
-  const { isPlaying, volume, muted } = usePlaybackStore();
+  const {
+    currentTime,
+    toggle,
+    setCurrentTime,
+    isPlaying,
+    volume,
+    muted,
+    speed,
+  } = usePlaybackStore();
   const { activeProject } = useProjectStore();
   const { currentScene } = useSceneStore();
   const previewRef = useRef<HTMLDivElement>(null);
@@ -353,6 +363,10 @@ export function PreviewPanel() {
       const mediaList = mediaFiles;
       const idToMedia = new Map(mediaList.map((m) => [m.id, m] as const));
       const playbackNow = usePlaybackStore.getState().currentTime;
+      const playbackSpeed = Math.max(
+        0.1,
+        Math.min(8, usePlaybackStore.getState().speed)
+      );
 
       const audible: Array<{
         id: string;
@@ -420,6 +434,7 @@ export function PreviewPanel() {
         if (playDuration <= 0) continue;
         const src = audioCtx.createBufferSource();
         src.buffer = buffer;
+        src.playbackRate.setValueAtTime(playbackSpeed, audioCtx.currentTime);
         src.connect(gain);
         try {
           src.start(startAt, localTime, playDuration);
@@ -463,7 +478,7 @@ export function PreviewPanel() {
       }
       playingSourcesRef.current.clear();
     };
-  }, [isPlaying, volume, muted, mediaFiles]);
+  }, [isPlaying, volume, muted, mediaFiles, speed]);
 
   // Canvas: draw current frame with caching
   useEffect(() => {
@@ -721,6 +736,8 @@ export function PreviewPanel() {
               style={{
                 width: previewDimensions.width,
                 height: previewDimensions.height,
+                maxWidth: "100%",
+                maxHeight: "100%",
                 background:
                   activeProject?.backgroundType === "blur"
                     ? "transparent"
@@ -736,6 +753,8 @@ export function PreviewPanel() {
                   top: 0,
                   width: previewDimensions.width,
                   height: previewDimensions.height,
+                  maxWidth: "100%",
+                  maxHeight: "100%",
                 }}
                 aria-label="Video preview canvas"
               />

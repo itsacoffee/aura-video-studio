@@ -8,3 +8,27 @@ export { PanelTabs } from './PanelTabs';
 export type { TabItem } from './PanelTabs';
 // eslint-disable-next-line react-refresh/only-export-components -- Re-exporting from barrel file for convenience
 export * from './Loading';
+
+// Spacing system layout primitives
+export { Stack } from './Stack';
+export type { StackProps, StackSpace } from './Stack';
+export { Cluster } from './Cluster';
+export type { ClusterProps, ClusterSpace, ClusterAlign, ClusterJustify } from './Cluster';
+export { Region } from './Region';
+export type { RegionProps, RegionSpace } from './Region';
+
+// Smart grid layout components
+export { SmartGrid } from './SmartGrid';
+export type {
+  SmartGridProps,
+  SmartGridItemType,
+  SmartGridGap,
+  SmartGridFillMode,
+  SmartGridAlignment,
+} from './SmartGrid';
+export { MasonryGrid } from './MasonryGrid';
+export type { MasonryGridProps } from './MasonryGrid';
+export { ResponsiveDataGrid } from './ResponsiveDataGrid';
+export type { ResponsiveDataGridProps, DataGridColumn } from './ResponsiveDataGrid';
+export { AutoGrid } from './AutoGrid';
+export type { AutoGridProps, AutoGridGap } from './AutoGrid';

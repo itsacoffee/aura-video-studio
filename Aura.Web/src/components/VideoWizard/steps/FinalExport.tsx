@@ -163,6 +163,13 @@ interface ExportResult {
   fullPath?: string;
 }
 
+interface JobOutputFile {
+  path?: string;
+  filePath?: string;
+  type?: string;
+  sizeBytes?: number;
+}
+
 // Job data structure returned from the backend API
 interface JobStatusData {
   /** Progress percentage (0-100) */
@@ -184,6 +191,14 @@ interface JobStatusData {
     message?: string;
     suggestedActions?: string[];
   };
+  /** Structured output payload returned by the backend */
+  output?: {
+    videoPath?: string;
+    subtitlePath?: string;
+    path?: string;
+    filePath?: string;
+    files?: JobOutputFile[];
+  };
   /** Path to the output file for completed jobs */
   outputPath?: string;
   /** Artifacts produced by the job (video, subtitles, etc.) */
@@ -201,6 +216,75 @@ interface JobStatusData {
   startedAt?: string;
   /** When the job completed */
   completedAt?: string;
+}
+
+/**
+ * Normalize a file path by trimming and returning undefined for empty values.
+ */
+function normalizePath(path?: string | null): string | undefined {
+  const trimmed = (path ?? '').trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/**
+ * Returns true if the provided path looks like a video file.
+ */
+function hasVideoExtension(path: string): boolean {
+  const lower = path.toLowerCase();
+  return ['.mp4', '.webm', '.mov', '.mkv', '.avi', '.m4v', '.gif'].some((ext) =>
+    lower.endsWith(ext)
+  );
+}
+
+/**
+ * Extract the most likely video path from a list of files or artifacts.
+ */
+function selectVideoFilePath(
+  files?: Array<{ path?: string; filePath?: string; type?: string }>
+): string | undefined {
+  if (!files || !Array.isArray(files)) return undefined;
+
+  const videoFile = files.find((file) => {
+    const candidate = normalizePath(file.path ?? file.filePath);
+    if (!candidate) return false;
+    const type = (file.type ?? '').toLowerCase();
+    return type.includes('video') || hasVideoExtension(candidate);
+  });
+
+  if (videoFile) {
+    return normalizePath(videoFile.path ?? videoFile.filePath);
+  }
+
+  const firstFile = files.find((file) => normalizePath(file.path ?? file.filePath));
+  return firstFile ? normalizePath(firstFile.path ?? firstFile.filePath) : undefined;
+}
+
+/**
+ * Extracts a usable output path from job data, handling multiple backend shapes.
+ */
+function extractOutputPath(jobData?: JobStatusData | null): string | undefined {
+  if (!jobData) return undefined;
+
+  // 1) Direct outputPath field (most common)
+  const direct = normalizePath(jobData.outputPath);
+  if (direct) return direct;
+
+  // 2) Nested output object (used by newer backends)
+  const output = jobData.output;
+  const fromOutput =
+    normalizePath(output?.videoPath) ??
+    normalizePath(output?.path) ??
+    normalizePath(output?.filePath);
+  if (fromOutput) return fromOutput;
+
+  const fromOutputFiles = selectVideoFilePath(output?.files);
+  if (fromOutputFiles) return fromOutputFiles;
+
+  // 3) Artifacts array (legacy/alternative shape)
+  const fromArtifacts = selectVideoFilePath(jobData.artifacts);
+  if (fromArtifacts) return fromArtifacts;
+
+  return undefined;
 }
 
 /**
@@ -244,41 +328,47 @@ function getInitializationMessage(pollAttempts: number): string {
 
 /**
  * Checks job status and throws if job failed or was cancelled.
- * Returns true if job completed successfully.
- * Also checks for outputPath as a fallback indicator of completion.
+ * Returns true if job completed successfully WITH a valid outputPath.
+ *
+ * ARCHITECTURAL FIX: No longer accepts "completed" status without outputPath.
+ * This prevents the bug where jobs at 72% appear complete but have no output file.
  */
 function checkJobCompletion(jobData: JobStatusData): boolean {
   const status = (jobData.status || '').toLowerCase().trim();
-  if (status === 'completed') {
-    return true;
-  }
 
-  // Check if job has outputPath or artifacts even if status isn't "completed"
-  // This handles cases where the job finished but status wasn't updated
-  const hasOutput =
-    jobData.outputPath ||
-    (jobData.artifacts && Array.isArray(jobData.artifacts) && jobData.artifacts.length > 0);
-
-  // If job is at 100% or has output, consider it completed even if status isn't updated
-  const percent = jobData.percent ?? 0;
-  if ((percent >= 100 || hasOutput) && status === 'running') {
-    console.warn(
-      '[FinalExport] Job appears completed (has output or 100%) but status is still "running"'
-    );
-    return true;
-  }
-
+  // Check for failure states first
   if (status === 'failed') {
     throw new Error(jobData.errorMessage || 'Video generation failed');
   }
   if (status === 'cancelled' || status === 'canceled') {
     throw new Error('Video generation was cancelled');
   }
+
+  // CRITICAL FIX: Only consider job completed if BOTH conditions are met:
+  // 1. Status is "completed"
+  // 2. We have a valid outputPath or artifacts
+  if (status === 'completed') {
+    const hasOutput = Boolean(extractOutputPath(jobData));
+
+    if (!hasOutput) {
+      // Job says it's completed but no output - this is a backend bug
+      // Don't treat as completed, let polling continue or timeout
+      console.error(
+        '[FinalExport] Job status is "completed" but outputPath is missing. This indicates a backend bug. Continuing to poll...'
+      );
+      return false; // NOT completed - missing output
+    }
+
+    return true; // Truly completed with output
+  }
+
+  // For any other status (queued, running, rendering, etc.), not yet completed
   return false;
 }
 
 // SSE connection timing constants
-const JOB_REGISTRATION_DELAY_MS = 2000; // Wait for job to be registered in JobRunner
+// ARCHITECTURAL FIX: Removed JOB_REGISTRATION_DELAY_MS (race condition fix)
+// Instead, SSE endpoint will send initial state immediately even if job isn't running yet
 const SSE_CONNECTION_TIMEOUT_MS = 30000; // Timeout for SSE connection establishment
 const JOB_TIMEOUT_MS = 10 * 60 * 1000; // Overall job timeout (10 minutes)
 
@@ -520,12 +610,9 @@ export const FinalExport: FC<FinalExportProps> = ({
           setExportStage('Starting video generation...');
           setExportProgress(1); // Show some progress so user knows something is happening
 
-          // Wait for job to be registered in JobRunner before attempting SSE connection
-          // This helps prevent race condition where SSE connection is attempted before job is available
-          console.info(
-            `[FinalExport] Waiting ${JOB_REGISTRATION_DELAY_MS}ms for job registration...`
-          );
-          await new Promise((resolve) => setTimeout(resolve, JOB_REGISTRATION_DELAY_MS));
+          // ARCHITECTURAL FIX: Connect to SSE immediately (removed 2-second delay)
+          // The backend SSE endpoint now handles jobs that haven't started yet
+          console.info('[FinalExport] Connecting to SSE immediately (no registration delay)');
           setExportStage('Connecting to job progress stream...');
 
           // Use SSE for real-time progress updates with polling fallback
@@ -595,9 +682,7 @@ export const FinalExport: FC<FinalExportProps> = ({
                 // Check if job appears completed even if status isn't "completed"
                 // This handles edge cases where job finished but status wasn't updated
                 const status = (data.status || '').toLowerCase();
-                const hasOutput =
-                  data.outputPath ||
-                  (data.artifacts && Array.isArray(data.artifacts) && data.artifacts.length > 0);
+                const hasOutput = Boolean(extractOutputPath(data));
 
                 if ((jobProgress >= 100 || hasOutput) && status === 'running') {
                   console.warn(
@@ -628,9 +713,7 @@ export const FinalExport: FC<FinalExportProps> = ({
                   reject(new Error('Video generation was cancelled'));
                 } else {
                   // Even if status isn't "completed", check if we have output
-                  const hasOutput =
-                    data.outputPath ||
-                    (data.artifacts && Array.isArray(data.artifacts) && data.artifacts.length > 0);
+                  const hasOutput = Boolean(extractOutputPath(data));
                   if (!hasOutput && status !== 'completed') {
                     console.warn(
                       '[SSE] Job completion event received but no output path and status is not completed'
@@ -642,6 +725,42 @@ export const FinalExport: FC<FinalExportProps> = ({
                 eventSource.close();
                 eventSourceRef.current = null;
                 reject(err instanceof Error ? err : new Error(String(err)));
+              }
+            });
+
+            // Handle job-failed SSE event (emitted when job stalls or fails)
+            eventSource.addEventListener('job-failed', (event) => {
+              clearTimeout(connectionTimeoutId);
+              clearTimeout(jobTimeoutId);
+              try {
+                const data = JSON.parse(event.data) as JobStatusData;
+                console.error('[SSE] Job failed:', data);
+                eventSource.close();
+                eventSourceRef.current = null;
+
+                const errorMsg =
+                  data.errorMessage || data.failureDetails?.message || 'Video generation failed';
+                setExportStatus('error');
+                setExportStage(errorMsg);
+                reject(new Error(errorMsg));
+              } catch (err) {
+                eventSource.close();
+                eventSourceRef.current = null;
+                reject(err instanceof Error ? err : new Error(String(err)));
+              }
+            });
+
+            // Handle warning SSE event (emitted when job appears stalled)
+            eventSource.addEventListener('warning', (event) => {
+              try {
+                const data = JSON.parse(event.data);
+                console.warn('[SSE] Job warning:', data.message || 'Job progress stalled');
+                // Update UI to show warning but don't reject the promise
+                setExportStage(
+                  `Warning: ${data.message || 'Job progress appears stalled. Consider cancelling if this persists.'}`
+                );
+              } catch (err) {
+                console.warn('[SSE] Failed to parse warning event:', err);
               }
             });
 
@@ -725,6 +844,7 @@ export const FinalExport: FC<FinalExportProps> = ({
           });
 
           // Fallback polling function for when SSE fails
+          // ARCHITECTURAL FIX: Implemented exponential backoff for more efficient polling
           const fallbackToPolling = async (
             pollJobId: string,
             formatIdx: number,
@@ -736,21 +856,27 @@ export const FinalExport: FC<FinalExportProps> = ({
 
             let jobCompleted = false;
             let lastJobData: JobStatusData | null = null;
-            const maxPollAttempts = 600; // 10 minutes max (600 * 1 second)
+            const maxPollAttempts = 600; // 10 minutes max
             let pollAttempts = 0;
             let consecutiveErrors = 0;
             let total404Errors = 0;
             const maxConsecutiveErrors = 5;
 
+            // Exponential backoff configuration
+            let pollDelay = 500; // Start with 500ms
+            const maxPollDelay = 5000; // Cap at 5 seconds
+            const backoffMultiplier = 1.5;
+
             // Stuck job detection: track if progress/stage hasn't changed
             let lastProgress = -1;
             let lastStage = '';
             let stuckStartTime: number | null = null;
-            const STUCK_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
-            const STUCK_CHECK_INTERVAL = 30; // Check every 30 polls (30 seconds)
+            const STUCK_THRESHOLD_MS = 60 * 1000; // 60 seconds
+            const STUCK_CHECK_INTERVAL = 5; // Check every 5 polls
 
             while (!jobCompleted && pollAttempts < maxPollAttempts) {
-              await new Promise((res) => setTimeout(res, 1000));
+              // EXPONENTIAL BACKOFF: Increase delay between polls
+              await new Promise((res) => setTimeout(res, pollDelay));
               pollAttempts++;
 
               try {
@@ -787,9 +913,30 @@ export const FinalExport: FC<FinalExportProps> = ({
                 const typedJobData = (await statusResponse.json()) as JobStatusData;
                 lastJobData = typedJobData;
 
+                const normalizedStatus = (typedJobData.status || '').toLowerCase();
+                if (normalizedStatus === 'failed') {
+                  throw new Error(
+                    typedJobData.errorMessage ||
+                      typedJobData.failureDetails?.message ||
+                      'Video generation failed'
+                  );
+                }
+                if (normalizedStatus === 'cancelled' || normalizedStatus === 'canceled') {
+                  throw new Error('Video generation was cancelled');
+                }
+
                 // Extract progress with proper fallbacks and update UI
                 const jobProgress = Math.max(0, Math.min(100, typedJobData.percent ?? 0));
                 const currentStage = typedJobData.stage || 'Processing';
+
+                // EXPONENTIAL BACKOFF: Adjust poll delay based on job activity
+                if (jobProgress === lastProgress && currentStage === lastStage) {
+                  // No progress - increase delay (backoff)
+                  pollDelay = Math.min(pollDelay * backoffMultiplier, maxPollDelay);
+                } else {
+                  // Progress detected - reset to faster polling
+                  pollDelay = 500;
+                }
 
                 // Check for stuck job (same progress/stage for too long)
                 if (pollAttempts % STUCK_CHECK_INTERVAL === 0) {
@@ -807,24 +954,32 @@ export const FinalExport: FC<FinalExportProps> = ({
                           `[FinalExport] Job appears stuck: ${currentStage} at ${jobProgress}% for ${Math.round(stuckDuration / 1000)}s`
                         );
 
-                        // Check if job has output even though status isn't completed
-                        const hasOutput =
-                          typedJobData.outputPath ||
-                          (typedJobData.artifacts &&
-                            Array.isArray(typedJobData.artifacts) &&
-                            typedJobData.artifacts.length > 0);
+                        const hasOutput = Boolean(extractOutputPath(typedJobData));
 
-                        if (hasOutput || jobProgress >= 95) {
+                        if (hasOutput) {
                           console.info(
-                            '[FinalExport] Job has output or is near completion, treating as completed despite stuck status'
+                            '[FinalExport] Job produced output while progress appears stuck, treating as completed'
                           );
                           jobCompleted = true;
                           break;
                         }
 
-                        // If truly stuck without output, throw error
+                        // Near-complete jobs can linger while the renderer writes the file.
+                        // Instead of failing early (which caused 72% errors), keep polling until timeout.
+                        if (jobProgress >= 70) {
+                          console.info(
+                            '[FinalExport] Job is past 70% but no output yet; continuing to poll for final file instead of failing early'
+                          );
+                          setExportStage(
+                            'Finalizing output file... waiting for the renderer to finish writing the video'
+                          );
+                          stuckStartTime = Date.now(); // Give additional time before re-evaluating
+                          pollDelay = Math.min(pollDelay * backoffMultiplier, maxPollDelay);
+                          continue;
+                        }
+
                         throw new Error(
-                          `Video generation appears stuck at ${currentStage} stage (${jobProgress}% complete for over 5 minutes). ` +
+                          `Video generation appears stuck at ${currentStage} stage (${jobProgress}% complete for over 60 seconds). ` +
                             'The job may have encountered an issue. Please try again or check the logs.'
                         );
                       }
@@ -848,6 +1003,17 @@ export const FinalExport: FC<FinalExportProps> = ({
                   console.info('[FinalExport] Job completed successfully');
                 }
               } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+
+                // Fast-fail on terminal job errors (failed/cancelled/stuck)
+                if (
+                  errorMessage.toLowerCase().includes('failed') ||
+                  errorMessage.toLowerCase().includes('cancel') ||
+                  errorMessage.toLowerCase().includes('stuck')
+                ) {
+                  throw error;
+                }
+
                 consecutiveErrors++;
                 if (consecutiveErrors >= maxConsecutiveErrors) {
                   throw error;
@@ -868,44 +1034,16 @@ export const FinalExport: FC<FinalExportProps> = ({
           const finalJobData = jobData as JobStatusData;
 
           // Get file path from job artifacts or output path
-          let outputPath = finalJobData.outputPath;
+          const outputPath = extractOutputPath(finalJobData);
 
-          // Try to extract from artifacts if outputPath is not directly available
-          if (
-            !outputPath &&
-            finalJobData.artifacts &&
-            Array.isArray(finalJobData.artifacts) &&
-            finalJobData.artifacts.length > 0
-          ) {
-            // Find video artifact - check multiple possible formats
-            const videoArtifact = finalJobData.artifacts.find((a) => {
-              const path = a.path || a.filePath || '';
-              const type = (a.type || '').toLowerCase();
-              return (
-                type.includes('video') ||
-                path.endsWith('.mp4') ||
-                path.endsWith('.webm') ||
-                path.endsWith('.mov') ||
-                path.endsWith('.mkv') ||
-                path.endsWith('.avi')
-              );
-            });
-            if (videoArtifact) {
-              outputPath = videoArtifact.path || videoArtifact.filePath;
-              console.info('[FinalExport] Found video artifact:', videoArtifact);
-            }
-          }
-
-          // If still no output path, try to construct from job directory
+          // If still no output path, surface a clear error
           if (!outputPath) {
-            console.warn(
-              '[FinalExport] No output path in job data, attempting to construct from job ID'
-            );
-            // The backend should set outputPath, but if it doesn't, we can't proceed
+            console.error('[FinalExport] Job data:', JSON.stringify(finalJobData, null, 2));
             throw new Error(
-              'No output path returned from video generation. ' +
-                'The video file may not have been created. ' +
-                'Please check the job logs for errors.'
+              'Video generation completed but output path not returned. ' +
+                'Check backend logs for the actual file location. ' +
+                'Job ID: ' +
+                jobId
             );
           }
 

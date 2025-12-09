@@ -2066,3 +2066,119 @@ export interface CategorySummary {
   offline: number;
   notConfigured: number;
 }
+
+// ============================================================================
+// LLM TEST DTOs - for LLM connectivity testing and health checks
+// ============================================================================
+
+/**
+ * Request for testing LLM connectivity
+ */
+export interface LlmTestRequest {
+  prompt?: string;
+  timeoutSeconds?: number;
+}
+
+/**
+ * Response from LLM connectivity test
+ */
+export interface LlmTestResponse {
+  success: boolean;
+  providerName: string;
+  modelName: string;
+  responseTimeMs: number;
+  generatedText: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  isLocalModel: boolean;
+  supportsStreaming: boolean;
+  message: string;
+  correlationId: string;
+}
+
+/**
+ * LLM health status response
+ */
+export interface LlmHealthResponse {
+  isAvailable: boolean;
+  providerName: string;
+  defaultModel: string | null;
+  isLocalModel: boolean;
+  supportsStreaming: boolean;
+  supportsTranslation: boolean;
+  maxContextLength: number | null;
+  knownLimitations: string[] | null;
+  errorMessage: string | null;
+  correlationId: string;
+}
+
+/**
+ * Response with available LLM models
+ */
+export interface LlmModelsResponse {
+  providerName: string;
+  models: string[];
+  defaultModel: string | null;
+  isLocalProvider: boolean;
+  correlationId: string;
+}
+
+// ============================================================================
+// GENERATION COST ESTIMATE TYPES
+// ============================================================================
+
+/**
+ * Request to estimate cost for video generation
+ */
+export interface GenerationCostEstimateRequest {
+  estimatedScriptLength: number;
+  sceneCount: number;
+  llmProvider: string;
+  llmModel: string;
+  ttsProvider: string;
+  imageProvider?: string;
+}
+
+/**
+ * Individual cost breakdown item
+ */
+export interface CostBreakdownItem {
+  name: string;
+  provider: string;
+  cost: number;
+  isFree: boolean;
+  units: number;
+  unitType: string;
+}
+
+/**
+ * Budget check result
+ */
+export interface BudgetCheckResult {
+  isWithinBudget: boolean;
+  shouldBlock: boolean;
+  warnings: string[];
+  currentMonthlyCost: number;
+  estimatedNewTotal: number;
+}
+
+/**
+ * Cost estimate confidence level
+ */
+export type CostEstimateConfidence = 'high' | 'medium' | 'low';
+
+/**
+ * Complete cost estimate for video generation
+ */
+export interface GenerationCostEstimate {
+  llmCost: number;
+  ttsCost: number;
+  imageCost: number;
+  totalCost: number;
+  currency: string;
+  breakdown: CostBreakdownItem[];
+  isFreeGeneration: boolean;
+  confidence: CostEstimateConfidence;
+  budgetCheck?: BudgetCheckResult;
+}

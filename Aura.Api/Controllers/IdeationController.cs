@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models.Ideation;
@@ -13,11 +14,17 @@ namespace Aura.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-public class IdeationController : ControllerBase
+public partial class IdeationController : ControllerBase
 {
     private readonly ILogger<IdeationController> _logger;
     private readonly IdeationService _ideationService;
     private readonly Aura.Core.Services.RAG.VectorIndex? _vectorIndex;
+
+    /// <summary>
+    /// Regex to extract quoted model names from error messages
+    /// </summary>
+    [GeneratedRegex(@"'([^']+)'", RegexOptions.None)]
+    private static partial Regex ModelNameRegex();
 
     public IdeationController(
         ILogger<IdeationController> logger,
@@ -93,6 +100,23 @@ public class IdeationController : ControllerBase
                     correlationId, ragConfig.TopK, ragConfig.MinimumScore);
             }
 
+            // Pre-flight check: Verify AI provider is available before attempting ideation
+            var (isAvailable, errorMessage) = await _ideationService.CheckProviderAvailabilityAsync(ct).ConfigureAwait(false);
+            if (!isAvailable)
+            {
+                return StatusCode(503, new
+                {
+                    error = errorMessage,
+                    errorCode = "PROVIDER_NOT_AVAILABLE",
+                    correlationId,
+                    suggestions = new[] {
+                        "Start Ollama: Run 'ollama serve' in a terminal",
+                        "Install a model: Run 'ollama pull llama3.1'",
+                        "Or configure another AI provider in Settings"
+                    }
+                });
+            }
+
             // Create updated request with RAG configuration
             var requestWithRag = request with
             {
@@ -124,26 +148,50 @@ public class IdeationController : ControllerBase
             // Provide detailed error message to help user diagnose
             var errorMessage = invOpEx.Message;
             var suggestions = new List<string>();
+            string? errorCode = null;
 
             // Add Ollama-specific error handling
             if (errorMessage.Contains("Ollama", StringComparison.OrdinalIgnoreCase) ||
-                errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
+                errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase) ||
+                errorMessage.Contains("Cannot determine", StringComparison.OrdinalIgnoreCase))
             {
                 if (errorMessage.Contains("Cannot connect", StringComparison.OrdinalIgnoreCase))
                 {
+                    errorCode = "OLLAMA_CONNECTION_ERROR";
                     suggestions.Add("Ensure Ollama is running: Open a terminal and run 'ollama serve'");
                     suggestions.Add("Verify Ollama is installed: Visit https://ollama.com to download");
                     suggestions.Add("Check Ollama base URL in Settings (default: http://localhost:11434)");
                 }
-                else if (errorMessage.Contains("model", StringComparison.OrdinalIgnoreCase) &&
-                         errorMessage.Contains("not installed", StringComparison.OrdinalIgnoreCase))
+                else if (errorMessage.Contains("No models are installed", StringComparison.OrdinalIgnoreCase))
                 {
-                    suggestions.Add("Install the requested model: Run 'ollama pull <model-name>' in terminal");
+                    errorCode = "OLLAMA_NO_MODELS";
+                    suggestions.Add("Install a model: Run 'ollama pull llama3.1' or 'ollama pull qwen2.5' in terminal");
+                    suggestions.Add("List installed models: Run 'ollama list' to verify models are available");
+                    suggestions.Add("Popular models: llama3.1, qwen2.5, mistral, gemma2");
+                }
+                else if (errorMessage.Contains("model", StringComparison.OrdinalIgnoreCase) &&
+                         (errorMessage.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                          errorMessage.Contains("not installed", StringComparison.OrdinalIgnoreCase)))
+                {
+                    errorCode = "MODEL_NOT_FOUND";
+                    // Extract model name from error message if possible
+                    var modelMatch = ModelNameRegex().Match(errorMessage);
+                    var modelName = modelMatch.Success ? modelMatch.Groups[1].Value : request?.LlmModel ?? "<model-name>";
+                    
+                    suggestions.Add($"Install the requested model: Run 'ollama pull {modelName}' in terminal");
+                    suggestions.Add("Select a different model from the AI Model dropdown in the toolbar");
                     suggestions.Add("List available models: Run 'ollama list' to see installed models");
-                    suggestions.Add("Check model name in Settings matches an installed model");
+                }
+                else if (errorMessage.Contains("Cannot determine", StringComparison.OrdinalIgnoreCase))
+                {
+                    errorCode = "OLLAMA_NO_MODEL_SELECTED";
+                    suggestions.Add("Select a model from the AI Model dropdown in the toolbar");
+                    suggestions.Add("Install a model in Ollama: Run 'ollama pull llama3.1' in terminal");
+                    suggestions.Add("Or configure a model in Settings > Providers > Ollama");
                 }
                 else
                 {
+                    errorCode = "OLLAMA_ERROR";
                     suggestions.Add("Check Ollama service status: Run 'ollama list' to verify it's working");
                     suggestions.Add("Restart Ollama service if needed");
                     suggestions.Add("Verify GPU drivers are installed for GPU acceleration (optional)");
@@ -195,8 +243,45 @@ public class IdeationController : ControllerBase
 
             return StatusCode(500, new {
                 error = errorMessage,
+                errorCode,
                 correlationId,
                 suggestions = suggestions.ToArray()
+            });
+        }
+        catch (OperationCanceledException opCancelEx) when (!ct.IsCancellationRequested)
+        {
+            // Timeout occurred (not user cancellation)
+            _logger.LogWarning(opCancelEx,
+                "[{CorrelationId}] Ideation request timed out for topic: {Topic}",
+                correlationId, request?.Topic ?? "unknown");
+
+            return StatusCode(504, new {
+                error = "The AI model took too long to respond. This can happen with complex topics or slower models.",
+                correlationId,
+                suggestions = new[] {
+                    "Try a simpler or more specific topic",
+                    "If using Ollama, ensure your model is loaded and GPU is available",
+                    "Consider using a faster/smaller model",
+                    "Try generating fewer concepts at once"
+                }
+            });
+        }
+        catch (TaskCanceledException taskCancelEx) when (!ct.IsCancellationRequested)
+        {
+            // HTTP timeout occurred
+            _logger.LogWarning(taskCancelEx,
+                "[{CorrelationId}] HTTP request timed out during ideation for topic: {Topic}",
+                correlationId, request?.Topic ?? "unknown");
+
+            return StatusCode(504, new {
+                error = "Request timed out while waiting for AI response.",
+                correlationId,
+                suggestions = new[] {
+                    "The AI model may still be loading - wait a moment and try again",
+                    "If using Ollama, check that the model is fully loaded (ollama list)",
+                    "Try a smaller model for faster responses",
+                    "Simplify your topic description"
+                }
             });
         }
         catch (TimeoutException timeoutEx)

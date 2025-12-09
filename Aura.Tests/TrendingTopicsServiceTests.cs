@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Ideation;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Ideation;
 using Microsoft.Extensions.Caching.Memory;
@@ -19,6 +20,7 @@ public class TrendingTopicsServiceTests
     private readonly Mock<ILogger<TrendingTopicsService>> _mockLogger;
     private readonly Mock<ILlmProvider> _mockLlmProvider;
     private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
+    private readonly Mock<LlmStageAdapter> _mockStageAdapter;
     private readonly IMemoryCache _memoryCache;
     private readonly TrendingTopicsService _service;
 
@@ -29,11 +31,31 @@ public class TrendingTopicsServiceTests
         _mockHttpClientFactory = new Mock<IHttpClientFactory>();
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
+        // Create mock stage adapter
+        var mockAdapterLogger = new Mock<ILogger<LlmStageAdapter>>();
+        var mockProviderMixer = new Mock<Aura.Core.Orchestrator.ProviderMixer>();
+        _mockStageAdapter = new Mock<LlmStageAdapter>(
+            mockAdapterLogger.Object,
+            new Dictionary<string, ILlmProvider> { { "RuleBased", _mockLlmProvider.Object } },
+            mockProviderMixer.Object,
+            null);
+
+        // Setup mock to return a successful OrchestrationResult<string>
+        _mockStageAdapter
+            .Setup(x => x.GenerateScriptAsync(It.IsAny<Brief>(), It.IsAny<PlanSpec>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OrchestrationResult<string>.Success(
+                "WHY TRENDING: This topic is trending because of increased interest.\nAUDIENCE ENGAGEMENT: Audiences are actively engaging.\nCONTENT ANGLES:\n- Angle 1\n- Angle 2\n- Angle 3\nDEMOGRAPHIC APPEAL: Broad appeal.\nVIRALITY SCORE: 75",
+                Guid.NewGuid().ToString(),
+                100,
+                false,
+                "RuleBased"));
+
         _service = new TrendingTopicsService(
             _mockLogger.Object,
             _mockLlmProvider.Object,
             _mockHttpClientFactory.Object,
-            _memoryCache
+            _memoryCache,
+            _mockStageAdapter.Object
         );
     }
 

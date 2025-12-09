@@ -20,6 +20,12 @@ namespace Aura.Api.Controllers;
 [Route("api/health-dashboard")]
 public class HealthDashboardController : ControllerBase
 {
+    /// <summary>
+    /// Providers that are always available without requiring API keys or external services.
+    /// These providers should default to "healthy" status even without health metrics.
+    /// </summary>
+    private static readonly string[] AlwaysAvailableProviders = { "RuleBased", "WindowsSAPI", "Stock" };
+
     private readonly ILogger<HealthDashboardController> _logger;
     private readonly ProviderHealthMonitoringService _healthMonitoring;
     private readonly ProviderCircuitBreakerService _circuitBreaker;
@@ -132,8 +138,15 @@ public class HealthDashboardController : ControllerBase
         // For providers that don't require API keys, consider them configured
         var isConfigured = !def.RequiresApiKey || hasApiKey;
 
+        // Seed default healthy metrics for configured providers with no recorded traffic yet
+        if (healthMetrics == null && isConfigured)
+        {
+            _healthMonitoring.RecordSuccess(def.Name, 0);
+            healthMetrics = _healthMonitoring.GetProviderHealth(def.Name);
+        }
+
         // Determine health status
-        var healthStatus = DetermineHealthStatus(healthMetrics, circuitStatus, isConfigured, def.RequiresApiKey);
+        var healthStatus = DetermineHealthStatus(healthMetrics, circuitStatus, isConfigured, def.RequiresApiKey, def.Name);
 
         // Get quota info for rate-limited providers
         var quotaInfo = GetQuotaInfo(def.Name, def.Tier);
@@ -161,7 +174,8 @@ public class HealthDashboardController : ControllerBase
         Aura.Core.Models.Providers.ProviderHealthMetrics? metrics,
         Aura.Core.Services.Providers.CircuitBreakerStatus circuitStatus,
         bool isConfigured,
-        bool requiresApiKey)
+        bool requiresApiKey,
+        string? providerName = null)
     {
         // Not configured but requires API key
         if (requiresApiKey && !isConfigured)
@@ -184,6 +198,13 @@ public class HealthDashboardController : ControllerBase
         // No health metrics yet
         if (metrics == null)
         {
+            // For providers that don't require API keys and don't need external services,
+            // default to "healthy" since they should always be available
+            if (!requiresApiKey && providerName != null && AlwaysAvailableProviders.Contains(providerName))
+            {
+                return "healthy";
+            }
+
             return isConfigured ? "unknown" : "not_configured";
         }
 

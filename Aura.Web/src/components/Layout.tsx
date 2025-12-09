@@ -8,6 +8,7 @@ import { SkipLinks } from './Accessibility/SkipLinks';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationCenter } from './dashboard/NotificationCenter';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ProviderHealthIndicator } from './Header';
 import { GlobalLlmSelector } from './LLMMenu/GlobalLlmSelector';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileFAB } from './MobileFAB';
@@ -16,10 +17,10 @@ import { Sidebar } from './Sidebar';
 import { UndoRedoButtons } from './UndoRedo/UndoRedoButtons';
 
 /**
- * Standard toolbar height for consistent vertical rhythm.
- * Reduced from 48px for better 1080p density.
+ * Standard toolbar height meeting Apple HIG touch target minimum (44pt).
+ * Provides comfortable interaction and visual hierarchy.
  */
-const TOOLBAR_HEIGHT = '36px';
+const TOOLBAR_HEIGHT = '48px';
 
 const useStyles = makeStyles({
   container: {
@@ -43,8 +44,8 @@ const useStyles = makeStyles({
     alignItems: 'center',
     height: TOOLBAR_HEIGHT,
     minHeight: TOOLBAR_HEIGHT,
-    paddingLeft: spacing.lg,
-    paddingRight: spacing.lg,
+    paddingLeft: pageLayout.pagePadding,
+    paddingRight: pageLayout.pagePadding,
     borderBottom: `1px solid ${tokens.colorNeutralStroke1}`,
     backgroundColor: tokens.colorNeutralBackground1,
     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -57,7 +58,7 @@ const useStyles = makeStyles({
   topBarActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: gaps.tight,
+    gap: gaps.standard,
   },
   content: {
     flex: 1,
@@ -70,12 +71,32 @@ const useStyles = makeStyles({
       paddingBottom: '64px',
     },
   },
+  /** Content area without padding for full-bleed editors */
+  contentFullBleedWrapper: {
+    flex: 1,
+    overflow: 'hidden',
+    minHeight: 0,
+    minWidth: 0,
+    padding: 0,
+    backgroundColor: tokens.colorNeutralBackground1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
   /** Inner content wrapper for max-width constraint */
   contentInner: {
     maxWidth: pageLayout.maxContentWidth,
     marginLeft: 'auto',
     marginRight: 'auto',
     width: '100%',
+  },
+  /** Full bleed content - fills all available space without max-width constraint */
+  contentFullBleed: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0,
+    minWidth: 0,
   },
   sidebarOverlay: {
     position: 'fixed',
@@ -117,9 +138,16 @@ interface LayoutProps {
       | 'success'
       | 'warning';
   };
+  /** When true, content fills available space without max-width constraint (for full-screen editors like OpenCut) */
+  fullBleed?: boolean;
 }
 
-export function Layout({ children, showBreadcrumbs = true, statusBadge }: LayoutProps) {
+export function Layout({
+  children,
+  showBreadcrumbs = true,
+  statusBadge,
+  fullBleed = false,
+}: LayoutProps) {
   const styles = useStyles();
   const { isDarkMode, toggleTheme } = useTheme();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -174,17 +202,25 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
       </nav>
 
       <div className={styles.mainContainer}>
-        {showBreadcrumbs && <Breadcrumbs statusBadge={statusBadge} />}
-        <div className={styles.topBar} role="banner" aria-label="Top bar">
-          <UndoRedoButtons />
-          <div className={styles.topBarActions}>
-            <GlobalLlmSelector />
-            <NotificationCenter />
-            <ResultsTray />
+        {showBreadcrumbs && !fullBleed && <Breadcrumbs statusBadge={statusBadge} />}
+        {!fullBleed && (
+          <div className={styles.topBar} role="banner" aria-label="Top bar">
+            <UndoRedoButtons />
+            <div className={styles.topBarActions}>
+              <ProviderHealthIndicator />
+              <GlobalLlmSelector />
+              <NotificationCenter />
+              <ResultsTray />
+            </div>
           </div>
-        </div>
-        <main id="main-content" className={styles.content} tabIndex={-1} aria-label="Main content">
-          <div className={styles.contentInner}>
+        )}
+        <main
+          id="main-content"
+          className={fullBleed ? styles.contentFullBleedWrapper : styles.content}
+          tabIndex={-1}
+          aria-label="Main content"
+        >
+          <div className={fullBleed ? styles.contentFullBleed : styles.contentInner}>
             <ErrorBoundary>{children || <Outlet />}</ErrorBoundary>
           </div>
         </main>
@@ -195,4 +231,12 @@ export function Layout({ children, showBreadcrumbs = true, statusBadge }: Layout
       <MobileFAB />
     </div>
   );
+}
+
+/**
+ * FullBleedLayout - A layout variant without max-width constraints for full-screen editors
+ * Used for pages like OpenCut that need to fill all available space
+ */
+export function FullBleedLayout({ children }: { children?: ReactNode }) {
+  return <Layout fullBleed>{children}</Layout>;
 }

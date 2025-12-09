@@ -6,10 +6,30 @@ export interface GlobalLlmSelection {
   modelId: string;
 }
 
+/**
+ * Model validation status for the currently selected model
+ */
+export interface ModelValidationStatus {
+  /** Whether the model has been validated (checked against available models) */
+  isValidated: boolean;
+  /** Whether the model exists and is available for use */
+  isValid: boolean;
+  /** Error message if validation failed or model is not available */
+  errorMessage?: string;
+  /** Timestamp of last validation */
+  lastValidatedAt?: number;
+}
+
 interface GlobalLlmStore {
   selection: GlobalLlmSelection | null;
+  /** Validation status for the current model selection */
+  modelValidation: ModelValidationStatus;
   setSelection: (selection: GlobalLlmSelection | null) => void;
   clearSelection: () => void;
+  /** Update model validation status */
+  setModelValidation: (status: ModelValidationStatus) => void;
+  /** Reset model validation (e.g., when provider/model changes) */
+  resetModelValidation: () => void;
 }
 
 // Local storage keys
@@ -80,15 +100,37 @@ function migrateLegacyLlmSelection(): GlobalLlmSelection | null {
   return null;
 }
 
+/** Default model validation status (not yet validated) */
+const DEFAULT_MODEL_VALIDATION: ModelValidationStatus = {
+  isValidated: false,
+  isValid: true, // Assume valid until proven otherwise to avoid false warnings
+  errorMessage: undefined,
+  lastValidatedAt: undefined,
+};
+
 export const useGlobalLlmStore = create<GlobalLlmStore>()(
   persist(
     (set) => ({
       selection: null,
-      setSelection: (selection) => set({ selection }),
-      clearSelection: () => set({ selection: null }),
+      modelValidation: DEFAULT_MODEL_VALIDATION,
+      setSelection: (selection) =>
+        set({
+          selection,
+          // Reset validation when selection changes
+          modelValidation: DEFAULT_MODEL_VALIDATION,
+        }),
+      clearSelection: () =>
+        set({
+          selection: null,
+          modelValidation: DEFAULT_MODEL_VALIDATION,
+        }),
+      setModelValidation: (status) => set({ modelValidation: status }),
+      resetModelValidation: () => set({ modelValidation: DEFAULT_MODEL_VALIDATION }),
     }),
     {
       name: STORAGE_KEY,
+      // Only persist selection, not modelValidation (transient runtime state)
+      partialize: (state) => ({ selection: state.selection }),
       // Run migration on rehydration
       onRehydrateStorage: () => {
         return (state, error) => {

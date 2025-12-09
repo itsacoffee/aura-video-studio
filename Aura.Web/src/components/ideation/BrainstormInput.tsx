@@ -5,13 +5,23 @@ import {
   makeStyles,
   tokens,
   Text,
-  Spinner,
   Field,
   Slider,
   shorthands,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
+  Link,
 } from '@fluentui/react-components';
-import { SparkleRegular, SendRegular } from '@fluentui/react-icons';
-import React, { useState } from 'react';
+import {
+  SparkleRegular,
+  SendRegular,
+  WarningRegular,
+  ErrorCircleRegular,
+  InfoRegular,
+} from '@fluentui/react-icons';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { ollamaClient } from '../../services/api/ollamaClient';
 import { useGlobalLlmStore } from '../../state/globalLlmStore';
 
 const useStyles = makeStyles({
@@ -96,13 +106,6 @@ const useStyles = makeStyles({
     borderTopColor: tokens.colorNeutralStroke2,
     marginTop: tokens.spacingVerticalS,
   },
-  loadingContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: tokens.spacingHorizontalM,
-    ...shorthands.padding(tokens.spacingVerticalL),
-    justifyContent: 'center',
-  },
   sliderField: {
     marginTop: tokens.spacingVerticalM,
     paddingTop: tokens.spacingVerticalM,
@@ -114,6 +117,9 @@ const useStyles = makeStyles({
     marginTop: tokens.spacingVerticalS,
     color: tokens.colorNeutralForeground3,
     fontSize: tokens.fontSizeBase200,
+  },
+  warningBar: {
+    marginTop: tokens.spacingVerticalM,
   },
 });
 
@@ -143,12 +149,100 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
   onIdeaCountChange,
 }) => {
   const styles = useStyles();
-  const { selection: globalLlmSelection } = useGlobalLlmStore();
+  const { selection: globalLlmSelection, modelValidation, setSelection } = useGlobalLlmStore();
   const [topic, setTopic] = useState('');
   const [audience, setAudience] = useState('');
   const [tone, setTone] = useState('');
   const [targetDuration, setTargetDuration] = useState('');
   const [platform, setPlatform] = useState('');
+  const [autoDetectionStatus, setAutoDetectionStatus] = useState<{
+    attempted: boolean;
+    message?: string;
+    noModelsInstalled?: boolean;
+  }>({ attempted: false });
+
+  // Auto-detect and set default Ollama model on mount
+  const autoDetectOllamaModel = useCallback(async () => {
+    // Only auto-detect if no provider/model is selected yet
+    if (globalLlmSelection?.provider && globalLlmSelection?.modelId) {
+      return;
+    }
+
+    try {
+      const result = await ollamaClient.getRecommendedModel();
+
+      if (result.success && result.recommendedModel) {
+        // Auto-select Ollama with the recommended model
+        setSelection({
+          provider: 'Ollama',
+          modelId: result.recommendedModel,
+        });
+        setAutoDetectionStatus({
+          attempted: true,
+          message: `Auto-selected model: ${result.recommendedModel}`,
+        });
+      } else {
+        // No models available - show helpful message
+        setAutoDetectionStatus({
+          attempted: true,
+          message: result.message,
+          noModelsInstalled: !result.recommendedModel,
+        });
+      }
+    } catch (error: unknown) {
+      // Ollama might not be running - this is okay, user can configure manually
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.debug('Ollama auto-detection skipped:', errorMessage);
+      setAutoDetectionStatus({
+        attempted: true,
+        message: 'Ollama is not available. Configure a provider from the toolbar.',
+      });
+    }
+  }, [globalLlmSelection, setSelection]);
+
+  // Run auto-detection on mount only once
+  useEffect(() => {
+    // Only run once and only if no selection exists
+    if (!autoDetectionStatus.attempted && !globalLlmSelection?.provider) {
+      autoDetectOllamaModel();
+    }
+    // Intentionally only depend on autoDetectionStatus.attempted and globalLlmSelection?.provider
+    // to avoid re-running when the callback reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoDetectionStatus.attempted, globalLlmSelection?.provider]);
+
+  // Check if Ollama is selected but no model is chosen
+  const isOllamaWithoutModel = useMemo(() => {
+    if (!globalLlmSelection?.provider) return false;
+    const isOllama = globalLlmSelection.provider.toLowerCase() === 'ollama';
+    const hasNoModel = !globalLlmSelection.modelId || globalLlmSelection.modelId.trim() === '';
+    return isOllama && hasNoModel;
+  }, [globalLlmSelection]);
+
+  // Check if no provider is selected at all
+  const noProviderSelected = useMemo(() => {
+    return !globalLlmSelection?.provider || globalLlmSelection.provider.trim() === '';
+  }, [globalLlmSelection]);
+
+  // Check if the selected model is invalid (validated but not found)
+  const isModelInvalid = useMemo(() => {
+    // Only consider invalid if validation has been performed
+    if (!modelValidation.isValidated) return false;
+    return !modelValidation.isValid;
+  }, [modelValidation]);
+
+  // Determine if generation should be disabled
+  const isGenerationDisabled = useMemo(() => {
+    return loading || !topic.trim() || isOllamaWithoutModel || isModelInvalid;
+  }, [loading, topic, isOllamaWithoutModel, isModelInvalid]);
+
+  // Get tooltip for disabled button
+  const disabledTooltip = useMemo(() => {
+    if (!topic.trim()) return 'Enter a topic to generate concepts';
+    if (isOllamaWithoutModel) return 'Please select an Ollama model from the toolbar';
+    if (isModelInvalid) return modelValidation.errorMessage || 'Selected model is not available';
+    return '';
+  }, [topic, isOllamaWithoutModel, isModelInvalid, modelValidation.errorMessage]);
 
   const handleBrainstorm = () => {
     if (!topic.trim()) {
@@ -277,24 +371,79 @@ export const BrainstormInput: React.FC<BrainstormInputProps> = ({
         </Text>
       </Field>
 
-      {loading ? (
-        <div className={styles.loadingContainer}>
-          <Spinner size="small" />
-          <Text size={300}>Generating creative concepts...</Text>
-        </div>
-      ) : (
-        <div className={styles.actions}>
-          <Button
-            appearance="primary"
-            icon={<SendRegular />}
-            onClick={handleBrainstorm}
-            disabled={!topic.trim()}
-            size="large"
-          >
-            Generate Concepts
-          </Button>
-        </div>
+      {/* Warning when Ollama is selected but no model is chosen */}
+      {isOllamaWithoutModel && (
+        <MessageBar intent="warning" className={styles.warningBar} icon={<WarningRegular />}>
+          <MessageBarBody>
+            <MessageBarTitle>No Ollama model selected</MessageBarTitle>
+            Please select a model from the AI Model dropdown in the toolbar above. If no models are
+            available, run <code>ollama list</code> to see installed models or{' '}
+            <code>ollama pull &lt;model-name&gt;</code> to install one (e.g., llama3.1, mistral,
+            qwen2.5).
+          </MessageBarBody>
+        </MessageBar>
       )}
+
+      {/* Info when no models are installed in Ollama */}
+      {autoDetectionStatus.noModelsInstalled && !isOllamaWithoutModel && (
+        <MessageBar intent="info" className={styles.warningBar} icon={<InfoRegular />}>
+          <MessageBarBody>
+            <MessageBarTitle>No Ollama models installed</MessageBarTitle>
+            To get started with local AI:
+            <ol style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
+              <li>
+                Ensure Ollama is running: <code>ollama serve</code>
+              </li>
+              <li>
+                Install a model: <code>ollama pull llama3.1:8b</code>
+              </li>
+              <li>Refresh the model list in the AI Model dropdown above</li>
+            </ol>
+            <Link
+              href="https://ollama.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginTop: '8px', display: 'inline-block' }}
+            >
+              Download Ollama
+            </Link>
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
+      {/* Error when selected model is not available */}
+      {isModelInvalid && modelValidation.errorMessage && (
+        <MessageBar intent="error" className={styles.warningBar} icon={<ErrorCircleRegular />}>
+          <MessageBarBody>
+            <MessageBarTitle>Model not available</MessageBarTitle>
+            {modelValidation.errorMessage}
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
+      {/* Info when no provider is selected - will use auto-detection */}
+      {noProviderSelected && !loading && !autoDetectionStatus.noModelsInstalled && (
+        <MessageBar intent="info" className={styles.warningBar}>
+          <MessageBarBody>
+            <MessageBarTitle>Using default AI provider</MessageBarTitle>
+            No AI provider selected. The system will automatically use the best available provider.
+            For better control, select a provider and model from the toolbar above.
+          </MessageBarBody>
+        </MessageBar>
+      )}
+
+      <div className={styles.actions}>
+        <Button
+          appearance="primary"
+          icon={<SendRegular />}
+          onClick={handleBrainstorm}
+          disabled={isGenerationDisabled}
+          size="large"
+          title={disabledTooltip}
+        >
+          Generate Concepts
+        </Button>
+      </div>
     </div>
   );
 };

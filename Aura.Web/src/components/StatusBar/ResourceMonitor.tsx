@@ -1,11 +1,18 @@
-import { makeStyles, tokens, Text, ProgressBar, Tooltip } from '@fluentui/react-components';
 import {
-  Window24Regular,
-  DataArea24Regular,
-  HardDrive24Regular,
-  Warning24Filled,
+    Badge,
+    makeStyles,
+    ProgressBar,
+    Text,
+    tokens,
+    Tooltip,
+} from '@fluentui/react-components';
+import {
+    DataArea24Regular,
+    HardDrive24Regular,
+    Warning24Filled,
+    Window24Regular,
 } from '@fluentui/react-icons';
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { get } from '../../services/api/apiClient';
 
 const useStyles = makeStyles({
@@ -63,54 +70,112 @@ const useStyles = makeStyles({
 interface ResourceMetrics {
   cpu: number; // percentage
   memory: number; // percentage
-  gpu: number; // percentage
+  gpu: number | null; // percentage, or null if GPU monitoring unavailable
   diskIO: number; // MB/s
+  updatedAt?: Date | null;
 }
 
 // Backend API response types matching SystemResourceMetrics from Aura.Core.Models
+// All properties are optional to handle partial/null responses defensively
 interface SystemResourceMetrics {
-  timestamp: string;
-  cpu: {
-    overallUsagePercent: number;
-    perCoreUsagePercent: number[];
-    logicalCores: number;
-    physicalCores: number;
-    processUsagePercent: number;
+  timestamp?: string;
+  cpu?: {
+    overallUsagePercent?: number;
+    perCoreUsagePercent?: number[];
+    logicalCores?: number;
+    physicalCores?: number;
+    processUsagePercent?: number;
   };
-  memory: {
-    totalBytes: number;
-    availableBytes: number;
-    usedBytes: number;
-    usagePercent: number;
-    processUsageBytes: number;
-    processPrivateBytes: number;
-    processWorkingSetBytes: number;
+  memory?: {
+    totalBytes?: number;
+    availableBytes?: number;
+    usedBytes?: number;
+    usagePercent?: number;
+    processUsageBytes?: number;
+    processPrivateBytes?: number;
+    processWorkingSetBytes?: number;
   };
   gpu?: {
-    name: string;
-    vendor: string;
-    usagePercent: number;
-    totalMemoryBytes: number;
-    usedMemoryBytes: number;
-    availableMemoryBytes: number;
-    memoryUsagePercent: number;
-    temperatureCelsius: number;
+    name?: string;
+    vendor?: string;
+    usagePercent?: number;
+    totalMemoryBytes?: number;
+    usedMemoryBytes?: number;
+    availableMemoryBytes?: number;
+    memoryUsagePercent?: number;
+    temperatureCelsius?: number;
   };
-  disks: Array<{
-    driveName: string;
-    driveLabel: string;
-    totalBytes: number;
-    availableBytes: number;
-    usedBytes: number;
-    usagePercent: number;
-    readBytesPerSecond: number;
-    writeBytesPerSecond: number;
+  disks?: Array<{
+    driveName?: string;
+    driveLabel?: string;
+    totalBytes?: number;
+    availableBytes?: number;
+    usedBytes?: number;
+    usagePercent?: number;
+    readBytesPerSecond?: number;
+    writeBytesPerSecond?: number;
   }>;
-  network: {
-    bytesSentPerSecond: number;
-    bytesReceivedPerSecond: number;
-    totalBytesSent: number;
-    totalBytesReceived: number;
+  network?: {
+    bytesSentPerSecond?: number;
+    bytesReceivedPerSecond?: number;
+    totalBytesSent?: number;
+    totalBytesReceived?: number;
+  };
+}
+
+/**
+ * Parses system metrics response with defensive handling for null/undefined fields.
+ *
+ * @param response - The system metrics response from the API, which may be null, undefined, or have missing properties
+ * @returns ResourceMetrics object with the following fallback behavior:
+ *   - cpu: Falls back to 0 if cpu object or overallUsagePercent is missing. Clamped to 0-100.
+ *   - memory: Falls back to 0 if memory object or usagePercent is missing. Clamped to 0-100.
+ *   - gpu: Returns null if GPU is not available or usagePercent is not a number (displays as "N/A"). Otherwise clamped to 0-100.
+ *   - diskIO: Falls back to 0 if disks array is missing or empty. Calculated from first disk's read/write bytes per second.
+ */
+function parseMetricsResponse(response: SystemResourceMetrics | null | undefined): ResourceMetrics {
+  if (!response) {
+    return { cpu: 0, memory: 0, gpu: null, diskIO: 0 };
+  }
+
+  // Parse CPU usage with fallback to process usage if overall is unavailable
+  const cpuUsage =
+    response.cpu?.overallUsagePercent ??
+    response.cpu?.processUsagePercent ??
+    0;
+
+  // Parse memory usage, deriving from bytes if percent is missing
+  const memoryUsage =
+    response.memory?.usagePercent ??
+    (typeof response.memory?.usedBytes === 'number' &&
+    typeof response.memory?.totalBytes === 'number' &&
+    response.memory.totalBytes > 0
+      ? (response.memory.usedBytes / response.memory.totalBytes) * 100
+      : 0);
+
+  // Parse GPU usage - null if GPU object is not present or usagePercent is undefined
+  const gpuUsage =
+    response.gpu && typeof response.gpu.usagePercent === 'number'
+      ? response.gpu.usagePercent
+      : response.gpu && typeof response.gpu?.memoryUsagePercent === 'number'
+        ? response.gpu.memoryUsagePercent
+        : null;
+
+  // Calculate disk I/O from first disk if available
+  let diskIO = 0;
+  if (response.disks && response.disks.length > 0) {
+    const firstDisk = response.disks[0];
+    const readBytes = firstDisk.readBytesPerSecond ?? 0;
+    const writeBytes = firstDisk.writeBytesPerSecond ?? 0;
+    diskIO = (readBytes + writeBytes) / (1024 * 1024); // Convert to MB/s
+  }
+
+  return {
+    cpu: Math.max(0, Math.min(100, cpuUsage)),
+    memory: Math.max(0, Math.min(100, memoryUsage)),
+    gpu: gpuUsage !== null ? Math.max(0, Math.min(100, gpuUsage)) : null,
+    diskIO: Math.max(0, diskIO),
+    updatedAt: response.timestamp ? new Date(response.timestamp) : new Date(),
   };
 }
 
@@ -123,9 +188,12 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
   const [metrics, setMetrics] = useState<ResourceMetrics>({
     cpu: 0,
     memory: 0,
-    gpu: 0,
+    gpu: null,
     diskIO: 0,
   });
+  const [status, setStatus] = useState<'connecting' | 'live' | 'stale' | 'offline'>('connecting');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const failureStreakRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch real system metrics from backend API
@@ -145,26 +213,21 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
           _skipCircuitBreaker: true, // Don't trip circuit breaker for metrics polling
         });
 
-        // Calculate disk I/O from the first disk (or sum of all if needed)
-        const diskIO =
-          systemMetrics.disks.length > 0
-            ? (systemMetrics.disks[0].readBytesPerSecond +
-                systemMetrics.disks[0].writeBytesPerSecond) /
-              (1024 * 1024) // Convert to MB/s
-            : 0;
-
-        setMetrics({
-          cpu: Math.max(0, Math.min(100, systemMetrics.cpu.overallUsagePercent)),
-          memory: Math.max(0, Math.min(100, systemMetrics.memory.usagePercent)),
-          gpu: systemMetrics.gpu ? Math.max(0, Math.min(100, systemMetrics.gpu.usagePercent)) : 0,
-          diskIO: Math.max(0, diskIO),
-        });
-      } catch (error) {
+        // Use defensive parsing to handle null/undefined fields
+        const parsedMetrics = parseMetricsResponse(systemMetrics);
+        setMetrics(parsedMetrics);
+        setLastUpdated(parsedMetrics.updatedAt ?? new Date());
+        failureStreakRef.current = 0;
+        setStatus('live');
+      } catch (error: unknown) {
         // Silently handle errors - don't update metrics if request fails
         // This prevents UI flicker when backend is temporarily unavailable
-        if (error instanceof Error && error.name !== 'AbortError') {
-          console.warn('[ResourceMonitor] Failed to fetch metrics:', error.message);
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        if (errorObj.name !== 'AbortError') {
+          console.warn('[ResourceMonitor] Failed to fetch metrics:', errorObj.message);
         }
+        failureStreakRef.current += 1;
+        setStatus(failureStreakRef.current >= 3 ? 'offline' : 'stale');
       }
     };
 
@@ -182,6 +245,19 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
       }
     };
   }, []);
+
+  // Mark data as stale if it has not refreshed recently
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (!lastUpdated) return;
+      const ageMs = Date.now() - lastUpdated.getTime();
+      if (ageMs > 8000 && status === 'live') {
+        setStatus('stale');
+      }
+    }, 2000);
+
+    return () => window.clearInterval(interval);
+  }, [lastUpdated, status]);
 
   const getUsageColor = (value: number): 'success' | 'warning' | 'error' => {
     if (value >= 90) return 'error';
@@ -220,9 +296,35 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
     return suggestions[metric] || null;
   };
 
+  const statusBadge = (() => {
+    switch (status) {
+      case 'live':
+        return { color: 'success' as const, label: 'Live' };
+      case 'stale':
+        return { color: 'warning' as const, label: 'Stale' };
+      case 'offline':
+        return { color: 'danger' as const, label: 'Offline' };
+      default:
+        return { color: 'informative' as const, label: 'Connecting' };
+    }
+  })();
+
+  const lastUpdatedCopy = lastUpdated
+    ? `Updated ${Math.max(1, Math.round((Date.now() - lastUpdated.getTime()) / 1000))}s ago`
+    : status === 'offline'
+      ? 'Unable to reach metrics service'
+      : 'Waiting for first sample';
+
   if (compact) {
     return (
-      <div style={{ display: 'flex', gap: tokens.spacingHorizontalM, alignItems: 'center' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: tokens.spacingHorizontalM,
+          alignItems: 'center',
+        }}
+        title={lastUpdatedCopy}
+      >
         <Tooltip content={`CPU: ${metrics.cpu.toFixed(0)}%`} relationship="label">
           <div className={`${styles.resourceLabel} ${getUsageClass(metrics.cpu)}`}>
             <Window24Regular />
@@ -235,21 +337,32 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
             <Text size={200}>{metrics.memory.toFixed(0)}%</Text>
           </div>
         </Tooltip>
-        {metrics.gpu > 0 && (
-          <Tooltip content={`GPU: ${metrics.gpu.toFixed(0)}%`} relationship="label">
-            <div className={`${styles.resourceLabel} ${getUsageClass(metrics.gpu)}`}>
-              <HardDrive24Regular />
-              <Text size={200}>{metrics.gpu.toFixed(0)}%</Text>
-            </div>
-          </Tooltip>
-        )}
+        <Tooltip
+          content={metrics.gpu !== null ? `GPU: ${metrics.gpu.toFixed(0)}%` : 'GPU: Not available'}
+          relationship="label"
+        >
+          <div
+            className={`${styles.resourceLabel} ${metrics.gpu !== null && metrics.gpu > 0 ? getUsageClass(metrics.gpu) : ''}`}
+          >
+            <HardDrive24Regular />
+            <Text size={200}>{metrics.gpu !== null ? `${metrics.gpu.toFixed(0)}%` : 'N/A'}</Text>
+          </div>
+        </Tooltip>
       </div>
     );
   }
 
   return (
     <div className={styles.container}>
-      <Text className={styles.title}>System Resources</Text>
+      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+        <Text className={styles.title}>System Resources</Text>
+        <Badge appearance="tint" color={statusBadge.color} size="small">
+          {statusBadge.label}
+        </Badge>
+        <Text size={100} style={{ color: tokens.colorNeutralForeground3 }}>
+          {lastUpdatedCopy}
+        </Text>
+      </div>
 
       {/* CPU Usage */}
       <div className={styles.resourceItem}>
@@ -288,24 +401,32 @@ export function ResourceMonitor({ compact = false }: ResourceMonitorProps) {
       </div>
 
       {/* GPU Usage */}
-      {metrics.gpu > 0 && (
-        <div className={styles.resourceItem}>
-          <div className={styles.resourceHeader}>
-            <div className={styles.resourceLabel}>
-              <HardDrive24Regular />
-              <Text>GPU</Text>
-            </div>
-            <div className={styles.resourceValue}>
-              {metrics.gpu >= 75 && <Warning24Filled className={styles.warningIcon} />}
-              <Text className={getUsageClass(metrics.gpu)}>{metrics.gpu.toFixed(1)}%</Text>
-            </div>
+      <div className={styles.resourceItem}>
+        <div className={styles.resourceHeader}>
+          <div className={styles.resourceLabel}>
+            <HardDrive24Regular />
+            <Text>GPU</Text>
           </div>
-          <ProgressBar value={metrics.gpu / 100} color={getUsageColor(metrics.gpu)} />
-          {getSuggestion('gpu', metrics.gpu) && (
-            <Text className={styles.suggestion}>{getSuggestion('gpu', metrics.gpu)}</Text>
-          )}
+          <div className={styles.resourceValue}>
+            {metrics.gpu !== null && metrics.gpu >= 75 && (
+              <Warning24Filled className={styles.warningIcon} />
+            )}
+            <Text className={metrics.gpu !== null ? getUsageClass(metrics.gpu) : ''}>
+              {metrics.gpu !== null ? `${metrics.gpu.toFixed(1)}%` : 'N/A'}
+            </Text>
+          </div>
         </div>
-      )}
+        {metrics.gpu !== null ? (
+          <>
+            <ProgressBar value={metrics.gpu / 100} color={getUsageColor(metrics.gpu)} />
+            {getSuggestion('gpu', metrics.gpu) && (
+              <Text className={styles.suggestion}>{getSuggestion('gpu', metrics.gpu)}</Text>
+            )}
+          </>
+        ) : (
+          <Text className={styles.suggestion}>GPU monitoring is not available on this system</Text>
+        )}
+      </div>
 
       {/* Disk I/O */}
       <div className={styles.resourceItem}>

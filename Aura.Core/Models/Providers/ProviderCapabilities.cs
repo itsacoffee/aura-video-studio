@@ -14,6 +14,11 @@ public class ProviderCapabilities
     public string ProviderName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Preferred default model identifier for this provider (if known)
+    /// </summary>
+    public string? DefaultModel { get; set; }
+
+    /// <summary>
     /// Whether this provider supports translation operations
     /// </summary>
     public bool SupportsTranslation { get; set; }

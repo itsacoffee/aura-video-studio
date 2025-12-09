@@ -1401,6 +1401,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         return new Core.Models.Providers.ProviderCapabilities
         {
             ProviderName = "Azure OpenAI",
+            DefaultModel = _deploymentName,
             SupportsTranslation = true,
             SupportsStreaming = false,
             IsLocalModel = false,

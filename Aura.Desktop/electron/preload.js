@@ -156,6 +156,18 @@ const VALID_CHANNELS = {
     "opencut:stop",
     "opencut:waitForReady",
     "opencut:health",
+    "opencut:getDiagnostics",
+  ],
+
+  // Graphics channels
+  GRAPHICS: [
+    "graphics:getMaterial",
+    "graphics:setMaterial",
+    "graphics:isMicaSupported",
+    "graphics:getAccentColor",
+    "graphics:getDpiInfo",
+    "graphics:getAllDisplays",
+    "graphics:applySettings",
   ],
 };
 
@@ -168,6 +180,9 @@ const VALID_EVENT_CHANNELS = [
   "backend:providerUpdate",
   "protocol:navigate",
   "app:safeMode",
+  "display-info", // Display info updates for adaptive layout
+  "system-theme-changed", // System theme change for Mica
+  "system-accent-color", // System accent color for Mica
   ...MENU_EVENT_CHANNELS,
 ];
 
@@ -565,6 +580,7 @@ function createAuraBridge() {
     stop: () => safeInvoke("opencut:stop"),
     waitForReady: (maxWaitMs) => safeInvoke("opencut:waitForReady", maxWaitMs),
     health: () => safeInvoke("opencut:health"),
+    getDiagnostics: () => safeInvoke("opencut:getDiagnostics"),
   };
 
   const updatesApi = {
@@ -619,6 +635,19 @@ function createAuraBridge() {
       safeOn("backend:providerUpdate", callback),
   };
 
+  const graphicsApi = {
+    getMaterial: () => safeInvoke("graphics:getMaterial"),
+    setMaterial: (effect) => safeInvoke("graphics:setMaterial", effect),
+    isMicaSupported: () => safeInvoke("graphics:isMicaSupported"),
+    getAccentColor: () => safeInvoke("graphics:getAccentColor"),
+    getDpiInfo: () => safeInvoke("graphics:getDpiInfo"),
+    getAllDisplays: () => safeInvoke("graphics:getAllDisplays"),
+    applySettings: (settings) => safeInvoke("graphics:applySettings", settings),
+    // Event listeners
+    onThemeChange: (callback) => safeOn("system-theme-changed", callback),
+    onAccentColorChange: (callback) => safeOn("system-accent-color", callback),
+  };
+
   const systemApi = {
     getEnvironmentInfo: async () => {
       const diagnostics = runtimeBootstrap ?? (await refreshDiagnostics());
@@ -635,6 +664,13 @@ function createAuraBridge() {
       };
     },
     getPaths: () => safeInvoke("app:getPaths"),
+    /**
+     * Listen for display info updates from the main process
+     * Used by the adaptive layout system for responsive UI
+     * @param {function} callback - Function called with display info
+     * @returns {function} Unsubscribe function
+     */
+    onDisplayInfo: (callback) => safeOn("display-info", callback),
   };
 
   const aura = {
@@ -678,6 +714,7 @@ function createAuraBridge() {
     menu: createValidatedMenuAPI(ipcRenderer),
     startupLogs: startupLogsApi,
     opencut: opencutApi,
+    graphics: graphicsApi,
     safeMode: {
       onStatus: (callback) => safeOn("app:safeMode", callback),
     },

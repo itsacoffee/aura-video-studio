@@ -13,6 +13,7 @@ using Aura.Core.Data;
 using Aura.Core.Extensions;
 using Aura.Core.Hardware;
 using Aura.Core.Logging;
+using Aura.Core.Services.FFmpeg;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
 using Aura.Core.Planner;
@@ -30,6 +31,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Serilog;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -60,6 +62,14 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
     WebRootPath = Path.Combine(AppContext.BaseDirectory, "wwwroot")
+});
+
+// Configure Kestrel for long-running LLM requests (15 minutes)
+// This prevents Kestrel from killing connections before the LLM completes processing
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(15);
+    serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(15);
 });
 
 // Check for reset flag
@@ -548,6 +558,20 @@ builder.Services.AddSingleton<Aura.Core.Configuration.FFmpegConfigurationStore>(
 // Register unified FFmpeg configuration service
 builder.Services.AddSingleton<Aura.Core.Configuration.IFfmpegConfigurationService, Aura.Core.Configuration.FfmpegConfigurationService>();
 
+// Core FFmpeg + GPU dependencies
+builder.Services.AddSingleton<Aura.Core.Dependencies.IFfmpegLocator>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Dependencies.FfmpegLocator>>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var toolsDir = providerSettings.GetToolsDirectory();
+    var explicitPath = providerSettings.GetFfmpegPath();
+    return new Aura.Core.Dependencies.FfmpegLocator(logger, toolsDir, explicitPath);
+});
+builder.Services.AddSingleton<IProcessManager, ProcessManager>();
+builder.Services.AddSingleton<IFFmpegService, FFmpegService>();
+builder.Services.AddSingleton<IFFmpegExecutor, FFmpegExecutor>();
+builder.Services.AddSingleton<Aura.Core.Hardware.IGpuDetectionService, Aura.Core.Hardware.GpuDetectionService>();
+
 // Register core services
 builder.Services.AddSingleton<HardwareDetector>();
 builder.Services.AddSingleton<IHardwareDetector>(sp => sp.GetRequiredService<HardwareDetector>());
@@ -571,8 +595,14 @@ builder.Services.AddScoped<Aura.Core.Configuration.SettingsExportImportService>(
 // Register settings service
 builder.Services.AddScoped<Aura.Core.Services.Settings.ISettingsService, Aura.Core.Services.Settings.SettingsService>();
 
+// Register graphics settings service
+builder.Services.AddSingleton<Aura.Core.Services.Settings.IGraphicsSettingsService, Aura.Core.Services.Settings.GraphicsSettingsService>();
+
 // Register media library services
 builder.Services.AddMediaServices(builder.Configuration);
+
+// Register AI repurposing services
+builder.Services.AddRepurposingServices();
 
 // Register Ollama service for process control
 builder.Services.AddSingleton<Aura.Core.Services.OllamaService>(sp =>
@@ -593,11 +623,50 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Core.Services
 builder.Services.AddSingleton<Aura.Api.HostedServices.OllamaHealthCheckService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<Aura.Api.HostedServices.OllamaHealthCheckService>());
 
+// Register Core OllamaHealthCheckService for comprehensive health checks with retry support
+builder.Services.AddSingleton<Aura.Core.Services.Providers.OllamaHealthCheckService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Providers.OllamaHealthCheckService>>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("OllamaClient");
+    var cache = sp.GetRequiredService<IMemoryCache>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var baseUrl = providerSettings.GetOllamaUrl();
+    return new Aura.Core.Services.Providers.OllamaHealthCheckService(logger, httpClient, cache, baseUrl);
+});
+
+// ARCHITECTURAL FIX: Register OllamaDirectClient with proper DI instead of using reflection
+// This provides a clean, testable interface to Ollama without accessing private fields
+// Configure OllamaSettings using a factory that resolves ProviderSettings service
+builder.Services.AddSingleton<IConfigureOptions<Aura.Core.Providers.OllamaSettings>>(sp =>
+{
+    return new ConfigureNamedOptions<Aura.Core.Providers.OllamaSettings>(
+        Options.DefaultName,
+        options =>
+        {
+            var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+            options.BaseUrl = providerSettings.GetOllamaUrl();
+            options.Timeout = TimeSpan.FromMinutes(3); // 3 minute timeout for ideation
+            options.MaxRetries = 3;
+            options.GpuEnabled = providerSettings.GetOllamaGpuEnabled();
+            options.NumGpu = providerSettings.GetOllamaNumGpu();
+            options.NumCtx = providerSettings.GetOllamaNumCtx();
+        });
+});
+builder.Services.AddHttpClient<Aura.Core.Providers.IOllamaDirectClient, Aura.Core.Providers.OllamaDirectClient>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5); // Outer timeout (allow for retries)
+});
+
+
 // Configure Circuit Breaker options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.CircuitBreakerSettings>(
     builder.Configuration.GetSection("CircuitBreaker"));
 builder.Services.AddSingleton(sp =>
     sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Aura.Core.Configuration.CircuitBreakerSettings>>().Value);
+
+// Register CircuitBreakerRegistry for managing provider circuit breakers
+builder.Services.AddSingleton<Aura.Core.Services.Resilience.CircuitBreakerRegistry>();
 
 // Configure OpenAI provider options from appsettings
 builder.Services.Configure<Aura.Core.Configuration.OpenAIConfiguration>(
@@ -720,6 +789,22 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.ScriptOrchestrator>(sp =>
     }
 
     return new Aura.Core.Orchestrator.ScriptOrchestrator(logger, loggerFactory, mixer, ProviderFactory, ollamaDetectionService, providerSettings);
+});
+
+// Register LlmStageAdapter for unified LLM orchestration
+// This ensures Ideation, Translation, and other features use the same orchestration path as Script generation
+builder.Services.AddSingleton<Aura.Core.Orchestration.LlmStageAdapter>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Orchestration.LlmStageAdapter>>();
+    var mixer = sp.GetRequiredService<Aura.Core.Orchestrator.ProviderMixer>();
+    var factory = sp.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var providerSettings = sp.GetService<Aura.Core.Configuration.ProviderSettings>();
+
+    // Create providers using the same factory as ScriptOrchestrator
+    var providers = factory.CreateAvailableProviders(loggerFactory);
+
+    return new Aura.Core.Orchestration.LlmStageAdapter(logger, providers, mixer, providerSettings);
 });
 
 // Register streaming orchestrator for SSE support
@@ -883,7 +968,7 @@ builder.Services.AddSingleton<Aura.Core.Services.Ideation.TrendingTopicsService>
     var llmProvider = sp.GetRequiredService<ILlmProvider>();
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var cache = sp.GetRequiredService<IMemoryCache>();
-    var stageAdapter = sp.GetService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
     var webSearchService = sp.GetService<Aura.Core.Services.Ideation.WebSearchService>();
     return new Aura.Core.Services.Ideation.TrendingTopicsService(logger, llmProvider, httpClientFactory, cache, stageAdapter, webSearchService);
 });
@@ -895,10 +980,32 @@ builder.Services.AddSingleton<Aura.Core.Services.Ideation.IdeationService>(sp =>
     var projectManager = sp.GetRequiredService<Aura.Core.Services.Conversation.ProjectContextManager>();
     var conversationManager = sp.GetRequiredService<Aura.Core.Services.Conversation.ConversationContextManager>();
     var trendingTopicsService = sp.GetRequiredService<Aura.Core.Services.Ideation.TrendingTopicsService>();
-    var stageAdapter = sp.GetService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
     var ragContextBuilder = sp.GetService<Aura.Core.Services.RAG.RagContextBuilder>();
     var webSearchService = sp.GetService<Aura.Core.Services.Ideation.WebSearchService>();
-    return new Aura.Core.Services.Ideation.IdeationService(logger, llmProvider, projectManager, conversationManager, trendingTopicsService, stageAdapter, ragContextBuilder, webSearchService);
+    var ollamaDirectClient = sp.GetService<Aura.Core.Providers.IOllamaDirectClient>();
+    return new Aura.Core.Services.Ideation.IdeationService(logger, llmProvider, projectManager, conversationManager, trendingTopicsService, stageAdapter, ragContextBuilder, webSearchService, ollamaDirectClient);
+});
+
+// Register Translation service for localization
+builder.Services.AddSingleton<Aura.Core.Services.Localization.TranslationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Localization.TranslationService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var ollamaDirectClient = sp.GetService<Aura.Core.Providers.IOllamaDirectClient>();
+    return new Aura.Core.Services.Localization.TranslationService(logger, llmProvider, stageAdapter, ollamaDirectClient);
+});
+
+// Register Localization service with resilience policies
+builder.Services.AddSingleton<Aura.Api.Services.ILocalizationService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Api.Services.LocalizationService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+    var stageAdapter = sp.GetRequiredService<Aura.Core.Orchestration.LlmStageAdapter>();
+    var translationService = sp.GetRequiredService<Aura.Core.Services.Localization.TranslationService>();
+    return new Aura.Api.Services.LocalizationService(logger, llmProvider, loggerFactory, stageAdapter, translationService);
 });
 
 // Register Audience Profile services
@@ -1095,9 +1202,17 @@ else
 
 // Register all providers using centralized extension methods from Aura.Providers
 // This ensures consistent DI registration across LLM, TTS, and Image providers
+builder.Services.AddProviderServices();
 builder.Services.AddAuraProviders();
 builder.Services.AddProviderFactories();
 builder.Services.AddProviderHealthServices();
+
+// Register Video Template Service for script-to-video templates
+builder.Services.AddSingleton<Aura.Core.Services.Templates.IVideoTemplateService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Templates.VideoTemplateService>>();
+    return new Aura.Core.Services.Templates.VideoTemplateService(logger);
+});
 
 // Register Azure TTS voice discovery (additional service beyond basic provider)
 builder.Services.AddSingleton<Aura.Providers.Tts.AzureVoiceDiscovery>(sp =>
@@ -1126,18 +1241,68 @@ builder.Services.AddSingleton<IVideoComposer>(sp =>
     return new FfmpegVideoComposer(logger, ffmpegLocator, configuredFfmpegPath, outputDirectory, processRegistry, processRunner);
 });
 
-// IImageProvider is NOT registered as a singleton to avoid circular DI dependency
-// ImageProviderFactory should be used directly when image generation is needed
-// VisualsStage accepts IImageProvider? as optional and handles null gracefully
+// Register PlaceholderImageProvider as a guaranteed fallback
+builder.Services.AddSingleton<Aura.Providers.Images.PlaceholderImageProvider>();
+
+// Register IImageProvider with FallbackImageProvider that wraps primary providers and placeholder fallback
+// This ensures VisualsStage always has an image provider and never receives null
+builder.Services.AddSingleton<IImageProvider>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Providers.Images.FallbackImageProvider>>();
+    var placeholderProvider = sp.GetRequiredService<Aura.Providers.Images.PlaceholderImageProvider>();
+    var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+
+    // Build list of primary providers based on configured API keys
+    var primaryProviders = new List<IStockProvider>();
+
+    // Check for Pexels API key
+    var pexelsKey = providerSettings.GetPexelsApiKey();
+    if (!string.IsNullOrEmpty(pexelsKey))
+    {
+        var pexelsLogger = loggerFactory.CreateLogger<Aura.Providers.Images.PexelsStockProvider>();
+        primaryProviders.Add(new Aura.Providers.Images.PexelsStockProvider(pexelsLogger, httpClientFactory.CreateClient(), pexelsKey));
+        logger.LogInformation("Pexels provider added to FallbackImageProvider with API key");
+    }
+
+    // Check for Pixabay API key
+    var pixabayKey = providerSettings.GetPixabayApiKey();
+    if (!string.IsNullOrEmpty(pixabayKey))
+    {
+        var pixabayLogger = loggerFactory.CreateLogger<Aura.Providers.Images.PixabayStockProvider>();
+        primaryProviders.Add(new Aura.Providers.Images.PixabayStockProvider(pixabayLogger, httpClientFactory.CreateClient(), pixabayKey));
+        logger.LogInformation("Pixabay provider added to FallbackImageProvider with API key");
+    }
+
+    // Check for Unsplash access key
+    var unsplashKey = providerSettings.GetUnsplashAccessKey();
+    if (!string.IsNullOrEmpty(unsplashKey))
+    {
+        var unsplashLogger = loggerFactory.CreateLogger<Aura.Providers.Images.UnsplashStockProvider>();
+        primaryProviders.Add(new Aura.Providers.Images.UnsplashStockProvider(unsplashLogger, httpClientFactory.CreateClient(), unsplashKey));
+        logger.LogInformation("Unsplash provider added to FallbackImageProvider with access key");
+    }
+
+    if (primaryProviders.Count == 0)
+    {
+        logger.LogWarning(
+            "No stock image API keys configured. FallbackImageProvider will use PlaceholderImageProvider only. " +
+            "Configure Pexels, Pixabay, or Unsplash API keys in Settings to enable stock images.");
+    }
+
+    return new Aura.Providers.Images.FallbackImageProvider(logger, primaryProviders, placeholderProvider);
+});
 
 // Register IStockProvider with factory-based resolution for stock media
+// Falls back to PlaceholderImageProvider when no API keys are configured
 builder.Services.AddSingleton<IStockProvider>(sp =>
 {
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var providerSettings = sp.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
     var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
 
-    // Priority order: Pexels > Unsplash > Pixabay > Local
+    // Priority order: Pexels > Unsplash > Pixabay > PlaceholderImageProvider
     var pexelsKey = providerSettings.GetPexelsApiKey();
     if (!string.IsNullOrWhiteSpace(pexelsKey))
     {
@@ -1165,11 +1330,10 @@ builder.Services.AddSingleton<IStockProvider>(sp =>
             logger, httpClientFactory.CreateClient(), pixabayKey);
     }
 
-    // Fallback to local stock provider
-    var localLogger = loggerFactory.CreateLogger<Aura.Providers.Images.LocalStockProvider>();
-    localLogger.LogInformation("Using Local stock provider (no API keys configured)");
-    var localPath = Path.Combine(providerSettings.GetAuraDataDirectory(), "Stock");
-    return new Aura.Providers.Images.LocalStockProvider(localLogger, localPath);
+    // Fallback to PlaceholderImageProvider - generates real PNG images that FFmpeg can process
+    var placeholderLogger = loggerFactory.CreateLogger<Aura.Providers.Images.PlaceholderImageProvider>();
+    placeholderLogger.LogInformation("Using PlaceholderImageProvider as fallback (no API keys configured). Configure Pexels, Pixabay, or Unsplash API keys in Settings for stock images.");
+    return sp.GetRequiredService<Aura.Providers.Images.PlaceholderImageProvider>();
 });
 
 // Register Pexels intelligent scene matching services
@@ -1352,9 +1516,55 @@ builder.Services.AddSingleton<Aura.Core.Orchestrator.Stages.CompositionStage>();
 builder.Services.AddSingleton(sp =>
 {
     var env = sp.GetRequiredService<IWebHostEnvironment>();
-    return env.IsDevelopment()
+    var config = sp.GetRequiredService<IConfiguration>();
+
+    // Start with environment-appropriate defaults
+    var options = env.IsDevelopment()
         ? Aura.Core.Orchestrator.OrchestratorOptions.CreateDebug()
         : Aura.Core.Orchestrator.OrchestratorOptions.CreateDefault();
+
+    // Override with configuration values if present
+    var orchestrationSection = config.GetSection("Orchestration");
+    if (orchestrationSection.Exists())
+    {
+        var taskTimeoutMinutes = orchestrationSection.GetValue<double?>("TaskTimeoutMinutes");
+        if (taskTimeoutMinutes.HasValue)
+        {
+            options.TaskTimeout = TimeSpan.FromMinutes(taskTimeoutMinutes.Value);
+        }
+
+        var batchTimeoutMinutes = orchestrationSection.GetValue<double?>("BatchTimeoutMinutes");
+        if (batchTimeoutMinutes.HasValue)
+        {
+            options.BatchTimeout = TimeSpan.FromMinutes(batchTimeoutMinutes.Value);
+        }
+
+        var stuckThreshold = orchestrationSection.GetValue<int?>("StuckDetectionThresholdSeconds");
+        if (stuckThreshold.HasValue)
+        {
+            options.StuckDetectionThresholdSeconds = stuckThreshold.Value;
+        }
+
+        var enableRecovery = orchestrationSection.GetValue<bool?>("EnableTaskRecovery");
+        if (enableRecovery.HasValue)
+        {
+            options.EnableTaskRecovery = enableRecovery.Value;
+        }
+
+        var maxRetries = orchestrationSection.GetValue<int?>("MaxTaskRetries");
+        if (maxRetries.HasValue)
+        {
+            options.MaxTaskRetries = maxRetries.Value;
+        }
+
+        var maxConcurrency = orchestrationSection.GetValue<int?>("MaxConcurrency");
+        if (maxConcurrency.HasValue)
+        {
+            options.MaxConcurrency = maxConcurrency.Value;
+        }
+    }
+
+    return options;
 });
 
 // Register AI pacing and rhythm optimization services
@@ -1501,11 +1711,22 @@ builder.Services.AddSingleton<Aura.Core.Services.RAG.DocumentIngestService>(sp =
         logger, importService, chunkingService, embeddingService, vectorIndex);
 });
 
+// Register QueryExpansionService for LLM-based query expansion
+builder.Services.AddSingleton<Aura.Core.Services.RAG.QueryExpansionService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.QueryExpansionService>>();
+    var llmProvider = sp.GetRequiredService<ILlmProvider>();
+    var ragConfig = builder.Configuration.GetSection("RAG");
+    var enableLlmExpansion = ragConfig.GetValue("EnableLlmQueryExpansion", true);
+    return new Aura.Core.Services.RAG.QueryExpansionService(logger, llmProvider, enableLlmExpansion);
+});
+
 builder.Services.AddSingleton<Aura.Core.Services.RAG.RagScriptEnhancer>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.RAG.RagScriptEnhancer>>();
     var contextBuilder = sp.GetRequiredService<Aura.Core.Services.RAG.RagContextBuilder>();
-    return new Aura.Core.Services.RAG.RagScriptEnhancer(logger, contextBuilder);
+    var queryExpansion = sp.GetService<Aura.Core.Services.RAG.QueryExpansionService>();
+    return new Aura.Core.Services.RAG.RagScriptEnhancer(logger, contextBuilder, queryExpansion);
 });
 
 // Register Script Enhancement services (for AI Audio Intelligence integration)
@@ -1830,11 +2051,15 @@ builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyDetector>(sp =>
     return new Aura.Core.Services.Setup.DependencyDetector(logger, ffmpegLocator, httpClient);
 });
 
+// Register PortableDetector for portable mode detection and path resolution
+builder.Services.AddSingleton<Aura.Core.Services.Setup.PortableDetector>();
+
 builder.Services.AddSingleton<Aura.Core.Services.Setup.DependencyInstaller>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<Aura.Core.Services.Setup.DependencyInstaller>>();
     var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient();
-    return new Aura.Core.Services.Setup.DependencyInstaller(logger, httpClient);
+    var portableDetector = sp.GetService<Aura.Core.Services.Setup.PortableDetector>();
+    return new Aura.Core.Services.Setup.DependencyInstaller(logger, httpClient, portableDetector);
 });
 
 // Register FFmpeg detection service with caching
@@ -2025,7 +2250,7 @@ try
 {
     using var validationScope = app.Services.CreateScope();
     var settingsValidator = validationScope.ServiceProvider.GetService<Aura.Core.Configuration.SettingsValidationService>();
-    
+
     if (settingsValidator != null)
     {
         Log.Information("Running comprehensive configuration validation...");
@@ -2039,7 +2264,7 @@ try
             Log.Error("");
             Log.Error("The application cannot start due to critical configuration issues:");
             Log.Error("");
-            
+
             foreach (var issue in validationResult.CriticalIssues)
             {
                 Log.Error("  [{Code}] {Message}", issue.Code, issue.Message);
@@ -2048,11 +2273,11 @@ try
                     Log.Error("    Resolution: {Resolution}", issue.Resolution);
                 }
             }
-            
+
             Log.Error("");
             Log.Error("Please fix the issues above and restart the application.");
             Log.Error("========================================");
-            
+
             // Exit with error code 1 to indicate failure
             Environment.ExitCode = 1;
             return;
@@ -2482,7 +2707,7 @@ if (!app.Environment.IsDevelopment())
 {
     // Force HTTPS in production
     app.UseHttpsRedirection();
-    
+
     // HTTP Strict Transport Security (HSTS) - only in production
     app.UseHsts();
 }
@@ -2594,6 +2819,10 @@ else
 
 // 4. ROUTING (Must come before CORS, Authentication, and Authorization)
 app.UseRouting();
+
+// 4a. LLM Request Timeout Middleware (extends timeout for LLM endpoints)
+// Must be after routing so we can inspect the path, but early enough to set the timeout
+app.UseMiddleware<Aura.Api.Middleware.LlmRequestTimeoutMiddleware>();
 
 // 5. CORS (Must be after UseRouting() and before UseAuthentication())
 // This ensures CORS policies are applied to endpoints correctly
@@ -2830,6 +3059,9 @@ apiGroup.MapGet("/health/ready", async (Aura.Api.Services.HealthCheckService hea
 
 // Configuration endpoints
 app.MapConfigurationEndpoints();
+
+// Settings endpoints (LLM selection, Ollama model, etc.)
+app.MapSettingsEndpoints();
 
 // Process management debug endpoints
 app.MapProcessEndpoints();
@@ -5611,13 +5843,29 @@ lifetime.ApplicationStarted.Register(() =>
         }
     });
 
-    // Start Provider Health Monitoring after a slight delay to ensure engine manager initializes first
+    // Initialize and register all providers with health monitor before starting periodic checks
+    _ = Task.Run(() =>
+    {
+        try
+        {
+            Log.Information("Initializing provider health registration...");
+            var healthInitializer = app.Services.GetRequiredService<Aura.Api.Services.ProviderHealthInitializer>();
+            healthInitializer.RegisterAllProviders();
+            Log.Information("Provider health registration complete");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error initializing provider health registration - health monitoring may not work correctly");
+        }
+    });
+
+    // Start Provider Health Monitoring after a slight delay to ensure providers are registered
     _ = Task.Run(async () =>
     {
         try
         {
-            // Wait briefly for engine manager to start
-            await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+            // Wait briefly for provider registration to complete
+            await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
 
             Log.Information("Starting provider health monitoring...");
             await healthMonitor.RunPeriodicHealthChecksAsync(lifetime.ApplicationStopping).ConfigureAwait(false);
@@ -5931,6 +6179,49 @@ appLifetime.ApplicationStarted.Register(() =>
     logger.LogInformation("Application started. Press Ctrl+C to shut down. Listening on: {Addresses}", addresses);
 });
 
+// Check Ollama availability at startup (non-blocking, runs in background)
+_ = Task.Run(async () =>
+{
+    try
+    {
+        var ollamaHealth = app.Services.GetService<Aura.Core.Services.Providers.OllamaHealthCheckService>();
+        if (ollamaHealth == null)
+        {
+            Log.Warning("Ollama health service not available for startup check");
+            return;
+        }
+
+        Log.Information("Checking Ollama availability...");
+        using var startupCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        var ollamaReady = await ollamaHealth.WaitForOllamaAsync(
+            maxRetries: 5,
+            retryDelayMs: 2000,
+            ct: startupCts.Token).ConfigureAwait(false);
+
+        if (!ollamaReady)
+        {
+            Log.Warning(
+                "Ollama is not available at startup. Video generation will fail until Ollama is running. Start Ollama with: ollama serve");
+        }
+        else
+        {
+            var status = await ollamaHealth.CheckHealthAsync(startupCts.Token).ConfigureAwait(false);
+            Log.Information(
+                "Ollama is ready. Version: {Version}, Models: {ModelCount}",
+                status.Version, status.AvailableModels?.Count ?? 0);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        Log.Warning("Ollama startup check timed out after 30 seconds");
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Ollama startup check failed");
+    }
+}, appLifetime.ApplicationStopping);
+
 // Run dependency scan on startup (non-blocking, runs in background)
 // This scans for dependencies on first launch and every program startup
 // The task respects the application lifetime token to ensure clean shutdown
@@ -6026,6 +6317,55 @@ appLifetime.ApplicationStarted.Register(() =>
                 healthIssues++;
             }
 
+            // Check LLM Provider Registration
+            try
+            {
+                logger.LogInformation("=== LLM Provider Registration Check ===");
+                var llmFactory = scope.ServiceProvider.GetRequiredService<Aura.Core.Orchestrator.LlmProviderFactory>();
+                var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+                var providers = llmFactory.CreateAvailableProviders(loggerFactory);
+
+                if (providers.Count == 0)
+                {
+                    logger.LogCritical("✗ CRITICAL: NO LLM providers registered! All AI features will fail!");
+                    logger.LogCritical("This is a critical system failure - at minimum RuleBased provider should be available");
+                    healthIssues++;
+                }
+                else
+                {
+                    logger.LogInformation("✓ LLM Providers: {Count} registered ({Providers})",
+                        providers.Count, string.Join(", ", providers.Keys));
+
+                    // Verify RuleBased is present
+                    if (!providers.ContainsKey("RuleBased"))
+                    {
+                        logger.LogWarning("✗ RuleBased fallback provider NOT registered - this should always be available");
+                        healthIssues++;
+                    }
+
+                    // Check if Ollama is configured and registered
+                    var providerSettings = scope.ServiceProvider.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
+                    var preferredProvider = providerSettings.GetPreferredLlmProvider();
+                    if (!string.IsNullOrEmpty(preferredProvider))
+                    {
+                        if (providers.ContainsKey(preferredProvider))
+                        {
+                            logger.LogInformation("✓ Preferred provider '{Preferred}' is registered", preferredProvider);
+                        }
+                        else
+                        {
+                            logger.LogWarning("✗ Preferred provider '{Preferred}' is configured but NOT registered", preferredProvider);
+                            healthIssues++;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "✗ Failed to check LLM provider registration");
+                healthIssues++;
+            }
+
             if (healthIssues > 0)
             {
                 logger.LogWarning(
@@ -6073,6 +6413,64 @@ appLifetime.ApplicationStarted.Register(() =>
         }
     });
 });
+
+// Validate provider registration
+await ValidateProviderRegistrationAsync(app.Services);
+
+static async Task ValidateProviderRegistrationAsync(IServiceProvider services)
+{
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
+    logger.LogInformation("=== DIAGNOSTIC: Provider Validation ===");
+
+    // Check DI registration
+    var llmProvider = services.GetService<Aura.Core.Providers.ILlmProvider>();
+    logger.LogInformation("ILlmProvider: {Status}",
+        llmProvider != null ? $"✓ {llmProvider.GetType().Name}" : "✗ NULL");
+
+    var ollamaClient = services.GetService<Aura.Core.Providers.IOllamaDirectClient>();
+    logger.LogInformation("IOllamaDirectClient: {Status}",
+        ollamaClient != null ? "✓ Registered" : "✗ NULL");
+
+    // Check ProviderHealthMonitor
+    var healthMonitor = services.GetService<Aura.Core.Services.Health.ProviderHealthMonitor>();
+    if (healthMonitor != null)
+    {
+        var providers = healthMonitor.GetAllProviderHealth();
+        logger.LogInformation("ProviderHealthMonitor: {Count} providers", providers.Count);
+
+        if (providers.Count == 0)
+        {
+            logger.LogCritical("CRITICAL: Zero providers in ProviderHealthMonitor!");
+        }
+
+        foreach (var kvp in providers)
+        {
+            logger.LogInformation("  - {Name}: {Healthy}", kvp.Key, kvp.Value.IsHealthy);
+        }
+    }
+    else
+    {
+        logger.LogError("CRITICAL: ProviderHealthMonitor is NULL");
+    }
+
+    // Test Ollama connectivity
+    if (ollamaClient != null)
+    {
+        try
+        {
+            var available = await ollamaClient.IsAvailableAsync(CancellationToken.None);
+            logger.LogInformation("Ollama connectivity: {Status}",
+                available ? "✓ AVAILABLE" : "✗ UNAVAILABLE");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Ollama test failed");
+        }
+    }
+
+    logger.LogInformation("=== Validation Complete ===");
+}
 
 try
 {

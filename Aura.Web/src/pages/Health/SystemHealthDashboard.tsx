@@ -1,31 +1,35 @@
 import {
+  Badge,
+  Body1,
+  Button,
+  Caption1,
+  Card,
+  Divider,
   makeStyles,
-  tokens,
+  Spinner,
+  Text,
   Title1,
   Title3,
-  Text,
-  Button,
-  Card,
-  Badge,
-  Spinner,
-  Caption1,
-  Body1,
-  Divider,
+  tokens,
 } from '@fluentui/react-components';
 import {
   ArrowClockwise24Regular,
   CheckmarkCircle24Regular,
-  Warning24Regular,
   ErrorCircle24Regular,
-  Server24Regular,
   Pulse24Regular,
+  Server24Regular,
+  Warning24Regular,
 } from '@fluentui/react-icons';
-import React, { useState, useEffect, useCallback } from 'react';
+import type { AxiosError } from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
 import apiClient from '../../services/api/apiClient';
 import type {
+  HealthDetailsResponse,
+  ProviderDashboardStatus,
+  ProviderHealthCheckDto,
+  ProviderHealthDashboardResponse,
   ProviderTypeHealthDto,
   SystemHealthDto,
-  ProviderHealthCheckDto,
 } from '../../types/api-v1';
 
 const useStyles = makeStyles({
@@ -135,31 +139,161 @@ const SystemHealthDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  const mapHealthDetailsToSystem = (details: HealthDetailsResponse): SystemHealthDto => {
+    const diskCheck = details.checks.find(
+      (c) => c.id === 'disk_space' || c.name.toLowerCase().includes('disk')
+    );
+    const ffmpegCheck = details.checks.find(
+      (c) => c.id?.toLowerCase().includes('ffmpeg') || c.name.toLowerCase().includes('ffmpeg')
+    );
+    const issues = details.checks
+      .filter((c) => c.status === 'fail')
+      .map((c) => c.message ?? `${c.name} failed`);
+
+    const diskSpaceGB =
+      typeof diskCheck?.data?.freeSpaceGB === 'number'
+        ? diskCheck.data.freeSpaceGB
+        : typeof diskCheck?.data?.freeSpaceGb === 'number'
+          ? // Some backends might expose different casing
+            diskCheck.data.freeSpaceGb
+          : 0;
+
+    const memoryCheck = details.checks.find((c) => c.name.toLowerCase().includes('memory'));
+    const memoryUsagePercent =
+      memoryCheck && typeof memoryCheck.data?.usagePercent === 'number'
+        ? (memoryCheck.data.usagePercent as number)
+        : 0;
+
+    return {
+      ffmpegAvailable: ffmpegCheck?.status === 'pass',
+      ffmpegVersion: (ffmpegCheck?.data?.version as string | undefined) ?? null,
+      diskSpaceGB,
+      memoryUsagePercent,
+      isHealthy: details.overallStatus === 'healthy',
+      issues,
+    };
+  };
+
+  const mapDashboardProviders = (
+    dashboard: ProviderHealthDashboardResponse | null,
+    category: 'LLM' | 'TTS' | 'Image'
+  ): ProviderTypeHealthDto | null => {
+    if (!dashboard) return null;
+
+    const providersByCategory = dashboard.providers.filter(
+      (provider) => provider.category.toLowerCase() === category.toLowerCase()
+    );
+
+    if (providersByCategory.length === 0) {
+      return null;
+    }
+
+    const toProviderHealth = (provider: ProviderDashboardStatus): ProviderHealthCheckDto => {
+      const successRatePercent = provider.successRate ?? 0;
+      const successRate = successRatePercent / 100;
+      const averageLatencyMs = provider.averageLatencyMs ?? 0;
+
+      return {
+        providerName: provider.name,
+        isHealthy: provider.healthStatus === 'healthy',
+        lastCheckTime: provider.lastCheckTime ?? new Date().toISOString(),
+        responseTimeMs: averageLatencyMs,
+        consecutiveFailures: provider.consecutiveFailures ?? 0,
+        lastError: provider.lastError ?? null,
+        successRate,
+        averageResponseTimeMs: averageLatencyMs,
+        circuitState: provider.circuitState ?? 'Closed',
+        failureRate: Math.max(0, 1 - successRate),
+        circuitOpenedAt: null,
+      };
+    };
+
+    const providers = providersByCategory.map(toProviderHealth);
+    const healthyCount = providers.filter((p) => p.isHealthy).length;
+
+    return {
+      providerType: category.toLowerCase(),
+      providers,
+      isHealthy: healthyCount > 0,
+      healthyCount,
+      totalCount: providers.length,
+    };
+  };
+
+  const shouldFallbackToDashboard = (health: ProviderTypeHealthDto | null) => {
+    if (!health) return true;
+    if (health.totalCount === 0) return true;
+    if (!health.providers || health.providers.length === 0) return true;
+    return false;
+  };
+
   const fetchHealthData = useCallback(async () => {
+    const fetchHealthEndpoint = async <T,>(url: string) => {
+      try {
+        const response = await apiClient.get<T>(url);
+        return response.data;
+      } catch (err) {
+        const axiosError = err as AxiosError<T>;
+        if (axiosError.response?.data) {
+          return axiosError.response.data;
+        }
+
+        setError(err instanceof Error ? err.message : 'Failed to fetch health data');
+        return null;
+      }
+    };
+
     try {
       const [llm, tts, images, system] = await Promise.all([
-        apiClient
-          .get<ProviderTypeHealthDto>('/api/health/llm')
-          .then((r) => r.data)
-          .catch(() => null),
-        apiClient
-          .get<ProviderTypeHealthDto>('/api/health/tts')
-          .then((r) => r.data)
-          .catch(() => null),
-        apiClient
-          .get<ProviderTypeHealthDto>('/api/health/images')
-          .then((r) => r.data)
-          .catch(() => null),
-        apiClient
-          .get<SystemHealthDto>('/api/health/system')
-          .then((r) => r.data)
-          .catch(() => null),
+        fetchHealthEndpoint<ProviderTypeHealthDto>('/api/health/llm'),
+        fetchHealthEndpoint<ProviderTypeHealthDto>('/api/health/tts'),
+        fetchHealthEndpoint<ProviderTypeHealthDto>('/api/health/images'),
+        fetchHealthEndpoint<SystemHealthDto>('/api/health/system'),
       ]);
 
-      setLlmHealth(llm);
-      setTtsHealth(tts);
-      setImagesHealth(images);
-      setSystemHealth(system);
+      let resolvedSystem = system;
+      let resolvedLlm = llm;
+      let resolvedTts = tts;
+      let resolvedImages = images;
+
+      // Fallback: if the legacy endpoint fails or returns null, use canonical health details endpoint
+      if (!resolvedSystem) {
+        const details = await fetchHealthEndpoint<HealthDetailsResponse>('/health/details');
+        if (details) {
+          resolvedSystem = mapHealthDetailsToSystem(details);
+        }
+      }
+
+      const needsDashboard =
+        shouldFallbackToDashboard(resolvedLlm) ||
+        shouldFallbackToDashboard(resolvedTts) ||
+        shouldFallbackToDashboard(resolvedImages);
+
+      if (needsDashboard) {
+        const dashboard =
+          await fetchHealthEndpoint<ProviderHealthDashboardResponse>('/api/health-dashboard');
+        if (dashboard) {
+          resolvedLlm = resolvedLlm ?? mapDashboardProviders(dashboard, 'LLM');
+          resolvedTts = resolvedTts ?? mapDashboardProviders(dashboard, 'TTS');
+          resolvedImages = resolvedImages ?? mapDashboardProviders(dashboard, 'Image');
+
+          // If legacy endpoints returned empty provider lists, replace them with dashboard data
+          if (shouldFallbackToDashboard(resolvedLlm)) {
+            resolvedLlm = mapDashboardProviders(dashboard, 'LLM');
+          }
+          if (shouldFallbackToDashboard(resolvedTts)) {
+            resolvedTts = mapDashboardProviders(dashboard, 'TTS');
+          }
+          if (shouldFallbackToDashboard(resolvedImages)) {
+            resolvedImages = mapDashboardProviders(dashboard, 'Image');
+          }
+        }
+      }
+
+      setLlmHealth(resolvedLlm);
+      setTtsHealth(resolvedTts);
+      setImagesHealth(resolvedImages);
+      setSystemHealth(resolvedSystem);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch health data');

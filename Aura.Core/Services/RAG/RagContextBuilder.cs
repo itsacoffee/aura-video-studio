@@ -18,6 +18,10 @@ public class RagContextBuilder
     private readonly VectorIndex _vectorIndex;
     private readonly EmbeddingService _embeddingService;
 
+    // Cache for RAG context per session to avoid redundant queries
+    private readonly Dictionary<string, (RagContext Context, DateTime Timestamp)> _contextCache = new();
+    private readonly TimeSpan _cacheTtl = TimeSpan.FromMinutes(5);
+
     public RagContextBuilder(
         ILogger<RagContextBuilder> logger,
         VectorIndex vectorIndex,
@@ -29,7 +33,7 @@ public class RagContextBuilder
     }
 
     /// <summary>
-    /// Build context for a query using RAG
+    /// Build context for a query using RAG with query expansion
     /// </summary>
     public async Task<RagContext> BuildContextAsync(
         string query,
@@ -41,22 +45,130 @@ public class RagContextBuilder
         if (!config.Enabled)
         {
             _logger.LogDebug("RAG is disabled, returning empty context");
-            return new RagContext { Query = query };
+            return RagContext.Empty(query, RagContextStatus.Disabled);
         }
 
-        var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query, ct).ConfigureAwait(false);
+        // Include config hash in cache key to avoid stale results
+        var configHash = HashCode.Combine(config.TopK, config.MinimumScore);
+        var cacheKey = $"{query}_{config.TopK}_{config.MinimumScore}_{configHash}";
+        if (_contextCache.TryGetValue(cacheKey, out var cached) && 
+            DateTime.UtcNow - cached.Timestamp < _cacheTtl)
+        {
+            _logger.LogDebug("Returning cached RAG context for query: {Query}", query);
+            return cached.Context;
+        }
 
+        // Check if vector index has any documents
+        IndexStatistics indexStats;
+        try
+        {
+            indexStats = await _vectorIndex.GetStatisticsAsync(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get vector index statistics, RAG unavailable");
+            return RagContext.Empty(query, RagContextStatus.IndexUnavailable);
+        }
+
+        if (indexStats.TotalChunks == 0)
+        {
+            _logger.LogInformation("Vector index is empty, no documents indexed.");
+            return RagContext.Empty(query, RagContextStatus.NoDocuments);
+        }
+
+        // Generate query embeddings with proper error handling
+        float[] queryEmbedding;
+        try
+        {
+            queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query, ct).ConfigureAwait(false);
+
+            if (queryEmbedding == null || queryEmbedding.Length == 0)
+            {
+                _logger.LogWarning("Embedding service returned empty embeddings for query");
+                return RagContext.Empty(query, RagContextStatus.EmbeddingFailed);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to generate embedding for query, RAG unavailable");
+            return RagContext.Empty(query, RagContextStatus.EmbeddingFailed);
+        }
+
+
+        // Use query expansion for better recall
+        var expandedQueries = ExpandQuery(query);
+        _logger.LogDebug("Using {Count} query variations for better recall", expandedQueries.Count);
+
+        var allChunks = new Dictionary<string, (ScoredChunk Chunk, float Score)>();
+
+        // Search with the original query embedding
         var retrievalResult = await _vectorIndex.SearchAsync(
             queryEmbedding,
             query,
-            config.TopK,
+            config.TopK * 2, // Fetch more to allow filtering
             config.MinimumScore,
             ct).ConfigureAwait(false);
 
-        if (retrievalResult.Chunks.Count == 0)
+        foreach (var scoredChunk in retrievalResult.Chunks)
         {
-            _logger.LogInformation("No relevant chunks found for query");
-            return new RagContext { Query = query };
+            var chunkKey = GetChunkKey(scoredChunk.Chunk);
+            if (!allChunks.ContainsKey(chunkKey) || allChunks[chunkKey].Score < scoredChunk.Score)
+            {
+                allChunks[chunkKey] = (scoredChunk, scoredChunk.Score);
+            }
+        }
+
+        // Also search with expanded queries for better coverage
+        foreach (var expandedQuery in expandedQueries.Where(q => q != query))
+        {
+            try
+            {
+                var expandedEmbedding = await _embeddingService.GenerateEmbeddingAsync(expandedQuery, ct).ConfigureAwait(false);
+                var expandedResult = await _vectorIndex.SearchAsync(
+                    expandedEmbedding,
+                    expandedQuery,
+                    config.TopK,
+                    config.MinimumScore,
+                    ct).ConfigureAwait(false);
+
+                foreach (var scoredChunk in expandedResult.Chunks)
+                {
+                    var chunkKey = GetChunkKey(scoredChunk.Chunk);
+                    // Boost score slightly for chunks found by multiple query variations
+                    var boostedScore = allChunks.ContainsKey(chunkKey) 
+                        ? Math.Max(allChunks[chunkKey].Score, scoredChunk.Score) * 1.1f 
+                        : scoredChunk.Score;
+                    
+                    if (!allChunks.ContainsKey(chunkKey) || allChunks[chunkKey].Score < boostedScore)
+                    {
+                        allChunks[chunkKey] = (scoredChunk, boostedScore);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to search with expanded query: {Query}", expandedQuery);
+            }
+        }
+
+        if (allChunks.Count == 0)
+        {
+            _logger.LogInformation("No relevant chunks found above minimum score {MinScore}", config.MinimumScore);
+            return RagContext.Empty(query, RagContextStatus.NoRelevantChunks);
+        }
+
+        // Apply relevance filtering - remove low-score chunks
+        var filteredChunks = allChunks.Values
+            .Where(c => c.Score >= config.MinimumScore)
+            .OrderByDescending(c => c.Score)
+            .Take(config.TopK)
+            .Select(c => c.Chunk)
+            .ToList();
+
+        if (filteredChunks.Count == 0)
+        {
+            _logger.LogInformation("All chunks below minimum score threshold ({MinScore})", config.MinimumScore);
+            return RagContext.Empty(query, RagContextStatus.NoRelevantChunks);
         }
 
         var contextChunks = new List<ContextChunk>();
@@ -64,7 +176,7 @@ public class RagContextBuilder
         var citationNumber = 1;
         var seenSources = new HashSet<string>();
 
-        foreach (var scoredChunk in retrievalResult.Chunks)
+        foreach (var scoredChunk in filteredChunks)
         {
             var chunk = scoredChunk.Chunk;
             var sourceKey = $"{chunk.Metadata.Source}_{chunk.Metadata.Section}_{chunk.Metadata.PageNumber}";
@@ -118,14 +230,73 @@ public class RagContextBuilder
             "Built RAG context with {ChunkCount} chunks, {CitationCount} citations, {TokenCount} tokens",
             contextChunks.Count, citations.Count, totalTokens);
 
-        return new RagContext
+        var context = new RagContext
         {
             Query = query,
+            Status = RagContextStatus.Success,
             Chunks = contextChunks,
             FormattedContext = formattedContext,
             Citations = citations,
             TotalTokens = totalTokens
         };
+
+        // Cache the result
+        _contextCache[cacheKey] = (context, DateTime.UtcNow);
+
+        return context;
+    }
+
+    /// <summary>
+    /// Expand query for better recall using various techniques
+    /// </summary>
+    private List<string> ExpandQuery(string query)
+    {
+        var queries = new List<string> { query };
+
+        // Extract key terms
+        var words = query.Split(new[] { ' ', ',', '.', '!', '?', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 3)
+            .Distinct()
+            .ToList();
+
+        // Add individual key terms
+        foreach (var word in words.Take(3))
+        {
+            if (word.Length >= 4)
+            {
+                queries.Add(word);
+            }
+        }
+
+        // Add combinations of key terms
+        if (words.Count >= 2)
+        {
+            queries.Add(string.Join(" ", words.Take(2)));
+        }
+
+        if (words.Count >= 3)
+        {
+            queries.Add(string.Join(" ", words.Take(3)));
+        }
+
+        // Add a simplified version (first sentence or first 100 chars)
+        var firstSentence = query.Split(new[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()?.Trim();
+        if (!string.IsNullOrEmpty(firstSentence) && firstSentence != query)
+        {
+            queries.Add(firstSentence);
+        }
+
+        return queries.Distinct().ToList();
+    }
+
+    private static string GetChunkKey(DocumentChunk chunk)
+    {
+        // Use first 100 chars of content for a deterministic key to avoid hash collisions
+        var contentPreview = chunk.Content.Length > 100 
+            ? chunk.Content.Substring(0, 100) 
+            : chunk.Content;
+        return $"{chunk.Metadata.Source}_{chunk.Metadata.Section}_{chunk.Metadata.PageNumber}_{contentPreview}";
     }
 
     private string FormatContext(List<ContextChunk> chunks, bool includeCitations)
@@ -241,5 +412,14 @@ public class RagContextBuilder
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Clear the context cache
+    /// </summary>
+    public void ClearCache()
+    {
+        _contextCache.Clear();
+        _logger.LogDebug("RAG context cache cleared");
     }
 }

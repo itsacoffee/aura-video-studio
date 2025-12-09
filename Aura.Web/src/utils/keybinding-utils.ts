@@ -94,6 +94,19 @@ function getPressedKey(ev: KeyboardEvent): string | null {
     return key;
   }
 
+  // Handle minus/plus keys for zoom shortcuts
+  // The minus key (-) is consistent across keyboards
+  if (key === '-' || code === 'Minus' || code === 'NumpadSubtract') {
+    return '-';
+  }
+
+  // Handle plus/equals keys for zoom-in shortcuts
+  // On US keyboards, + requires Shift+=, but we want to capture both
+  // = key (without shift) and + key (with shift)
+  if (key === '=' || key === '+' || code === 'Equal' || code === 'NumpadAdd') {
+    return '=';
+  }
+
   // Other valid keys
   if (key === '/' || key === '?' || key === '.') {
     return key;

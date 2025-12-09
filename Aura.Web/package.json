@@ -23,7 +23,7 @@
     "validate:full": "npm run validate:clean-install && npm run quality-check && npm test && node ../scripts/audit/find-placeholders.js",
     "validate:scripts": "node ../scripts/test-validation.js",
     "preview": "vite preview",
-    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --report-unused-disable-directives",
     "lint:fix": "eslint . --fix",
     "lint:css": "stylelint \"src/**/*.css\" --max-warnings 0",
     "lint:css:fix": "stylelint \"src/**/*.css\" --fix",

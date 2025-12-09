@@ -6,6 +6,7 @@ using Aura.Core.Models.Generation;
 using Aura.Core.Services.Generation;
 using Microsoft.Extensions.Logging;
 using Xunit;
+using GenerationTaskStatus = Aura.Core.Models.Generation.TaskStatus;
 
 namespace Aura.Tests;
 
@@ -280,5 +281,260 @@ public class VideoGenerationOrchestratorTests
         Assert.False(failureResult.Succeeded);
         Assert.Null(failureResult.Result);
         Assert.Equal("Error occurred", failureResult.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task OrchestrateGenerationAsync_WithVisualTaskFailure_ShouldUseFallbackAndComplete()
+    {
+        // Arrange
+        var monitor = new ResourceMonitor(_monitorLogger);
+        var selector = new StrategySelector(_selectorLogger);
+        var orchestrator = new VideoGenerationOrchestrator(_orchestratorLogger, monitor, selector);
+
+        var brief = new Brief("Test Video", null, null, "Professional", "English", Aspect.Widescreen16x9);
+        var planSpec = new PlanSpec(TimeSpan.FromMinutes(1), Pacing.Conversational, Density.Balanced, "Modern");
+        var systemProfile = new SystemProfile
+        {
+            Tier = HardwareTier.B,
+            LogicalCores = 4,
+            PhysicalCores = 2,
+            RamGB = 8,
+            OfflineOnly = false
+        };
+
+        int visualTaskFailCount = 0;
+        Func<GenerationNode, CancellationToken, Task<object>> mockExecutor = async (node, ct) =>
+        {
+            await Task.Delay(5, ct).ConfigureAwait(false);
+            
+            // Fail visual/image generation tasks
+            if (node.TaskType == GenerationTaskType.ImageGeneration)
+            {
+                visualTaskFailCount++;
+                throw new InvalidOperationException("Simulated image generation failure");
+            }
+            
+            return $"Result_{node.TaskId}";
+        };
+
+        // Act
+        var result = await orchestrator.OrchestrateGenerationAsync(
+            brief,
+            planSpec,
+            systemProfile,
+            mockExecutor,
+            null,
+            CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        // Visual task failures should NOT prevent orchestration from completing
+        Assert.NotNull(result);
+        Assert.True(result.TotalTasks > 0);
+        Assert.True(visualTaskFailCount > 0, "At least one visual task should have been attempted");
+        Assert.True(result.ExecutionTime > TimeSpan.Zero);
+        // The orchestration should succeed because visual failures are handled with fallbacks
+        Assert.True(result.Succeeded, "Orchestration should succeed even with visual task failures");
+    }
+
+    [Fact]
+    public void TaskStatus_ShouldIncludeTimedOutValue()
+    {
+        // Verify that TimedOut is a valid TaskStatus value
+        var timedOutStatus = GenerationTaskStatus.TimedOut;
+        Assert.Equal(GenerationTaskStatus.TimedOut, timedOutStatus);
+        Assert.NotEqual(GenerationTaskStatus.Failed, timedOutStatus);
+        Assert.NotEqual(GenerationTaskStatus.Completed, timedOutStatus);
+    }
+
+    [Fact]
+    public async Task OrchestrateGenerationAsync_WithSlowVisualTask_ShouldHandleTimeout()
+    {
+        // Arrange
+        var monitor = new ResourceMonitor(_monitorLogger);
+        var selector = new StrategySelector(_selectorLogger);
+        var orchestrator = new VideoGenerationOrchestrator(_orchestratorLogger, monitor, selector);
+
+        var brief = new Brief("Test Video", null, null, "Professional", "English", Aspect.Widescreen16x9);
+        // Short duration to minimize visual tasks
+        var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");
+        var systemProfile = new SystemProfile
+        {
+            Tier = HardwareTier.B,
+            LogicalCores = 4,
+            PhysicalCores = 2,
+            RamGB = 8,
+            OfflineOnly = false
+        };
+
+        Func<GenerationNode, CancellationToken, Task<object>> mockExecutor = async (node, ct) =>
+        {
+            // Make visual tasks slow but respect cancellation token
+            if (node.TaskType == GenerationTaskType.ImageGeneration)
+            {
+                // This simulates a task that takes a long time but respects cancellation
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(5), ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Task was cancelled due to timeout - this is expected
+                    throw;
+                }
+            }
+            else
+            {
+                await Task.Delay(10, ct).ConfigureAwait(false);
+            }
+            
+            return $"Result_{node.TaskId}";
+        };
+
+        // Act
+        var result = await orchestrator.OrchestrateGenerationAsync(
+            brief,
+            planSpec,
+            systemProfile,
+            mockExecutor,
+            null,
+            CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        // The orchestration should complete (with fallbacks for timed-out visual tasks)
+        Assert.NotNull(result);
+        Assert.True(result.TotalTasks > 0);
+        // Slow visual tasks should be timed out, but orchestration should still succeed
+        Assert.True(result.Succeeded, "Orchestration should succeed even with timed-out visual tasks");
+    }
+
+    [Fact]
+    public async Task OrchestrateGenerationAsync_WithCustomTimeoutOptions_ShouldUseConfiguredTimeouts()
+    {
+        // Arrange
+        var monitor = new ResourceMonitor(_monitorLogger);
+        var selector = new StrategySelector(_selectorLogger);
+        
+        // Create custom options with short timeouts for testing
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            TaskTimeout = TimeSpan.FromSeconds(30),
+            BatchTimeout = TimeSpan.FromMinutes(1),
+            StuckDetectionThresholdSeconds = 15,
+            EnableTaskRecovery = true,
+            MaxTaskRetries = 1,
+            MaxConcurrency = 2
+        };
+        
+        var orchestrator = new VideoGenerationOrchestrator(_orchestratorLogger, monitor, selector, options);
+
+        var brief = new Brief("Test Video", null, null, "Professional", "English", Aspect.Widescreen16x9);
+        var planSpec = new PlanSpec(TimeSpan.FromSeconds(30), Pacing.Conversational, Density.Balanced, "Modern");
+        var systemProfile = new SystemProfile
+        {
+            Tier = HardwareTier.B,
+            LogicalCores = 4,
+            PhysicalCores = 2,
+            RamGB = 8,
+            OfflineOnly = false
+        };
+
+        Func<GenerationNode, CancellationToken, Task<object>> mockExecutor = async (node, ct) =>
+        {
+            await Task.Delay(10, ct).ConfigureAwait(false);
+            return $"Result_{node.TaskId}";
+        };
+
+        // Act
+        var result = await orchestrator.OrchestrateGenerationAsync(
+            brief,
+            planSpec,
+            systemProfile,
+            mockExecutor,
+            null,
+            CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Succeeded);
+        Assert.True(result.TotalTasks > 0);
+    }
+
+    [Fact]
+    public void OrchestratorOptions_Validate_ShouldThrowForInvalidTaskTimeout()
+    {
+        // Arrange
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            TaskTimeout = TimeSpan.Zero
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => options.Validate());
+    }
+
+    [Fact]
+    public void OrchestratorOptions_Validate_ShouldThrowForInvalidBatchTimeout()
+    {
+        // Arrange
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            BatchTimeout = TimeSpan.Zero
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => options.Validate());
+    }
+
+    [Fact]
+    public void OrchestratorOptions_Validate_ShouldThrowWhenTaskTimeoutExceedsBatchTimeout()
+    {
+        // Arrange
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            TaskTimeout = TimeSpan.FromMinutes(10),
+            BatchTimeout = TimeSpan.FromMinutes(5)
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => options.Validate());
+    }
+
+    [Fact]
+    public void OrchestratorOptions_Validate_ShouldThrowForInvalidStuckDetectionThreshold()
+    {
+        // Arrange
+        var options = new Aura.Core.Orchestrator.OrchestratorOptions
+        {
+            StuckDetectionThresholdSeconds = 0
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => options.Validate());
+    }
+
+    [Fact]
+    public void OrchestratorOptions_CreateQuickDemo_ShouldHaveReducedTimeouts()
+    {
+        // Arrange & Act
+        var options = Aura.Core.Orchestrator.OrchestratorOptions.CreateQuickDemo();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(2), options.TaskTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(5), options.BatchTimeout);
+        Assert.Equal(30, options.StuckDetectionThresholdSeconds);
+        Assert.True(options.EnableTaskRecovery);
+        Assert.Equal(1, options.MaxTaskRetries);
+    }
+
+    [Fact]
+    public void OrchestratorOptions_CreateDebug_ShouldHaveExtendedTimeouts()
+    {
+        // Arrange & Act
+        var options = Aura.Core.Orchestrator.OrchestratorOptions.CreateDebug();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(15), options.TaskTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(45), options.BatchTimeout);
+        Assert.Equal(120, options.StuckDetectionThresholdSeconds);
     }
 }

@@ -358,6 +358,57 @@ When you need to disable a rule, always provide a justification:
 tabIndex={0}
 ```
 
+## Architectural Patterns
+
+Aura Video Studio follows specific architectural patterns to ensure code quality and maintainability. Violating these patterns may result in PR rejection.
+
+### Key Resources
+
+📚 **Read these documents before contributing:**
+
+- **[docs/ARCHITECTURE_DECISIONS.md](docs/ARCHITECTURE_DECISIONS.md)** - Explains *why* we made certain architectural choices
+- **[docs/COMMON_PITFALLS.md](docs/COMMON_PITFALLS.md)** - Lists common mistakes and anti-patterns to avoid
+
+### Core Principles
+
+1. **No Reflection for Dependency Access**
+   - ❌ Never use `GetField()` or `GetProperty()` to access private members of dependencies
+   - ✅ Use proper dependency injection with interfaces
+   - Example: Use `IOllamaDirectClient` instead of reflecting into `OllamaLlmProvider`
+
+2. **React Component Refs over QuerySelectors**
+   - ❌ Never use `querySelector` with Fluent UI class names (they're hashed and change between builds)
+   - ✅ Use React refs for stable DOM element access
+   - Example: `const ref = useRef<HTMLDivElement>(null)` then `<div ref={ref}>`
+
+3. **Atomic Job State Updates**
+   - ❌ Never set job status to "completed" without providing `outputPath`
+   - ✅ Always update status and outputPath together atomically
+   - Example: `UpdateJobStatusAsync(id, "completed", 100, outputPath: "/path/to/file")`
+
+4. **Video Preview Synchronization**
+   - ❌ Don't check `isPlaying` before syncing video position
+   - ✅ Always sync video element time, even when paused (for seek support)
+   - Example: `playbackStore.setCurrentTime(video.currentTime)` (no `isPlaying` check)
+
+5. **SSE Connection Best Practices**
+   - ❌ Don't use fixed delays before connecting to SSE
+   - ✅ Connect immediately with timeout and polling fallback
+   - ✅ Implement exponential backoff for polling when SSE fails
+
+### Code Review Checklist
+
+Before submitting your PR, ensure:
+
+- [ ] No use of reflection to access private fields (use DI interfaces instead)
+- [ ] No `querySelector` with Fluent UI class names (use refs)
+- [ ] Job status "completed" transitions include `outputPath`
+- [ ] Video synchronization works when paused (not just playing)
+- [ ] SSE connections have timeout and graceful fallback
+- [ ] All async job operations check BOTH status AND outputPath for completion
+- [ ] Error handling uses `unknown` type, not `any`
+- [ ] No `.Result` or `.Wait()` on async methods in C#
+
 ## Pull Request Guidelines
 
 ### Before Submitting a PR

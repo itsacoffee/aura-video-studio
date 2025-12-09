@@ -1,13 +1,15 @@
-import { Slider } from "../ui/slider";
-import { Label } from "../ui/label";
-import { Button } from "../ui/button";
 import { usePlaybackStore } from "@/stores/playback-store";
+import { Button } from "../ui/button";
+import { Label } from "../ui/label";
+import { Slider } from "../ui/slider";
 
 const SPEED_PRESETS = [
+  { label: "0.25x", value: 0.25 },
   { label: "0.5x", value: 0.5 },
   { label: "1x", value: 1.0 },
-  { label: "1.5x", value: 1.5 },
   { label: "2x", value: 2.0 },
+  { label: "4x", value: 4.0 },
+  { label: "8x", value: 8.0 },
 ];
 
 export function SpeedControl() {
@@ -34,7 +36,7 @@ export function SpeedControl() {
           <Slider
             value={[speed]}
             min={0.1}
-            max={2.0}
+            max={8.0}
             step={0.1}
             onValueChange={(value) => setSpeed(value[0])}
             className="mt-2"

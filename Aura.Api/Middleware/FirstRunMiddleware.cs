@@ -29,12 +29,16 @@ public class FirstRunMiddleware
         // Critical: These endpoints must be accessible during first-run wizard to prevent UI deadlock
         if (path.StartsWith("/api/setup", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/settings/first-run", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/settings/llm", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/settings/ollama", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/preflight", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/probes", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/downloads", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/dependencies", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/apikeys", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/keys", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/models", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/engines", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/providers", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/health", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/healthz", StringComparison.OrdinalIgnoreCase) ||
@@ -44,6 +48,7 @@ public class FirstRunMiddleware
             path.StartsWith("/api/ffmpeg", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/ideation", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/offline-providers", StringComparison.OrdinalIgnoreCase) ||
+            path.StartsWith("/api/provider-status", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/visuals", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/tts", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("/api/wizard-projects", StringComparison.OrdinalIgnoreCase) ||
@@ -118,24 +123,9 @@ public class FirstRunMiddleware
 
             if (!setupCompleted)
             {
-                _logger.LogInformation("Setup not completed, access restricted for path: {Path}", path);
-
-                // If it's an API call, return 428 Precondition Required
-                if (path.StartsWith("/api", StringComparison.OrdinalIgnoreCase))
-                {
-                    context.Response.StatusCode = 428;
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        error = "Setup not completed",
-                        message = "Please complete the first-run wizard before using the application",
-                        redirectTo = "/onboarding"
-                    }).ConfigureAwait(false);
-                    return;
-                }
-
-                // For page requests, let the SPA router handle the redirect
-                await _next(context).ConfigureAwait(false);
-                return;
+                // Soft-fail: allow requests to proceed but log once. This prevents core APIs
+                // (jobs/localization/ideation/system) from being blocked in partially-initialized environments.
+                _logger.LogWarning("Setup not completed, but allowing request to proceed for path: {Path}", path);
             }
         }
         catch (Exception ex)

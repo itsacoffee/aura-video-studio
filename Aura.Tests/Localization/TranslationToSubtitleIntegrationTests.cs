@@ -9,6 +9,7 @@ using Aura.Core.Models;
 using Aura.Core.Models.Audio;
 using Aura.Core.Models.Localization;
 using Aura.Core.Models.Voice;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Audio;
 using Aura.Core.Services.Localization;
@@ -31,6 +32,7 @@ public class TranslationToSubtitleIntegrationTests : IDisposable
     private readonly CaptionBuilder _captionBuilder;
     private readonly SubtitleService _subtitleService;
     private readonly Mock<ILlmProvider> _mockLlmProvider;
+    private readonly Mock<LlmStageAdapter> _mockStageAdapter;
     private readonly string _tempDirectory;
 
     public TranslationToSubtitleIntegrationTests()
@@ -39,10 +41,20 @@ public class TranslationToSubtitleIntegrationTests : IDisposable
         Directory.CreateDirectory(_tempDirectory);
 
         _mockLlmProvider = new Mock<ILlmProvider>();
+
+        // Create mock stage adapter
+        var mockAdapterLogger = new Mock<Microsoft.Extensions.Logging.ILogger<LlmStageAdapter>>();
+        var mockProviderMixer = new Mock<Aura.Core.Orchestrator.ProviderMixer>();
+        _mockStageAdapter = new Mock<LlmStageAdapter>(
+            mockAdapterLogger.Object,
+            new Dictionary<string, ILlmProvider> { { "RuleBased", _mockLlmProvider.Object } },
+            mockProviderMixer.Object,
+            null);
         
         _translationService = new TranslationService(
             NullLogger<TranslationService>.Instance,
-            _mockLlmProvider.Object);
+            _mockLlmProvider.Object,
+            _mockStageAdapter.Object);
         
         var mappers = new List<ISSMLMapper>
         {

@@ -22,6 +22,7 @@ import {
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
+  MessageBarActions,
 } from '@fluentui/react-components';
 import {
   LocalLanguage24Regular,
@@ -32,9 +33,10 @@ import {
   Search24Regular,
   Sparkle24Regular,
   Warning24Regular,
+  ArrowClockwise24Regular,
+  Dismiss24Regular,
 } from '@fluentui/react-icons';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { ErrorState } from '../../components/Loading';
 import {
   translateScript,
   batchTranslate,
@@ -57,7 +59,7 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXL,
     paddingLeft: tokens.spacingHorizontalXXL,
     paddingRight: tokens.spacingHorizontalXXL,
-    maxWidth: '1400px',
+    maxWidth: '1440px',
     margin: '0 auto',
   },
   header: {
@@ -266,11 +268,21 @@ const useStyles = makeStyles({
 
 type TabValue = 'translate' | 'batch' | 'glossary';
 
+// Error types for better error handling
+type ErrorType = 'timeout' | 'circuit_breaker' | 'provider' | 'network' | 'general';
+
+interface TranslationError {
+  message: string;
+  type: ErrorType;
+  isRetryable: boolean;
+  suggestions?: string[];
+}
+
 export const TranslationPage: React.FC = () => {
   const styles = useStyles();
   const [activeTab, setActiveTab] = useState<TabValue>('translate');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<TranslationError | null>(null);
 
   // Form state
   const [sourceText, setSourceText] = useState('');
@@ -278,8 +290,8 @@ export const TranslationPage: React.FC = () => {
   const [_targetLanguage, setTargetLanguage] = useState('es');
   const [targetLanguages, setTargetLanguages] = useState<string[]>(['es', 'fr']);
   const [translationMode, setTranslationMode] = useState<string>('Localized');
-  const [enableBackTranslation, setEnableBackTranslation] = useState(true);
-  const [adjustTimings, setAdjustTimings] = useState(true);
+  const [enableBackTranslation, setEnableBackTranslation] = useState(false);
+  const [adjustTimings, setAdjustTimings] = useState(false);
   const [transcreationContext, setTranscreationContext] = useState<string>('');
 
   // Results
@@ -305,21 +317,25 @@ export const TranslationPage: React.FC = () => {
       try {
         const health = await checkProviderHealth();
         setProviderHealth(health);
-        
+
         if (!health.isAvailable || !health.supportsTranslation) {
-          console.warn('Translation provider is not available or does not support translation:', health);
+          console.warn(
+            'Translation provider is not available or does not support translation:',
+            health
+          );
         }
       } catch (err) {
         console.error('Failed to check provider health:', err);
         setProviderHealth({
           isAvailable: false,
-          errorMessage: err instanceof Error 
-            ? err.message 
-            : 'Unable to connect to translation service. Please check your network connection or try again later.'
+          errorMessage:
+            err instanceof Error
+              ? err.message
+              : 'Unable to connect to translation service. Please check your network connection or try again later.',
         });
       }
     }
-    
+
     loadProviderHealth();
   }, []);
 
@@ -331,8 +347,8 @@ export const TranslationPage: React.FC = () => {
         setLanguages(langs);
         // Auto-populate with first common language if we have suggestions
         if (langs.length > 0) {
-          const enLang = langs.find(l => l.code.toLowerCase().startsWith('en'));
-          const esLang = langs.find(l => l.code.toLowerCase().startsWith('es'));
+          const enLang = langs.find((l) => l.code.toLowerCase().startsWith('en'));
+          const esLang = langs.find((l) => l.code.toLowerCase().startsWith('es'));
           if (enLang) {
             setSourceLanguageInput(enLang.name);
             setSourceLanguage(enLang.code);
@@ -356,52 +372,180 @@ export const TranslationPage: React.FC = () => {
   const sourceLanguageSuggestions = useMemo(() => {
     if (!sourceLanguageInput.trim()) return languages.slice(0, 10);
     const query = sourceLanguageInput.toLowerCase();
-    return languages.filter(lang => 
-      lang.name.toLowerCase().includes(query) ||
-      lang.nativeName.toLowerCase().includes(query) ||
-      lang.code.toLowerCase().includes(query)
-    ).slice(0, 10);
+    return languages
+      .filter(
+        (lang) =>
+          lang.name.toLowerCase().includes(query) ||
+          lang.nativeName.toLowerCase().includes(query) ||
+          lang.code.toLowerCase().includes(query)
+      )
+      .slice(0, 10);
   }, [sourceLanguageInput, languages]);
 
   const targetLanguageSuggestions = useMemo(() => {
     if (!targetLanguageInput.trim()) return languages.slice(0, 10);
     const query = targetLanguageInput.toLowerCase();
-    return languages.filter(lang => 
-      lang.name.toLowerCase().includes(query) ||
-      lang.nativeName.toLowerCase().includes(query) ||
-      lang.code.toLowerCase().includes(query)
-    ).slice(0, 10);
+    return languages
+      .filter(
+        (lang) =>
+          lang.name.toLowerCase().includes(query) ||
+          lang.nativeName.toLowerCase().includes(query) ||
+          lang.code.toLowerCase().includes(query)
+      )
+      .slice(0, 10);
   }, [targetLanguageInput, languages]);
 
   // Preserve full language description - don't normalize to codes
-  // This allows users to type descriptive languages like "English (US)" or "Klingon"
+  // This allows users to type descriptive languages like "English (US)" or "Pirate Speak"
   // The LLM will intelligently interpret whatever the user types
   const preserveLanguageDescription = (input: string): string => {
     const trimmed = input.trim();
     if (!trimmed) return '';
-    
+
     // Always return the full input as-is - let the LLM handle interpretation
     // This enables creative and descriptive language inputs like:
     // - "English (US)" vs "English (UK)"
-    // - "Klingon" (fictional language)
+    // - "Pirate Speak" (creative language style)
     // - "Medieval English"
     // - "Slang Spanish" etc.
     return trimmed;
   };
 
+  // Parse error responses into structured error objects
+  const parseTranslationError = useCallback((err: unknown): TranslationError => {
+    // Handle axios/fetch errors with response data
+    if (err && typeof err === 'object' && 'response' in err) {
+      const axiosError = err as {
+        response?: {
+          status?: number;
+          data?: { errorCode?: string; detail?: string; message?: string };
+        };
+      };
+      const status = axiosError.response?.status;
+      const errorCode = axiosError.response?.data?.errorCode;
+      const detail = axiosError.response?.data?.detail || axiosError.response?.data?.message;
+
+      // Timeout error (408)
+      if (status === 408 || errorCode === 'TIMEOUT') {
+        return {
+          message:
+            detail ||
+            'The translation request timed out. This is common when the AI model is loading for the first time.',
+          type: 'timeout',
+          isRetryable: true,
+          suggestions: [
+            'Wait a moment and try again - the AI model may still be loading',
+            'Try with shorter text first to test if the connection works',
+            'If using Ollama, check that it is running with "ollama list"',
+          ],
+        };
+      }
+
+      // Circuit breaker open (503 with specific error code)
+      if (errorCode === 'CIRCUIT_BREAKER_OPEN') {
+        return {
+          message:
+            detail || 'The translation service is temporarily unavailable due to repeated errors.',
+          type: 'circuit_breaker',
+          isRetryable: true,
+          suggestions: [
+            'Wait 15-30 seconds for the circuit breaker to reset',
+            'Check if your AI provider (Ollama/OpenAI) is running',
+            'Try using a different provider in settings',
+          ],
+        };
+      }
+
+      // Provider error
+      if (
+        status === 503 ||
+        errorCode === 'PROVIDER_ERROR' ||
+        errorCode === 'PROVIDER_UNAVAILABLE'
+      ) {
+        return {
+          message: detail || 'The AI provider is not available. Please check your configuration.',
+          type: 'provider',
+          isRetryable: true,
+          suggestions: [
+            'If using Ollama, start it with: ollama run llama3.1',
+            'Check your API key if using OpenAI or Anthropic',
+            'Verify your network connection',
+          ],
+        };
+      }
+
+      // Network error
+      if (!status || status >= 500) {
+        return {
+          message: detail || 'A network or server error occurred.',
+          type: 'network',
+          isRetryable: true,
+          suggestions: ['Check your network connection', 'Try again in a few moments'],
+        };
+      }
+    }
+
+    // Handle Error objects
+    if (err instanceof Error) {
+      const message = err.message.toLowerCase();
+      if (message.includes('timeout') || message.includes('aborted')) {
+        return {
+          message:
+            'The translation request timed out. This commonly happens when the AI model is loading.',
+          type: 'timeout',
+          isRetryable: true,
+          suggestions: [
+            'Wait a moment and try again',
+            'Try with shorter text',
+            'Check if Ollama is running if using local AI',
+          ],
+        };
+      }
+      if (message.includes('network') || message.includes('fetch')) {
+        return {
+          message: 'Network connection error. Please check your connection.',
+          type: 'network',
+          isRetryable: true,
+          suggestions: ['Check your internet connection', 'Verify the backend server is running'],
+        };
+      }
+    }
+
+    // Default error
+    return {
+      message: err instanceof Error ? err.message : 'Translation failed',
+      type: 'general',
+      isRetryable: true,
+      suggestions: ['Try the operation again', 'Contact support if the problem persists'],
+    };
+  }, []);
+
+  // Clear error state
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const handleTranslate = useCallback(async () => {
     if (!sourceText) {
-      setError('Please enter text to translate');
+      setError({
+        message: 'Please enter text to translate',
+        type: 'general',
+        isRetryable: false,
+      });
       return;
     }
 
     // Preserve full language descriptions - don't normalize to codes
-    // This allows creative inputs like "English (US)" or "Klingon"
+    // This allows creative inputs like "English (US)" or "Medieval English"
     const sourceLangDescription = preserveLanguageDescription(sourceLanguageInput);
     const targetLangDescription = preserveLanguageDescription(targetLanguageInput);
 
     if (!sourceLangDescription || !targetLangDescription) {
-      setError('Please specify source and target languages');
+      setError({
+        message: 'Please specify source and target languages',
+        type: 'general',
+        isRetryable: false,
+      });
       return;
     }
 
@@ -423,9 +567,10 @@ export const TranslationPage: React.FC = () => {
           preserveNames: true,
           preserveBrands: true,
           adaptMeasurements: true,
-          transcreationContext: translationMode === 'Transcreation' && transcreationContext.trim() 
-            ? transcreationContext.trim() 
-            : undefined,
+          transcreationContext:
+            translationMode === 'Transcreation' && transcreationContext.trim()
+              ? transcreationContext.trim()
+              : undefined,
         },
       };
 
@@ -445,9 +590,18 @@ export const TranslationPage: React.FC = () => {
         'status' in err.response &&
         err.response.status === 428
       ) {
-        const responseData = err.response.data as { message?: string; redirectTo?: string } | undefined;
-        const message = responseData?.message || 'Please complete the first-run wizard before using this feature.';
-        setError(message);
+        const responseData = err.response.data as
+          | { message?: string; redirectTo?: string }
+          | undefined;
+        const message =
+          responseData?.message ||
+          'Please complete the first-run wizard before using this feature.';
+        setError({
+          message,
+          type: 'general',
+          isRetryable: false,
+          suggestions: ['Complete the first-run setup wizard'],
+        });
         console.error('Translation blocked - setup not completed:', err);
         // Optionally redirect to onboarding if redirectTo is provided
         if (responseData?.redirectTo) {
@@ -456,8 +610,8 @@ export const TranslationPage: React.FC = () => {
           }, 2000);
         }
       } else {
-        const errorMsg = err instanceof Error ? err.message : 'Translation failed';
-        setError(errorMsg);
+        const translationError = parseTranslationError(err);
+        setError(translationError);
         console.error('Translation error:', err);
       }
     } finally {
@@ -471,17 +625,25 @@ export const TranslationPage: React.FC = () => {
     enableBackTranslation,
     adjustTimings,
     transcreationContext,
-    languages,
+    parseTranslationError,
   ]);
 
   const handleBatchTranslate = useCallback(async () => {
     if (!sourceText) {
-      setError('Please enter text to translate');
+      setError({
+        message: 'Please enter text to translate',
+        type: 'general',
+        isRetryable: false,
+      });
       return;
     }
 
     if (targetLanguages.length === 0) {
-      setError('Please select at least one target language');
+      setError({
+        message: 'Please select at least one target language',
+        type: 'general',
+        isRetryable: false,
+      });
       return;
     }
 
@@ -505,8 +667,8 @@ export const TranslationPage: React.FC = () => {
       const result = await batchTranslate(request);
       setBatchResults(result.translations);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Batch translation failed';
-      setError(errorMsg);
+      const translationError = parseTranslationError(err);
+      setError(translationError);
       console.error('Batch translation error:', err);
     } finally {
       setLoading(false);
@@ -518,6 +680,7 @@ export const TranslationPage: React.FC = () => {
     translationMode,
     enableBackTranslation,
     adjustTimings,
+    parseTranslationError,
   ]);
 
   return (
@@ -549,21 +712,98 @@ export const TranslationPage: React.FC = () => {
         </Tab>
       </TabList>
 
-      {error && <ErrorState message={error} />}
+      {/* Enhanced error display with retry button and suggestions */}
+      {error && (
+        <MessageBar
+          intent={
+            error.type === 'timeout' || error.type === 'circuit_breaker' ? 'warning' : 'error'
+          }
+          style={{ marginBottom: tokens.spacingVerticalL }}
+        >
+          <MessageBarBody>
+            <MessageBarTitle>
+              {error.type === 'timeout' && 'Translation Timeout'}
+              {error.type === 'circuit_breaker' && 'Service Temporarily Unavailable'}
+              {error.type === 'provider' && 'AI Provider Error'}
+              {error.type === 'network' && 'Connection Error'}
+              {error.type === 'general' && 'Translation Error'}
+            </MessageBarTitle>
+            <Text>{error.message}</Text>
+            {error.suggestions && error.suggestions.length > 0 && (
+              <div style={{ marginTop: tokens.spacingVerticalS }}>
+                <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                  <Info24Regular style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                  Suggestions:
+                </Text>
+                <ul style={{ margin: `${tokens.spacingVerticalXS} 0`, paddingLeft: '20px' }}>
+                  {error.suggestions.map((suggestion, idx) => (
+                    <li
+                      key={idx}
+                      style={{ fontSize: '12px', color: tokens.colorNeutralForeground2 }}
+                    >
+                      {suggestion}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </MessageBarBody>
+          <MessageBarActions>
+            {error.isRetryable && (
+              <Button
+                icon={<ArrowClockwise24Regular />}
+                onClick={() => {
+                  clearError();
+                  if (activeTab === 'translate') {
+                    handleTranslate();
+                  } else if (activeTab === 'batch') {
+                    handleBatchTranslate();
+                  }
+                }}
+                size="small"
+              >
+                Retry
+              </Button>
+            )}
+            <Button
+              icon={<Dismiss24Regular />}
+              onClick={clearError}
+              size="small"
+              appearance="subtle"
+            >
+              Dismiss
+            </Button>
+          </MessageBarActions>
+        </MessageBar>
+      )}
 
       {/* Provider health warning banner */}
       {providerHealth && (!providerHealth.isAvailable || !providerHealth.supportsTranslation) && (
         <MessageBar intent="warning" style={{ marginBottom: tokens.spacingVerticalL }}>
           <MessageBarBody>
             <MessageBarTitle>
-              <Warning24Regular style={{ marginRight: tokens.spacingHorizontalS, verticalAlign: 'middle' }} />
+              <Warning24Regular
+                style={{ marginRight: tokens.spacingHorizontalS, verticalAlign: 'middle' }}
+              />
               Translation Unavailable
             </MessageBarTitle>
             <Text>
-              {providerHealth.errorMessage || 
-               `Current AI provider (${providerHealth.providerName || 'Unknown'}) does not support translation. `}
+              {providerHealth.errorMessage ||
+                `Current AI provider (${providerHealth.providerName || 'Unknown'}) does not support translation. `}
               {providerHealth.isLocalModel && (
-                <> Please start Ollama: <code style={{ backgroundColor: tokens.colorNeutralBackground4, padding: '2px 6px', borderRadius: '4px' }}>ollama run llama3.1</code></>
+                <>
+                  {' '}
+                  Please start Ollama:{' '}
+                  <code
+                    style={{
+                      backgroundColor: tokens.colorNeutralBackground4,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    ollama run llama3.1
+                  </code>
+                </>
               )}
               {!providerHealth.isLocalModel && !providerHealth.errorMessage && (
                 <> Please configure an AI provider such as Ollama, OpenAI, or Anthropic Claude.</>
@@ -583,9 +823,9 @@ export const TranslationPage: React.FC = () => {
 
             <div className={styles.form}>
               <div className={styles.languageRow}>
-                <Field 
+                <Field
                   label="Source Language"
-                  hint="Enter any language description - codes, names, regional variants, or even fictional languages (e.g., 'English (US)', 'Klingon', 'Medieval English'). The LLM will intelligently interpret it."
+                  hint="Enter any language description - codes, names, regional variants, or creative styles (e.g., 'English (US)', 'Medieval English', 'Pirate Speak'). The LLM will intelligently interpret it."
                 >
                   <div className={styles.autocompleteContainer}>
                     <Input
@@ -597,7 +837,7 @@ export const TranslationPage: React.FC = () => {
                       }}
                       onFocus={() => setShowSourceSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowSourceSuggestions(false), 200)}
-                      placeholder="e.g., English (US), Klingon, Spanish, en, Français..."
+                      placeholder="e.g., English (US), Medieval English, Spanish, en, Français..."
                       contentBefore={<Search24Regular />}
                     />
                     {showSourceSuggestions && sourceLanguageSuggestions.length > 0 && (
@@ -615,7 +855,10 @@ export const TranslationPage: React.FC = () => {
                             onMouseDown={(e) => e.preventDefault()}
                           >
                             <Text weight="semibold">{lang.name}</Text>
-                            <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                            <Text
+                              size={200}
+                              style={{ color: tokens.colorNeutralForeground3, display: 'block' }}
+                            >
                               {lang.nativeName} ({lang.code}){lang.isRightToLeft ? ' [RTL]' : ''}
                             </Text>
                           </div>
@@ -625,9 +868,9 @@ export const TranslationPage: React.FC = () => {
                   </div>
                 </Field>
 
-                <Field 
+                <Field
                   label="Target Language"
-                  hint="Enter any target language - standard, regional variants, dialects, or even fictional languages. The LLM can handle any language you describe."
+                  hint="Enter any target language - standard, regional variants, dialects, or creative styles. The LLM can handle any language you describe."
                 >
                   <div className={styles.autocompleteContainer}>
                     <Input
@@ -639,7 +882,7 @@ export const TranslationPage: React.FC = () => {
                       }}
                       onFocus={() => setShowTargetSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowTargetSuggestions(false), 200)}
-                      placeholder="e.g., Klingon, Spanish (Mexico), English (UK), Deutsch..."
+                      placeholder="e.g., Pirate Speak, Spanish (Mexico), English (UK), Deutsch..."
                       contentBefore={<Search24Regular />}
                     />
                     {showTargetSuggestions && targetLanguageSuggestions.length > 0 && (
@@ -657,7 +900,10 @@ export const TranslationPage: React.FC = () => {
                             onMouseDown={(e) => e.preventDefault()}
                           >
                             <Text weight="semibold">{lang.name}</Text>
-                            <Text size={200} style={{ color: tokens.colorNeutralForeground3, display: 'block' }}>
+                            <Text
+                              size={200}
+                              style={{ color: tokens.colorNeutralForeground3, display: 'block' }}
+                            >
                               {lang.nativeName} ({lang.code}){lang.isRightToLeft ? ' [RTL]' : ''}
                             </Text>
                           </div>
@@ -689,14 +935,16 @@ export const TranslationPage: React.FC = () => {
                     <Text className={styles.transcreationLabel}>Advanced Transcreation</Text>
                     <span className={styles.transcreationBadge}>
                       <Sparkle24Regular style={{ fontSize: '12px' }} />
-              Creative Rewrite
+                      Creative Rewrite
                     </span>
                   </div>
                   <Text className={styles.transcreationHint}>
-            Specify the target style, era, format, or audience for an aggressive creative rewrite. 
-            In Transcreation mode the AI will significantly rewrite your script so it feels truly native to that time period or style—even when translating from English to English—while preserving the core message and offer.
+                    Specify the target style, era, format, or audience for an aggressive creative
+                    rewrite. In Transcreation mode the AI will significantly rewrite your script so
+                    it feels truly native to that time period or style—even when translating from
+                    English to English—while preserving the core message and offer.
                   </Text>
-                  <Field 
+                  <Field
                     label="Transcreation Instructions"
                     hint="Examples: 'Written as if an American television commercial in 1953', 'Style of a Shakespearean monologue', 'Casual text message between friends', 'Formal corporate announcement from 1980s'"
                   >
@@ -747,9 +995,9 @@ export const TranslationPage: React.FC = () => {
 
               <Text className={styles.infoText}>
                 <Info24Regular /> Translation includes: Quality scoring, cultural adaptation
-                analysis, idiom replacement, and visual localization recommendations. The AI supports
-                any language, dialect, regional variant, or even fictional languages - simply type the full
-                language description (e.g., "English (US)" to "Klingon").
+                analysis, idiom replacement, and visual localization recommendations. The AI
+                supports any language, dialect, regional variant, or creative style - simply type
+                the full language description (e.g., "English (US)" to "Pirate Speak").
               </Text>
 
               <div className={styles.actions}>
@@ -757,7 +1005,12 @@ export const TranslationPage: React.FC = () => {
                   appearance="primary"
                   icon={loading ? <Spinner size="tiny" /> : <ArrowSync24Regular />}
                   onClick={handleTranslate}
-                  disabled={loading || !sourceText || !sourceLanguageInput.trim() || !targetLanguageInput.trim()}
+                  disabled={
+                    loading ||
+                    !sourceText ||
+                    !sourceLanguageInput.trim() ||
+                    !targetLanguageInput.trim()
+                  }
                 >
                   {loading ? 'Translating...' : 'Translate'}
                 </Button>

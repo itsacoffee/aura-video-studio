@@ -148,29 +148,31 @@ export const VisualsProviders = [
   {
     value: 'Stock',
     label: 'All Stock Sources (Recommended)',
-    description: 'Uses all available stock sources (Pexels, Pixabay, Unsplash) for best results',
+    description:
+      'Uses all available stock sources (Pexels, Pixabay, Unsplash) for best results. Requires API keys.',
     isLocal: false,
+    requiresApiKey: true,
   },
   {
     value: 'Pexels',
     label: 'Pexels (Free Stock)',
-    description: 'High-quality free stock photos and videos from Pexels',
+    description: 'High-quality free stock photos and videos from Pexels. Requires API key.',
     isLocal: false,
-    requiresApiKey: false,
+    requiresApiKey: true,
   },
   {
     value: 'Pixabay',
     label: 'Pixabay (Free Stock)',
-    description: 'Community-driven free stock images and videos from Pixabay',
+    description: 'Community-driven free stock images and videos from Pixabay. Requires API key.',
     isLocal: false,
-    requiresApiKey: false,
+    requiresApiKey: true,
   },
   {
     value: 'Unsplash',
     label: 'Unsplash (Free Stock)',
-    description: 'Professional-grade free photos from Unsplash',
+    description: 'Professional-grade free photos from Unsplash. Requires API key.',
     isLocal: false,
-    requiresApiKey: false,
+    requiresApiKey: true,
   },
   {
     value: 'LocalAssets',
@@ -325,9 +327,13 @@ export const useProviderStore = create<ProviderStoreState>((set) => ({
   refreshProviderStatuses: async () => {
     set({ isLoadingStatuses: true });
     try {
-      const response = await fetch('/api/providers/status');
+      const response = await fetch('/api/provider-status');
       if (response.ok) {
-        const statuses = (await response.json()) as ProviderStatus[];
+        const data = (await response.json()) as {
+          providers?: ProviderStatus[];
+        };
+        // Backend returns providers in a flat array, extract it
+        const statuses = Array.isArray(data.providers) ? data.providers : [];
         set({
           providerStatuses: statuses,
           lastStatusCheck: new Date(),

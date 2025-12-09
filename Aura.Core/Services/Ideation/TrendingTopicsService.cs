@@ -23,7 +23,7 @@ public class TrendingTopicsService
 {
     private readonly ILogger<TrendingTopicsService> _logger;
     private readonly ILlmProvider _llmProvider;
-    private readonly LlmStageAdapter? _stageAdapter;
+    private readonly LlmStageAdapter _stageAdapter;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IMemoryCache _cache;
     private readonly WebSearchService? _webSearchService;
@@ -51,7 +51,7 @@ public class TrendingTopicsService
         ILlmProvider llmProvider,
         IHttpClientFactory httpClientFactory,
         IMemoryCache cache,
-        LlmStageAdapter? stageAdapter = null,
+        LlmStageAdapter stageAdapter,
         WebSearchService? webSearchService = null)
     {
         _logger = logger;
@@ -394,27 +394,19 @@ public class TrendingTopicsService
     }
 
     /// <summary>
-    /// Helper method to execute LLM generation through unified orchestrator or fallback to direct provider
+    /// Helper method to execute LLM generation through unified orchestrator
     /// </summary>
     private async Task<string> GenerateWithLlmAsync(
         Brief brief,
         PlanSpec planSpec,
         CancellationToken ct)
     {
-        if (_stageAdapter != null)
+        var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
+        if (!result.IsSuccess || result.Data == null)
         {
-            var result = await _stageAdapter.GenerateScriptAsync(brief, planSpec, "Free", false, ct).ConfigureAwait(false);
-            if (!result.IsSuccess || result.Data == null)
-            {
-                _logger.LogWarning("Orchestrator generation failed, falling back to direct provider: {Error}", result.ErrorMessage);
-                return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
-            }
-            return result.Data;
+            throw new InvalidOperationException(result.ErrorMessage ?? "LLM orchestration failed for trending topics analysis");
         }
-        else
-        {
-            return await _llmProvider.DraftScriptAsync(brief, planSpec, ct).ConfigureAwait(false);
-        }
+        return result.Data;
     }
 
     /// <summary>

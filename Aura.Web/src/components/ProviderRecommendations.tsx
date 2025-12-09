@@ -1,19 +1,7 @@
-import {
-  Card,
-  Text,
-  Button,
-  Badge,
-  makeStyles,
-  tokens,
-  Title3,
-} from '@fluentui/react-components';
-import {
-  Lightbulb24Regular,
-  ArrowRight24Regular,
-  Checkmark24Regular,
-} from '@fluentui/react-icons';
-import type { ProviderStatus } from '../hooks/useProviderStatus';
+import { Card, Text, Button, Badge, makeStyles, tokens, Title3 } from '@fluentui/react-components';
+import { Lightbulb24Regular, ArrowRight24Regular, Checkmark24Regular } from '@fluentui/react-icons';
 import { useNavigate } from 'react-router-dom';
+import type { ProviderStatus } from '../hooks/useProviderStatus';
 
 const useStyles = makeStyles({
   container: {
@@ -73,6 +61,8 @@ export interface ProviderRecommendationsProps {
   llm: ProviderStatus[];
   tts: ProviderStatus[];
   images: ProviderStatus[];
+  overallHealth?: 'Green' | 'Yellow' | 'Red';
+  ollamaActive?: boolean;
 }
 
 interface Recommendation {
@@ -88,15 +78,16 @@ export function ProviderRecommendations({
   llm,
   tts,
   images,
+  overallHealth = 'Yellow',
+  ollamaActive = false,
 }: ProviderRecommendationsProps) {
   const styles = useStyles();
   const navigate = useNavigate();
 
   const recommendations: Recommendation[] = [];
 
-  // Check for Ollama
-  const ollamaAvailable = llm.find((p) => p.name === 'Ollama')?.available;
-  if (!ollamaAvailable) {
+  // Check for Ollama - only recommend if NOT active
+  if (!ollamaActive) {
     recommendations.push({
       priority: 'high',
       title: 'Enable Local AI with Ollama',
@@ -111,7 +102,7 @@ export function ProviderRecommendations({
   // Check for better TTS
   const hasElevenLabs = tts.find((p) => p.name === 'ElevenLabs')?.available;
   const hasPaidTts = tts.some((p) => p.tier === 'paid' && p.available);
-  if (!hasPaidTts) {
+  if (!hasPaidTts && overallHealth === 'Green') {
     recommendations.push({
       priority: 'medium',
       title: 'Upgrade Voice Quality',
@@ -125,7 +116,7 @@ export function ProviderRecommendations({
 
   // Check for Stable Diffusion
   const sdAvailable = images.find((p) => p.name === 'StableDiffusion')?.available;
-  if (!sdAvailable) {
+  if (!sdAvailable && overallHealth === 'Green') {
     recommendations.push({
       priority: 'medium',
       title: 'Enable Local Image Generation',
@@ -161,7 +152,9 @@ export function ProviderRecommendations({
           <Title3>Provider Recommendations</Title3>
         </div>
         <div className={styles.emptyState}>
-          <Checkmark24Regular style={{ fontSize: '32px', color: tokens.colorPaletteGreenForeground1 }} />
+          <Checkmark24Regular
+            style={{ fontSize: '32px', color: tokens.colorPaletteGreenForeground1 }}
+          />
           <Text>All recommended providers are configured!</Text>
         </div>
       </div>
@@ -171,7 +164,7 @@ export function ProviderRecommendations({
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return 'danger';
+        return overallHealth === 'Green' ? 'warning' : 'danger';
       case 'medium':
         return 'warning';
       default:
@@ -208,7 +201,13 @@ export function ProviderRecommendations({
                 appearance="filled"
                 color={getPriorityColor(rec.priority)}
               >
-                {rec.priority === 'high' ? 'High Priority' : rec.priority === 'medium' ? 'Medium' : 'Low'}
+                {rec.priority === 'high'
+                  ? overallHealth === 'Green'
+                    ? 'Optional'
+                    : 'High Priority'
+                  : rec.priority === 'medium'
+                    ? 'Recommended'
+                    : 'Low'}
               </Badge>
             </div>
             <div className={styles.recommendationActions}>
@@ -227,4 +226,3 @@ export function ProviderRecommendations({
     </div>
   );
 }
-

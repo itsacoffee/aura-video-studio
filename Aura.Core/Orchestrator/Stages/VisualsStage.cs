@@ -17,6 +17,8 @@ namespace Aura.Core.Orchestrator.Stages;
 /// </summary>
 public class VisualsStage : PipelineStage
 {
+    private const int SceneTimeoutSeconds = 45;
+
     private readonly IImageProvider? _imageProvider;
     private readonly ImageOutputValidator _imageValidator;
     private readonly ProviderRetryWrapper _retryWrapper;
@@ -57,28 +59,32 @@ public class VisualsStage : PipelineStage
         var sceneAssets = new Dictionary<int, IReadOnlyList<Asset>>();
 
         Logger.LogInformation(
-            "[{CorrelationId}] Generating visuals for {SceneCount} scenes",
+            "[{CorrelationId}] Generating visuals for {SceneCount} scenes using provider: {Provider}",
             context.CorrelationId,
-            scenes.Count);
+            scenes.Count,
+            _imageProvider?.GetType().Name ?? "None");
 
-        // If no image provider is available, skip visual generation
+        // If no image provider is available, skip visual generation with clear message
         if (_imageProvider == null)
         {
             Logger.LogWarning(
-                "[{CorrelationId}] No image provider available, skipping visual generation",
+                "[{CorrelationId}] No image provider available (IImageProvider not registered). " +
+                "This typically means no stock image API keys are configured. " +
+                "Configure Pexels, Unsplash, or Pixabay API keys in Settings to enable stock image generation.",
                 context.CorrelationId);
 
-            ReportProgress(progress, 100, "No image provider available - continuing without visuals");
-            
+            ReportProgress(progress, 100, "No image provider available - configure stock image API keys in Settings");
+
             context.SceneAssets = sceneAssets;
             context.SetStageOutput(StageName, new VisualsStageOutput
             {
                 SceneAssets = sceneAssets,
                 TotalAssetsGenerated = 0,
                 SkippedScenes = scenes.Count,
+                FailureReason = "No image provider available. Configure Pexels, Unsplash, or Pixabay API keys in Settings.",
                 GeneratedAt = DateTime.UtcNow
             });
-            
+
             return;
         }
 
@@ -104,6 +110,9 @@ public class VisualsStage : PipelineStage
 
             try
             {
+                using var sceneCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                sceneCts.CancelAfter(TimeSpan.FromSeconds(SceneTimeoutSeconds));
+
                 var assets = await _retryWrapper.ExecuteWithRetryAsync(
                     async (ctRetry) =>
                     {
@@ -146,7 +155,7 @@ public class VisualsStage : PipelineStage
                         return generatedAssets;
                     },
                     $"Image Generation (Scene {scene.Index})",
-                    ct,
+                    sceneCts.Token,
                     maxRetries: 2
                 ).ConfigureAwait(false);
 
@@ -162,12 +171,24 @@ public class VisualsStage : PipelineStage
             }
             catch (Exception ex)
             {
-                // Log but don't fail the entire pipeline for missing images
+                if (ex is OperationCanceledException && ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+
+                var timedOut = ex is OperationCanceledException;
+
+                // Log with more context for debugging
                 Logger.LogWarning(
                     ex,
-                    "[{CorrelationId}] Failed to generate visuals for scene {SceneIndex}, continuing with empty assets",
+                    "[{CorrelationId}] Failed to generate visuals for scene {SceneIndex} (heading: '{Heading}'). " +
+                    "Provider: {Provider}. Error: {ErrorMessage}. Continuing with empty assets. TimedOut={TimedOut}",
                     context.CorrelationId,
-                    scene.Index);
+                    scene.Index,
+                    scene.Heading ?? "unknown",
+                    _imageProvider?.GetType().Name ?? "null",
+                    ex.Message,
+                    timedOut);
 
                 sceneAssets[scene.Index] = Array.Empty<Asset>();
                 failedScenes++;
@@ -177,12 +198,26 @@ public class VisualsStage : PipelineStage
 
         ReportProgress(progress, 95, "Visual generation completed");
 
-        Logger.LogInformation(
-            "[{CorrelationId}] Visual generation completed: {TotalAssets} assets for {CompletedScenes} scenes ({FailedScenes} scenes failed)",
-            context.CorrelationId,
-            totalAssets,
-            completedScenes,
-            failedScenes);
+        // Provide clear summary of results
+        if (failedScenes > 0)
+        {
+            Logger.LogWarning(
+                "[{CorrelationId}] Visual generation completed with {FailedScenes} failed scenes. " +
+                "Successfully generated {TotalAssets} assets for {SuccessScenes} scenes. " +
+                "Failed scenes will use placeholder images during rendering.",
+                context.CorrelationId,
+                failedScenes,
+                totalAssets,
+                completedScenes - failedScenes);
+        }
+        else
+        {
+            Logger.LogInformation(
+                "[{CorrelationId}] Visual generation completed successfully: {TotalAssets} assets for {CompletedScenes} scenes",
+                context.CorrelationId,
+                totalAssets,
+                completedScenes);
+        }
 
         // Store scene assets in context
         context.SceneAssets = sceneAssets;
@@ -231,5 +266,6 @@ public record VisualsStageOutput
     public required int TotalAssetsGenerated { get; init; }
     public required int SkippedScenes { get; init; }
     public string? Provider { get; init; }
+    public string? FailureReason { get; init; }
     public required DateTime GeneratedAt { get; init; }
 }

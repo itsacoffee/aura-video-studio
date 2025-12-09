@@ -19,18 +19,60 @@ public record InstallProgress(
     long TotalBytes
 );
 
+/// <summary>
+/// URLs for Piper TTS binary and voice model downloads
+/// </summary>
+public static class PiperDownloadUrls
+{
+    public const string WindowsBinaryUrl = "https://github.com/rhasspy/piper/releases/latest/download/piper_windows_amd64.tar.gz";
+    public const string DefaultVoiceModelUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+    public const string VoiceModelsBaseUrl = "https://huggingface.co/rhasspy/piper-voices/resolve/main";
+}
+
 public class DependencyInstaller
 {
     private readonly ILogger<DependencyInstaller> _logger;
     private readonly HttpClient _httpClient;
+    private readonly PortableDetector? _portableDetector;
     private const int MaxRetries = 3;
 
     public DependencyInstaller(
         ILogger<DependencyInstaller> logger,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        PortableDetector? portableDetector = null)
     {
         _logger = logger;
         _httpClient = httpClient;
+        _portableDetector = portableDetector;
+    }
+
+    /// <summary>
+    /// Gets the installation directory for a dependency, using portable paths when available.
+    /// </summary>
+    private string GetInstallDirectory(string dependencyName)
+    {
+        if (_portableDetector?.IsPortableMode == true)
+        {
+            return dependencyName.ToLowerInvariant() switch
+            {
+                "ffmpeg" => _portableDetector.FFmpegDirectory,
+                "piper" => _portableDetector.PiperDirectory,
+                "ollama" => _portableDetector.OllamaDirectory,
+                "stable-diffusion" => _portableDetector.StableDiffusionDirectory,
+                _ => Path.Combine(_portableDetector.ToolsDirectory, dependencyName)
+            };
+        }
+
+        // Fall back to LocalApplicationData
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return dependencyName.ToLowerInvariant() switch
+        {
+            "ffmpeg" => Path.Combine(localAppData, "Aura", "ffmpeg"),
+            "piper" => Path.Combine(localAppData, "Aura", "Tools", "piper"),
+            "ollama" => Path.Combine(localAppData, "Aura", "Tools", "ollama"),
+            "stable-diffusion" => Path.Combine(localAppData, "Aura", "Tools", "stable-diffusion-webui"),
+            _ => Path.Combine(localAppData, "Aura", "Tools", dependencyName)
+        };
     }
 
     public async Task<bool> InstallFFmpegAsync(
@@ -41,8 +83,7 @@ public class DependencyInstaller
 
         try
         {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var installDir = Path.Combine(localAppData, "Aura", "ffmpeg");
+            var installDir = GetInstallDirectory("ffmpeg");
 
             progress?.Report(new InstallProgress(0, "Determining platform...", "", 0, 0));
 
@@ -97,8 +138,11 @@ public class DependencyInstaller
 
             progress?.Report(new InstallProgress(90, "Setting up PATH...", "", 0, 0));
 
-            // Add to PATH (user level)
-            AddToUserPath(Path.Combine(installDir, "bin"));
+            // Only add to PATH if not in portable mode (portable mode uses relative paths)
+            if (_portableDetector?.IsPortableMode != true)
+            {
+                AddToUserPath(Path.Combine(installDir, "bin"));
+            }
 
             progress?.Report(new InstallProgress(100, "FFmpeg installed successfully", "", 0, 0));
 
@@ -112,7 +156,7 @@ public class DependencyInstaller
                 _logger.LogWarning(ex, "Failed to clean up download file");
             }
 
-            _logger.LogInformation("FFmpeg installation completed successfully");
+            _logger.LogInformation("FFmpeg installation completed successfully at {InstallDir}", installDir);
             return true;
         }
         catch (Exception ex)
@@ -123,13 +167,134 @@ public class DependencyInstaller
         }
     }
 
-    public Task<bool> InstallPiperTtsAsync(
+    public async Task<bool> InstallPiperTtsAsync(
         IProgress<InstallProgress>? progress = null,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("Piper TTS installation has been moved to the Setup Wizard API endpoint. This method is deprecated.");
-        progress?.Report(new InstallProgress(0, "Please use the Setup Wizard to install Piper TTS", "", 0, 0));
-        return Task.FromResult(false);
+        _logger.LogInformation("Starting Piper TTS installation");
+
+        try
+        {
+            var installDir = GetInstallDirectory("piper");
+            var voicesDir = Path.Combine(installDir, "voices");
+
+            progress?.Report(new InstallProgress(0, "Preparing installation...", "", 0, 0));
+
+            // Only supported on Windows for managed installation
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _logger.LogWarning("Piper TTS managed installation is only available on Windows. Please install manually from https://github.com/rhasspy/piper/releases");
+                progress?.Report(new InstallProgress(0, "Managed installation only available on Windows. Please install manually.", "", 0, 0));
+                return false;
+            }
+
+            progress?.Report(new InstallProgress(5, "Resolving download URL...", "", 0, 0));
+
+            progress?.Report(new InstallProgress(10, "Downloading Piper...", "piper_windows_amd64.tar.gz", 0, 0));
+
+            var downloadPath = Path.Combine(Path.GetTempPath(), $"piper_{Guid.NewGuid():N}.tar.gz");
+
+            // Download Piper with retries using constant URL
+            await DownloadWithRetriesAsync(PiperDownloadUrls.WindowsBinaryUrl, downloadPath, progress, ct).ConfigureAwait(false);
+
+            progress?.Report(new InstallProgress(60, "Extracting Piper...", "", 0, 0));
+
+            // Create installation directory
+            Directory.CreateDirectory(installDir);
+            Directory.CreateDirectory(voicesDir);
+
+            // Extract using tar command (available on Windows 10+)
+            await ExtractTarGzAsync(downloadPath, installDir, ct).ConfigureAwait(false);
+
+            // Find piper.exe
+            var piperExePath = Directory.GetFiles(installDir, "piper.exe", SearchOption.AllDirectories).FirstOrDefault();
+            if (piperExePath == null)
+            {
+                _logger.LogError("Piper executable not found after extraction");
+                progress?.Report(new InstallProgress(0, "Extraction failed: piper.exe not found", "", 0, 0));
+                return false;
+            }
+
+            // Move to root of installDir if nested
+            var targetPath = Path.Combine(installDir, "piper.exe");
+            if (piperExePath != targetPath)
+            {
+                File.Copy(piperExePath, targetPath, overwrite: true);
+            }
+
+            progress?.Report(new InstallProgress(75, "Downloading default voice model...", "en_US-lessac-medium.onnx", 0, 0));
+
+            // Download default voice model using constant URL
+            var voiceModelPath = Path.Combine(voicesDir, "en_US-lessac-medium.onnx");
+
+            try
+            {
+                using var response = await _httpClient.GetAsync(PiperDownloadUrls.DefaultVoiceModelUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                using var contentStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+                using var fileStream = new FileStream(voiceModelPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
+                await contentStream.CopyToAsync(fileStream, ct).ConfigureAwait(false);
+
+                _logger.LogInformation("Voice model downloaded successfully: {Path}", voiceModelPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to download voice model, installation will continue without it");
+            }
+
+            progress?.Report(new InstallProgress(95, "Verifying installation...", "", 0, 0));
+
+            // Verify Piper works
+            try
+            {
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = targetPath,
+                        Arguments = "--help",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                await process.WaitForExitAsync(ct).ConfigureAwait(false);
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogWarning("Piper verification returned non-zero exit code: {ExitCode}", process.ExitCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Piper verification failed, but installation may still work");
+            }
+
+            // Clean up download file
+            try
+            {
+                File.Delete(downloadPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to clean up download file");
+            }
+
+            progress?.Report(new InstallProgress(100, "Piper TTS installed successfully", "", 0, 0));
+
+            _logger.LogInformation("Piper TTS installation completed successfully at {Path}", targetPath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Piper TTS installation failed");
+            progress?.Report(new InstallProgress(0, $"Installation failed: {ex.Message}", "", 0, 0));
+            return false;
+        }
     }
 
     public async Task<bool> DownloadStockAssetsAsync(
@@ -140,8 +305,16 @@ public class DependencyInstaller
 
         try
         {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var assetsDir = Path.Combine(localAppData, "Aura", "assets");
+            string assetsDir;
+            if (_portableDetector?.IsPortableMode == true)
+            {
+                assetsDir = Path.Combine(_portableDetector.DataDirectory, "assets");
+            }
+            else
+            {
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                assetsDir = Path.Combine(localAppData, "Aura", "assets");
+            }
 
             progress?.Report(new InstallProgress(0, "Downloading stock assets...", "stock-pack.zip", 0, 0));
 

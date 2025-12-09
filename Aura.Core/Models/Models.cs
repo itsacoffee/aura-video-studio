@@ -37,11 +37,11 @@ public record LlmParameters(
 /// Supports both simple string-based audience and rich structured AudienceProfile
 /// </summary>
 public record Brief(
-    string Topic, 
-    string? Audience, 
-    string? Goal, 
-    string Tone, 
-    string Language, 
+    string Topic,
+    string? Audience,
+    string? Goal,
+    string Tone,
+    string Language,
     Aspect Aspect,
     PromptModifiers? PromptModifiers = null,
     AudienceProfile? AudienceProfile = null,
@@ -58,9 +58,9 @@ public record PromptModifiers(
     string? PromptVersion = null);
 
 public record PlanSpec(
-    TimeSpan TargetDuration, 
-    Pacing Pacing, 
-    Density Density, 
+    TimeSpan TargetDuration,
+    Pacing Pacing,
+    Density Density,
     string Style,
     ScriptRefinementConfig? RefinementConfig = null,
     int? MinSceneCount = null,
@@ -78,7 +78,7 @@ public record PlanSpec(
     /// Calculates the target scene count based on duration and density.
     /// Uses density to determine seconds per scene:
     /// - Sparse: 20 seconds per scene
-    /// - Balanced: 12 seconds per scene  
+    /// - Balanced: 12 seconds per scene
     /// - Dense: 8 seconds per scene
     /// </summary>
     public int GetCalculatedSceneCount()
@@ -90,19 +90,19 @@ public record PlanSpec(
             Density.Dense => DenseSecondsPerScene,
             _ => BalancedSecondsPerScene
         };
-        
+
         var calculated = (int)Math.Ceiling(TargetDuration.TotalSeconds / secondsPerScene);
-        
+
         // Apply min/max bounds
         var minScenes = MinSceneCount ?? DefaultMinScenes;
         var maxScenes = MaxSceneCount ?? DefaultMaxScenes;
-        
+
         // If target is explicitly set, use it within bounds
         if (TargetSceneCount.HasValue)
         {
             return Math.Clamp(TargetSceneCount.Value, minScenes, maxScenes);
         }
-        
+
         return Math.Clamp(calculated, minScenes, maxScenes);
     }
 }
@@ -110,10 +110,10 @@ public record PlanSpec(
 public record VoiceSpec(string VoiceName, double Rate, double Pitch, PauseStyle Pause);
 
 public record Scene(
-    int Index, 
-    string Heading, 
-    string Script, 
-    TimeSpan Start, 
+    int Index,
+    string Heading,
+    string Script,
+    TimeSpan Start,
     TimeSpan Duration,
     List<Citation>? Citations = null);
 
@@ -124,15 +124,16 @@ public record Asset(string Kind, string PathOrUrl, string? License, string? Attr
 public record Resolution(int Width, int Height);
 
 public record RenderSpec(
-    Resolution Res, 
-    string Container, 
-    int VideoBitrateK, 
+    Resolution Res,
+    string Container,
+    int VideoBitrateK,
     int AudioBitrateK,
     int Fps = 30,
     string Codec = "H264",
     int QualityLevel = 75,
     bool EnableSceneCut = true,
-    ScriptRefinementConfig? RefinementConfig = null);
+    ScriptRefinementConfig? RefinementConfig = null,
+    string? JobId = null);
 
 public record RenderProgress(float Percentage, TimeSpan Elapsed, TimeSpan Remaining, string CurrentStage);
 
@@ -147,7 +148,7 @@ public record SystemProfile
     public bool EnableNVENC { get; init; }
     public bool EnableSD { get; init; }
     public bool OfflineOnly { get; init; }
-    
+
     // Manual overrides (per spec: RAM 8-256 GB, cores 2-32+, GPU presets)
     public HardwareOverrides? Overrides { get; init; }
 }
@@ -251,10 +252,18 @@ public record BrandKit(
 /// <summary>
 /// RAG (Retrieval-Augmented Generation) configuration for script grounding
 /// </summary>
+/// <param name="Enabled">Whether RAG is enabled</param>
+/// <param name="TopK">Number of top results to retrieve</param>
+/// <param name="MinimumScore">Minimum relevance score threshold</param>
+/// <param name="MaxContextTokens">Maximum tokens for context</param>
+/// <param name="IncludeCitations">Whether to include citations in output</param>
+/// <param name="TightenClaims">Whether to apply claim tightening validation</param>
+/// <param name="EnableLlmQueryExpansion">Whether to use LLM for intelligent query expansion</param>
 public record RagConfiguration(
     bool Enabled,
     int TopK = 5,
     float MinimumScore = 0.6f,
     int MaxContextTokens = 2000,
     bool IncludeCitations = true,
-    bool TightenClaims = false);
+    bool TightenClaims = false,
+    bool EnableLlmQueryExpansion = true);

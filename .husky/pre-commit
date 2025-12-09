@@ -8,6 +8,15 @@ echo ""
 # Change to Aura.Web directory for npm commands
 cd Aura.Web || exit 1
 
+# Ensure dependencies are installed so lint-staged can find local binaries
+if [ ! -d "node_modules" ]; then
+  echo "📦 Installing frontend dependencies (npm ci)..."
+  npm ci || exit 1
+fi
+
+# Make sure locally installed binaries are on PATH for lint-staged tasks
+export PATH="$(pwd)/node_modules/.bin:$PATH"
+
 # Step 1: Run lint-staged to lint and format only staged files
 echo "📝 Linting and formatting staged files..."
 npx lint-staged

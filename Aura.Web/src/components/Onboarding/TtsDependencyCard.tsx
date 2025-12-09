@@ -13,10 +13,12 @@ import {
   ArrowClockwise24Regular,
   ArrowDownload24Regular,
   Checkmark24Regular,
+  Play24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { resetCircuitBreaker } from '../../services/api/apiClient';
+import { ttsClient } from '../../services/api/ttsClient';
 import { useNotifications } from '../Notifications/Toasts';
 
 const useStyles = makeStyles({
@@ -233,6 +235,63 @@ export function TtsDependencyCard({
     void checkStatus();
   }, [refreshSignal, checkStatus]);
 
+  // Helper to parse install error messages
+  const parseInstallError = (err: unknown): { title: string; message: string } => {
+    let errorTitle = 'Installation Failed';
+    let errorMessage = 'Installation failed';
+
+    if (err instanceof Error) {
+      errorMessage = err.message;
+
+      if (errorMessage.includes('Network') || errorMessage.includes('Failed to connect')) {
+        errorTitle = 'Connection Error';
+        errorMessage =
+          'Unable to connect to the Aura backend. Please ensure the backend server is running and try again.';
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        errorTitle = 'Timeout Error';
+        errorMessage =
+          'The installation request timed out. This may be due to a slow internet connection. Please try again.';
+      } else if (errorMessage.includes('Docker')) {
+        errorTitle = 'Docker Required';
+        errorMessage = 'Docker is required for Mimic3 TTS. Please install Docker Desktop first.';
+      } else if (errorMessage.includes('manual') || errorMessage.includes('Manual')) {
+        errorTitle = 'Manual Installation Required';
+      }
+    } else if (err && typeof err === 'object') {
+      const errorObj = err as { message?: string; error?: string; code?: string };
+      errorMessage = errorObj.message || errorObj.error || errorMessage;
+    }
+
+    return { title: errorTitle, message: errorMessage };
+  };
+
+  // Helper to verify installation status after install
+  const verifyInstallStatus = async (): Promise<boolean> => {
+    const waitTime = provider === 'mimic3' ? 4000 : 2500;
+    await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const currentStatus = await checkStatus();
+
+      if (currentStatus?.installed) {
+        console.info(
+          `[TtsDependencyCard] ${providerName} status confirmed as installed on attempt ${attempt + 1}`
+        );
+        return true;
+      }
+
+      if (attempt < 4) {
+        const retryDelay = 1000 * (attempt + 1);
+        const errorMsg = currentStatus?.error || 'Not ready yet';
+        console.info(
+          `[TtsDependencyCard] ${providerName} not ready yet (${errorMsg}), retrying in ${retryDelay}ms (attempt ${attempt + 2}/5)`
+        );
+        await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      }
+    }
+    return false;
+  };
+
   const handleInstall = async () => {
     setIsInstalling(true);
     setInstallProgress(0);
@@ -243,47 +302,39 @@ export function TtsDependencyCard({
       console.info(`[TtsDependencyCard] Starting ${providerName} installation`);
 
       const progressInterval = setInterval(() => {
-        setInstallProgress((prev) => {
-          if (prev >= 90) {
-            return prev;
-          }
-          return prev + 10;
-        });
+        setInstallProgress((prev) => (prev >= 90 ? prev : prev + 10));
       }, 500);
 
-      const endpoint = provider === 'piper' ? '/api/setup/install-piper' : '/api/setup/install-mimic3';
-      
+      const endpoint =
+        provider === 'piper' ? '/api/setup/install-piper' : '/api/setup/install-mimic3';
+
       let response: Response;
       try {
         response = await fetch(endpoint, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
         });
       } catch (networkError) {
         clearInterval(progressInterval);
         const errorMsg = networkError instanceof Error ? networkError.message : 'Network error';
-        console.error(`[TtsDependencyCard] Network error during ${providerName} installation:`, networkError);
-        throw new Error(`Failed to connect to server: ${errorMsg}. Please ensure the backend is running.`);
+        console.error(
+          `[TtsDependencyCard] Network error during ${providerName} installation:`,
+          networkError
+        );
+        throw new Error(
+          `Failed to connect to server: ${errorMsg}. Please ensure the backend is running.`
+        );
       }
 
       clearInterval(progressInterval);
 
-      // Try to parse response body first to get detailed error information
+      // Parse response
       let result: {
         success: boolean;
         message?: string;
         error?: string;
-        path?: string;
-        baseUrl?: string;
-        voiceModelPath?: string;
-        voiceModelDownloaded?: boolean;
         requiresDocker?: boolean;
         requiresManualInstall?: boolean;
-        dockerUrl?: string;
-        alternativeInstructions?: string;
-        instructions?: string[];
       };
 
       try {
@@ -294,17 +345,17 @@ export function TtsDependencyCard({
         result = JSON.parse(responseText);
       } catch (parseError) {
         console.error(`[TtsDependencyCard] Failed to parse response:`, parseError);
-        if (!response.ok) {
-          throw new Error(`Installation failed: ${response.status} ${response.statusText}`);
-        }
-        throw new Error('Invalid response from server');
+        throw new Error(
+          response.ok
+            ? 'Invalid response from server'
+            : `Installation failed: ${response.status} ${response.statusText}`
+        );
       }
 
-      // Check for HTTP errors
       if (!response.ok) {
-        const errorMessage = result.error || result.message || `Installation failed: ${response.statusText}`;
-        console.error(`[TtsDependencyCard] ${providerName} installation failed:`, errorMessage);
-        throw new Error(errorMessage);
+        throw new Error(
+          result.error || result.message || `Installation failed: ${response.statusText}`
+        );
       }
 
       if (result.success) {
@@ -313,97 +364,86 @@ export function TtsDependencyCard({
           message: result.message || `${providerName} has been installed and is ready to use.`,
         });
 
-        // Wait longer for the backend to finalize configuration and for services to be ready
-        // Piper needs time for file system to flush, Mimic3 needs time for Docker container to be ready
-        const waitTime = provider === 'mimic3' ? 4000 : 2500;
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-
-        // Retry status check with multiple attempts and increasing delays
-        // Use the return value from checkStatus() instead of the state variable
-        // because React state updates are asynchronous
-        let statusChecked = false;
-        let lastStatus: TtsStatus | null = null;
-
-        for (let attempt = 0; attempt < 5; attempt++) {
-          const currentStatus = await checkStatus();
-          lastStatus = currentStatus;
-
-          // Check if status is now installed using the returned value
-          if (currentStatus?.installed) {
-            statusChecked = true;
-            console.info(`[TtsDependencyCard] ${providerName} status confirmed as installed on attempt ${attempt + 1}`);
-            break;
-          }
-
-          if (attempt < 4) {
-            // Wait progressively longer before retrying (exponential backoff)
-            const retryDelay = 1000 * (attempt + 1);
-            const errorMsg = currentStatus?.error || 'Not ready yet';
-            console.info(`[TtsDependencyCard] ${providerName} not ready yet (${errorMsg}), retrying in ${retryDelay}ms (attempt ${attempt + 2}/5)`);
-            await new Promise((resolve) => setTimeout(resolve, retryDelay));
-          }
-        }
-
-        if (!statusChecked && lastStatus && !lastStatus.installed) {
-          // Show a helpful message
-          const errorMsg = lastStatus.error || 'Installation may still be in progress';
-          console.warn(`[TtsDependencyCard] ${providerName} installation completed but status check didn't confirm after 5 attempts. Error: ${errorMsg}`);
+        const verified = await verifyInstallStatus();
+        if (!verified) {
           showFailureToast({
             title: `${providerName} Installation Pending`,
-            message: `Installation completed, but ${providerName} is not ready yet. Please click 'Re-scan' in a few moments. ${errorMsg}`,
+            message: `Installation completed, but ${providerName} is not ready yet. Please click 'Re-scan' in a few moments.`,
           });
         }
+      } else if (result.requiresDocker) {
+        showFailureToast({
+          title: 'Docker Required',
+          message:
+            result.message || 'Docker is required for Mimic3. Please install Docker Desktop first.',
+        });
+      } else if (result.requiresManualInstall) {
+        showFailureToast({
+          title: 'Manual Installation Required',
+          message: result.message || 'Please install manually using the provided instructions.',
+        });
       } else {
-        // Installation not fully automated - show instructions
-        if (result.requiresDocker) {
-          showFailureToast({
-            title: 'Docker Required',
-            message: result.message || 'Docker is required for Mimic3. Please install Docker Desktop first.',
-          });
-        } else if (result.requiresManualInstall) {
-          showFailureToast({
-            title: 'Manual Installation Required',
-            message: result.message || 'Please install manually using the provided instructions.',
-          });
-        } else {
-          throw new Error(result.message || 'Installation failed');
-        }
+        throw new Error(result.message || 'Installation failed');
       }
     } catch (err: unknown) {
-      let errorTitle = 'Installation Failed';
-      let errorMessage = 'Installation failed';
-
       console.error(`[TtsDependencyCard] ${providerName} installation error:`, err);
-
-      if (err instanceof Error) {
-        errorMessage = err.message;
-        
-        // Provide more helpful error messages for common issues
-        if (errorMessage.includes('Network') || errorMessage.includes('Failed to connect')) {
-          errorTitle = 'Connection Error';
-          errorMessage = 'Unable to connect to the Aura backend. Please ensure the backend server is running and try again.';
-        } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
-          errorTitle = 'Timeout Error';
-          errorMessage = 'The installation request timed out. This may be due to a slow internet connection. Please try again.';
-        } else if (errorMessage.includes('Docker')) {
-          errorTitle = 'Docker Required';
-          errorMessage = 'Docker is required for Mimic3 TTS. Please install Docker Desktop first.';
-        } else if (errorMessage.includes('manual') || errorMessage.includes('Manual')) {
-          errorTitle = 'Manual Installation Required';
-        }
-      } else if (err && typeof err === 'object') {
-        const errorObj = err as { message?: string; error?: string; code?: string };
-        errorMessage = errorObj.message || errorObj.error || errorMessage;
-      }
-
-      setError(errorMessage);
-      showFailureToast({
-        title: errorTitle,
-        message: errorMessage,
-      });
+      const { title, message } = parseInstallError(err);
+      setError(message);
+      showFailureToast({ title, message });
     } finally {
       setIsInstalling(false);
       setInstallProgress(0);
+    }
+  };
+
+  const [isTesting, setIsTesting] = useState(false);
+
+  const handleTestVoice = async () => {
+    setIsTesting(true);
+    setError(null);
+
+    try {
+      console.info(`[TtsDependencyCard] Testing ${providerName} voice synthesis`);
+
+      const result =
+        provider === 'piper' ? await ttsClient.testPiperVoice() : await ttsClient.testMimic3Voice();
+
+      if (result.success && result.audioBase64) {
+        // Play the audio with error handling
+        const audio = new Audio(
+          `data:${result.audioFormat || 'audio/wav'};base64,${result.audioBase64}`
+        );
+
+        try {
+          await audio.play();
+          showSuccessToast({
+            title: 'Voice Test Successful',
+            message: result.message || 'Audio playback started.',
+          });
+        } catch (playbackError: unknown) {
+          console.error('[TtsDependencyCard] Audio playback failed:', playbackError);
+          const playbackErrorMsg =
+            playbackError instanceof Error ? playbackError.message : 'Unknown playback error';
+          showFailureToast({
+            title: 'Audio Playback Failed',
+            message: `Voice synthesis succeeded, but playback failed: ${playbackErrorMsg}. The browser may have blocked autoplay.`,
+          });
+        }
+      } else {
+        showFailureToast({
+          title: 'Voice Test Failed',
+          message: result.message || 'Unable to synthesize test audio.',
+        });
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Voice test failed';
+      setError(errorMessage);
+      showFailureToast({
+        title: 'Voice Test Error',
+        message: errorMessage,
+      });
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -503,14 +543,24 @@ export function TtsDependencyCard({
             </>
           )}
           {isReady && (
-            <Button
-              appearance="secondary"
-              icon={<ArrowClockwise24Regular />}
-              onClick={handleRescan}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Checking...' : 'Re-scan'}
-            </Button>
+            <>
+              <Button
+                appearance="primary"
+                icon={<Play24Regular />}
+                onClick={handleTestVoice}
+                disabled={isLoading || isTesting}
+              >
+                {isTesting ? 'Testing...' : 'Test Voice'}
+              </Button>
+              <Button
+                appearance="secondary"
+                icon={<ArrowClockwise24Regular />}
+                onClick={handleRescan}
+                disabled={isLoading || isTesting}
+              >
+                {isLoading ? 'Checking...' : 'Re-scan'}
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -577,7 +627,8 @@ export function TtsDependencyCard({
                   marginBottom: tokens.spacingVerticalM,
                 }}
               >
-                {providerName} is not installed or not ready. Install managed {providerName} to continue.
+                {providerName} is not installed or not ready. Install managed {providerName} to
+                continue.
               </Text>
               {status.error && (
                 <Text
@@ -614,4 +665,3 @@ export function TtsDependencyCard({
     </Card>
   );
 }
-

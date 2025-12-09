@@ -25,7 +25,7 @@ import { GlobalStatusFooter } from './GlobalStatusFooter';
 import { JobProgressDrawer } from './JobProgressDrawer';
 import { KeyboardShortcutsPanel } from './KeyboardShortcuts/KeyboardShortcutsPanel';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
-import { Layout } from './Layout';
+import { Layout, FullBleedLayout } from './Layout';
 import { LazyRoute } from './LazyRoute';
 import { NotificationsToaster } from './Notifications/Toasts';
 import { PlatformDashboard } from './Platform';
@@ -137,6 +137,11 @@ const SettingsPage = lazy(() =>
 const AccessibilitySettingsPage = lazy(() =>
   import('../pages/AccessibilitySettingsPage').then((m) => ({
     default: m.AccessibilitySettingsPage,
+  }))
+);
+const GraphicsSettingsPage = lazy(() =>
+  import('../pages/GraphicsSettingsPage').then((m) => ({
+    default: m.GraphicsSettingsPage,
   }))
 );
 const CustomTemplatesPage = lazy(() => import('../pages/Templates/CustomTemplatesPage'));
@@ -463,14 +468,6 @@ const AppRouterContentInner: FC<
                   }
                 />
                 <Route
-                  path="opencut"
-                  element={
-                    <LazyRoute routePath="/opencut">
-                      <OpenCutPage />
-                    </LazyRoute>
-                  }
-                />
-                <Route
                   path="pacing"
                   element={
                     <LazyRoute routePath="/pacing">
@@ -787,9 +784,31 @@ const AppRouterContentInner: FC<
                     </LazyRoute>
                   }
                 />
+                <Route
+                  path="settings/graphics"
+                  element={
+                    <LazyRoute routePath="/settings/graphics">
+                      <GraphicsSettingsPage />
+                    </LazyRoute>
+                  }
+                />
                 <Route path="models" element={<Navigate to="/settings" replace />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
+
+              {/* Full-bleed routes with FullBleedLayout wrapper - Protected by first-run check */}
+              <Route
+                path="/opencut"
+                element={
+                  <ProtectedRoute>
+                    <FullBleedLayout>
+                      <LazyRoute routePath="/opencut">
+                        <OpenCutPage />
+                      </LazyRoute>
+                    </FullBleedLayout>
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </ConfigurationGate>
         </ErrorBoundary>

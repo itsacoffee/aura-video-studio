@@ -1,27 +1,35 @@
 using Aura.Api.Models.ApiModels.V1;
+using Aura.Core.Configuration;
 using Aura.Core.Models.CostTracking;
 using Aura.Core.Services.CostTracking;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Serilog;
 
 namespace Aura.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/cost-tracking")]
+[Route("api/[controller]")] // Back-compat: api/costtracking
 public class CostTrackingController : ControllerBase
 {
     private readonly EnhancedCostTrackingService? _costTrackingService;
     private readonly TokenTrackingService? _tokenTrackingService;
     private readonly RunCostReportService? _reportService;
+    private readonly LlmPricingConfiguration _pricingConfig;
+    private readonly ILogger<CostTrackingController> _logger;
 
     public CostTrackingController(
+        ILogger<CostTrackingController> logger,
         EnhancedCostTrackingService? costTrackingService = null,
         TokenTrackingService? tokenTrackingService = null,
         RunCostReportService? reportService = null)
     {
+        _logger = logger;
         _costTrackingService = costTrackingService;
         _tokenTrackingService = tokenTrackingService;
         _reportService = reportService;
+        _pricingConfig = LlmPricingConfiguration.LoadDefault(_logger);
     }
 
     /// <summary>
@@ -38,7 +46,7 @@ public class CostTrackingController : ControllerBase
         try
         {
             var config = _costTrackingService.GetConfiguration();
-            
+
             var dto = new CostTrackingConfigurationDto(
                 Id: config.Id,
                 UserId: config.UserId,
@@ -180,14 +188,14 @@ public class CostTrackingController : ControllerBase
         {
             var config = _costTrackingService.GetConfiguration();
             var totalCost = _costTrackingService.GetCurrentPeriodSpending();
-            
+
             var result = new
             {
                 totalCost,
                 currency = config.Currency,
                 periodType = config.PeriodType.ToString(),
                 budget = config.OverallMonthlyBudget,
-                percentageUsed = config.OverallMonthlyBudget.HasValue 
+                percentageUsed = config.OverallMonthlyBudget.HasValue
                     ? (totalCost / config.OverallMonthlyBudget.Value * 100)
                     : 0
             };
@@ -249,6 +257,77 @@ public class CostTrackingController : ControllerBase
     }
 
     /// <summary>
+    /// Estimate cost for a video generation before starting
+    /// </summary>
+    /// <remarks>
+    /// Returns estimated costs broken down by LLM, TTS, and image generation.
+    /// Uses current pricing configuration and identifies free (local/offline) providers.
+    /// </remarks>
+    [HttpPost("estimate-generation")]
+    public ActionResult<GenerationCostEstimateDto> EstimateGenerationCost([FromBody] GenerationCostEstimateRequestDto request)
+    {
+        try
+        {
+            var estimate = _pricingConfig.EstimateGenerationCost(
+                request.EstimatedScriptLength,
+                request.SceneCount,
+                request.LlmProvider,
+                request.LlmModel,
+                request.TtsProvider,
+                request.ImageProvider);
+
+            // Check budget if cost tracking is available
+            BudgetCheckDto? budgetCheck = null;
+            if (_costTrackingService != null && estimate.TotalCost > 0)
+            {
+                var result = _costTrackingService.CheckBudget("combined", estimate.TotalCost);
+                budgetCheck = new BudgetCheckDto(
+                    IsWithinBudget: result.IsWithinBudget,
+                    ShouldBlock: result.ShouldBlock,
+                    Warnings: result.Warnings,
+                    CurrentMonthlyCost: result.CurrentMonthlyCost,
+                    EstimatedNewTotal: result.EstimatedNewTotal);
+            }
+
+            var response = new GenerationCostEstimateDto(
+                LlmCost: estimate.LlmCost,
+                TtsCost: estimate.TtsCost,
+                ImageCost: estimate.ImageCost,
+                TotalCost: estimate.TotalCost,
+                Currency: estimate.Currency,
+                Breakdown: estimate.Breakdown.Select(b => new CostBreakdownItemDto(
+                    Name: b.Name,
+                    Provider: b.Provider,
+                    Cost: b.Cost,
+                    IsFree: b.IsFree,
+                    Units: b.Units,
+                    UnitType: b.UnitType)).ToList(),
+                IsFreeGeneration: estimate.IsFreeGeneration,
+                Confidence: estimate.Confidence.ToString().ToLowerInvariant(),
+                BudgetCheck: budgetCheck);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error estimating generation cost");
+            return Problem($"Error estimating generation cost: {ex.Message}", statusCode: 500);
+        }
+    }
+
+    /// <summary>
+    /// Handle CORS preflight for cost-tracking endpoints.
+    /// </summary>
+    [HttpOptions]
+    [HttpOptions("estimate-generation")]
+    [HttpOptions("pricing")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult Options()
+    {
+        return NoContent();
+    }
+
+    /// <summary>
     /// Get all provider pricing
     /// </summary>
     [HttpGet("pricing")]
@@ -262,7 +341,7 @@ public class CostTrackingController : ControllerBase
         try
         {
             var pricingList = _costTrackingService.GetAllProviderPricing();
-            
+
             var dtos = pricingList.Select(p => new ProviderPricingDto(
                 ProviderName: p.ProviderName,
                 ProviderType: p.ProviderType.ToString(),
@@ -306,7 +385,7 @@ public class CostTrackingController : ControllerBase
                 return BadRequest(new { error = $"Invalid provider type: {dto.ProviderType}" });
             }
 
-            var pricing = new ProviderPricing
+            var pricing = new Aura.Core.Models.CostTracking.ProviderPricing
             {
                 ProviderName = providerName,
                 ProviderType = providerType,
@@ -371,7 +450,7 @@ public class CostTrackingController : ControllerBase
         try
         {
             var stats = _tokenTrackingService.GetJobStatistics(jobId);
-            
+
             var dto = new TokenUsageStatisticsDto(
                 TotalInputTokens: stats.TotalInputTokens,
                 TotalOutputTokens: stats.TotalOutputTokens,
@@ -407,7 +486,7 @@ public class CostTrackingController : ControllerBase
         try
         {
             var report = _reportService.GetReport(jobId);
-            
+
             if (report == null)
             {
                 return NotFound(new { error = $"No cost report found for job {jobId}" });
@@ -437,7 +516,7 @@ public class CostTrackingController : ControllerBase
         try
         {
             var report = _reportService.GetReport(jobId);
-            
+
             if (report == null)
             {
                 return NotFound(new { error = $"No cost report found for job {jobId}" });
@@ -445,7 +524,7 @@ public class CostTrackingController : ControllerBase
 
             string filePath;
             string contentType;
-            
+
             if (format.ToLowerInvariant() == "csv")
             {
                 filePath = _reportService.ExportToCsv(report);
@@ -459,7 +538,7 @@ public class CostTrackingController : ControllerBase
 
             var fileBytes = System.IO.File.ReadAllBytes(filePath);
             var fileName = Path.GetFileName(filePath);
-            
+
             return File(fileBytes, contentType, fileName);
         }
         catch (Exception ex)
@@ -483,7 +562,7 @@ public class CostTrackingController : ControllerBase
         try
         {
             var suggestions = _tokenTrackingService.GenerateOptimizationSuggestions(jobId);
-            
+
             var dtos = suggestions.Select(s => new CostOptimizationSuggestionDto(
                 Category: s.Category.ToString(),
                 Suggestion: s.Suggestion,
@@ -521,7 +600,7 @@ public class CostTrackingController : ControllerBase
                 ["maxTokensPerOperation"] = 2000,
                 ["imageQuality"] = "standard"
             };
-            
+
             var changes = new List<string>
             {
                 "Switch LLM provider from OpenAI to Gemini (60% cost reduction)",
@@ -530,9 +609,9 @@ public class CostTrackingController : ControllerBase
                 "Reduce max tokens per operation from 4000 to 2000",
                 "Use standard image quality instead of high"
             };
-            
+
             var estimatedCostAfter = 1.50m;
-            
+
             var response = new BudgetOptimizationResponse(
                 EstimatedCostBefore: estimatedCostBefore,
                 EstimatedCostAfter: estimatedCostAfter,
@@ -686,7 +765,7 @@ public class CostTrackingController : ControllerBase
             {
                 var csv = new System.Text.StringBuilder();
                 csv.AppendLine("Timestamp,JobId,ProjectName,Provider,Feature,Cost,Currency");
-                
+
                 foreach (var entry in entries)
                 {
                     csv.AppendLine($"{entry.Timestamp:yyyy-MM-dd HH:mm:ss},{entry.ProjectId ?? "N/A"},{entry.ProjectName ?? "N/A"},{entry.ProviderName},{entry.Feature},{ entry.Cost:F2},USD");

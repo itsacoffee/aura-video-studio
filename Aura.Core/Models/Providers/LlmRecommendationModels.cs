@@ -118,7 +118,22 @@ public enum ProviderHealthStatus
     /// <summary>
     /// Provider status is unknown (not enough data)
     /// </summary>
-    Unknown
+    Unknown,
+    
+    /// <summary>
+    /// System/category is in good health (all required providers available)
+    /// </summary>
+    Green,
+    
+    /// <summary>
+    /// System/category is degraded but usable
+    /// </summary>
+    Yellow,
+    
+    /// <summary>
+    /// System/category is not functional (missing required providers)
+    /// </summary>
+    Red
 }
 
 /// <summary>

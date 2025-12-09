@@ -262,37 +262,6 @@ class MenuBuilder {
         },
         { type: 'separator' },
         {
-          label: 'Actual Size',
-          accelerator: 'CmdOrCtrl+0',
-          click: () => {
-            const window = this.windowManager.getMainWindow();
-            if (window) window.webContents.setZoomLevel(0);
-          }
-        },
-        {
-          label: 'Zoom In',
-          accelerator: 'CmdOrCtrl+Plus',
-          click: () => {
-            const window = this.windowManager.getMainWindow();
-            if (window) {
-              const zoomLevel = window.webContents.getZoomLevel();
-              window.webContents.setZoomLevel(zoomLevel + 0.5);
-            }
-          }
-        },
-        {
-          label: 'Zoom Out',
-          accelerator: 'CmdOrCtrl+-',
-          click: () => {
-            const window = this.windowManager.getMainWindow();
-            if (window) {
-              const zoomLevel = window.webContents.getZoomLevel();
-              window.webContents.setZoomLevel(zoomLevel - 0.5);
-            }
-          }
-        },
-        { type: 'separator' },
-        {
           label: 'Toggle Full Screen',
           accelerator: process.platform === 'darwin' ? 'Ctrl+Cmd+F' : 'F11',
           click: () => {

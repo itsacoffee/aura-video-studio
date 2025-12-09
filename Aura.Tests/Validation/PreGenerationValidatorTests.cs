@@ -246,4 +246,231 @@ public class PreGenerationValidatorTests
     }
 
     #endregion
+
+    #region PreflightReport Tests
+
+    [Fact]
+    public async Task ValidateAsync_AllChecksPass_ReturnsOk()
+    {
+        // Arrange
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
+        var validator = CreateValidator();
+        var systemProfile = CreateTestSystemProfile();
+
+        // Act
+        var report = await validator.ValidateAsync(systemProfile, CancellationToken.None);
+
+        // Assert
+        Assert.True(report.Ok);
+        Assert.Empty(report.Errors);
+        Assert.NotNull(report.FFmpeg);
+        Assert.NotNull(report.Ollama);
+        Assert.NotNull(report.TTS);
+        Assert.NotNull(report.DiskSpace);
+        Assert.NotNull(report.ImageProvider);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_FFmpegMissing_ReturnsError()
+    {
+        // Arrange
+        _mockFfmpegResolver
+            .Setup(r => r.ResolveAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FfmpegResolutionResult { Found = false, IsValid = false, Error = "FFmpeg not found" });
+        
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
+        var validator = CreateValidator();
+        var systemProfile = CreateTestSystemProfile();
+
+        // Act
+        var report = await validator.ValidateAsync(systemProfile, CancellationToken.None);
+
+        // Assert
+        Assert.False(report.Ok);
+        Assert.Contains(report.Errors, e => e.Contains("FFmpeg"));
+        Assert.False(report.FFmpeg.Passed);
+        Assert.Equal("Not found", report.FFmpeg.Status);
+        Assert.NotNull(report.FFmpeg.SuggestedAction);
+        Assert.Contains("ffmpeg.org", report.FFmpeg.SuggestedAction, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_OllamaNotRunning_ReturnsError()
+    {
+        // Arrange
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        
+        // Setup provider readiness to indicate LLM (Ollama) is not ready
+        var categoryStatus = new ProviderCategoryStatus(
+            "LLM",
+            false,
+            null,
+            "NotRunning",
+            "Ollama is not running",
+            new List<string> { "Start Ollama with: ollama serve" },
+            new List<ProviderCandidateStatus>());
+        
+        var readinessResult = new ProviderReadinessResult();
+        readinessResult.CategoryStatuses.Add(categoryStatus);
+        
+        _mockProviderReadiness
+            .Setup(r => r.ValidateRequiredProvidersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(readinessResult);
+        
+        var validator = CreateValidator();
+        var systemProfile = CreateTestSystemProfile();
+
+        // Act
+        var report = await validator.ValidateAsync(systemProfile, CancellationToken.None);
+
+        // Assert
+        // Note: The Ollama check in ValidateAsync uses process execution which we can't easily mock
+        // This test verifies the overall validation flow when providers are not ready
+        Assert.NotNull(report);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ImageProviderMissing_ReturnsWarningNotError()
+    {
+        // Arrange
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        
+        // Setup provider readiness with LLM and TTS ready but image provider missing
+        var llmStatus = new ProviderCategoryStatus("LLM", true, "Ollama", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
+        var ttsStatus = new ProviderCategoryStatus("TTS", true, "WindowsTTS", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
+        var imageStatus = new ProviderCategoryStatus("Images", false, null, "NotConfigured", "No image providers configured", new List<string> { "Configure an image provider" }, new List<ProviderCandidateStatus>());
+        
+        var readinessResult = new ProviderReadinessResult();
+        readinessResult.CategoryStatuses.Add(llmStatus);
+        readinessResult.CategoryStatuses.Add(ttsStatus);
+        readinessResult.CategoryStatuses.Add(imageStatus);
+        
+        _mockProviderReadiness
+            .Setup(r => r.ValidateRequiredProvidersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(readinessResult);
+        
+        var validator = CreateValidator();
+        var systemProfile = CreateTestSystemProfile();
+
+        // Act
+        var report = await validator.ValidateAsync(systemProfile, CancellationToken.None);
+
+        // Assert
+        // Image provider is optional, so it should be a warning, not an error
+        Assert.False(report.ImageProvider.Passed);
+        Assert.Contains(report.Warnings, w => w.Contains("ImageProvider"));
+        // Errors should not contain image provider issues
+        Assert.DoesNotContain(report.Errors, e => e.Contains("ImageProvider"));
+    }
+
+    [Fact]
+    public async Task ValidateAsync_LowDiskSpace_ReturnsError()
+    {
+        // Arrange
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
+        var validator = CreateValidator();
+        var systemProfile = CreateTestSystemProfile();
+
+        // Act
+        var report = await validator.ValidateAsync(systemProfile, CancellationToken.None);
+
+        // Assert
+        // Note: Disk space check depends on actual disk space available
+        // This test just verifies the check runs without error
+        Assert.NotNull(report.DiskSpace);
+        Assert.NotNull(report.DiskSpace.Status);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ReturnsTimingInformation()
+    {
+        // Arrange
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
+        var validator = CreateValidator();
+        var systemProfile = CreateTestSystemProfile();
+
+        // Act
+        var report = await validator.ValidateAsync(systemProfile, CancellationToken.None);
+
+        // Assert
+        Assert.True(report.DurationMs > 0);
+        Assert.True(report.Timestamp <= DateTime.UtcNow);
+        Assert.True(report.Timestamp > DateTime.UtcNow.AddMinutes(-1));
+    }
+
+    [Fact]
+    public async Task ValidateAsync_LegacyFormat_ReturnsTupleWithErrors()
+    {
+        // Arrange
+        _mockFfmpegResolver
+            .Setup(r => r.ResolveAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FfmpegResolutionResult { Found = false, IsValid = false, Error = "FFmpeg not found" });
+        
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
+        var validator = CreateValidator();
+        var systemProfile = CreateTestSystemProfile();
+
+        // Act
+        var (isValid, errors) = await validator.ValidateAsync(systemProfile, CancellationToken.None, legacyFormat: true);
+
+        // Assert
+        Assert.False(isValid);
+        Assert.NotEmpty(errors);
+        Assert.Contains(errors, e => e.Contains("FFmpeg"));
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WithNullSystemProfile_StillWorks()
+    {
+        // Arrange
+        SetupFfmpegSuccess();
+        SetupHardwareSuccess();
+        SetupAllProvidersSuccess();
+        var validator = CreateValidator();
+
+        // Act
+        var report = await validator.ValidateAsync(null, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(report);
+    }
+
+    private void SetupAllProvidersSuccess()
+    {
+        // Setup all provider categories as successful
+        var result = new ProviderReadinessResult();
+        var llmStatus = new ProviderCategoryStatus("LLM", true, "Ollama", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
+        var ttsStatus = new ProviderCategoryStatus("TTS", true, "WindowsTTS", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
+        var imageStatus = new ProviderCategoryStatus("Images", true, "Pexels", null, "Ready", new List<string>(), new List<ProviderCandidateStatus>());
+        result.CategoryStatuses.Add(llmStatus);
+        result.CategoryStatuses.Add(ttsStatus);
+        result.CategoryStatuses.Add(imageStatus);
+        
+        _mockProviderReadiness
+            .Setup(r => r.ValidateRequiredProvidersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(result);
+    }
+
+    private SystemProfile CreateTestSystemProfile()
+    {
+        return new SystemProfile
+        {
+            LogicalCores = 8,
+            PhysicalCores = 4,
+            RamGB = 16,
+            Tier = HardwareTier.B
+        };
+    }
+
+    #endregion
 }

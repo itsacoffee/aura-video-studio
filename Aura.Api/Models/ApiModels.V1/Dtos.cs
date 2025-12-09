@@ -1136,7 +1136,9 @@ public record CulturalAnalysisRequest(
     string TargetLanguage,
     string TargetRegion,
     string Content,
-    string? AudienceProfileId);
+    string? AudienceProfileId,
+    string? Provider = null,
+    string? ModelId = null);
 
 /// <summary>
 /// Cultural analysis result
@@ -1819,6 +1821,42 @@ public record BudgetOptimizationResponse(
     List<string> Changes,
     string QualityImpact,
     bool WithinBudget);
+
+/// <summary>
+/// Request to estimate cost for video generation
+/// </summary>
+public record GenerationCostEstimateRequestDto(
+    int EstimatedScriptLength,
+    int SceneCount,
+    string LlmProvider,
+    string LlmModel,
+    string TtsProvider,
+    string? ImageProvider);
+
+/// <summary>
+/// Individual cost breakdown item
+/// </summary>
+public record CostBreakdownItemDto(
+    string Name,
+    string Provider,
+    decimal Cost,
+    bool IsFree,
+    int Units,
+    string UnitType);
+
+/// <summary>
+/// Complete cost estimate for video generation
+/// </summary>
+public record GenerationCostEstimateDto(
+    decimal LlmCost,
+    decimal TtsCost,
+    decimal ImageCost,
+    decimal TotalCost,
+    string Currency,
+    List<CostBreakdownItemDto> Breakdown,
+    bool IsFreeGeneration,
+    string Confidence,
+    BudgetCheckDto? BudgetCheck);
 
 // ===== ML Training and Annotation DTOs =====
 
@@ -2684,7 +2722,9 @@ public record PullOllamaModelRequest(
 public record SimpleTranslationRequest(
     string SourceText,
     string SourceLanguage,
-    string TargetLanguage);
+    string TargetLanguage,
+    string? Provider = null,
+    string? ModelId = null);
 
 /// <summary>
 /// Simple translation response with just the translated text
@@ -2707,4 +2747,57 @@ public record TranslationProviderHealthDto(
     bool IsLocalModel = false,
     List<string>? Limitations = null,
     string? ErrorMessage = null);
+
+// ============================================================================
+// LLM TEST DTOs - for LLM connectivity testing and health checks
+// ============================================================================
+
+/// <summary>
+/// Request for testing LLM connectivity
+/// </summary>
+public record LlmTestRequest(
+    string? Prompt = null,
+    int? TimeoutSeconds = 30);
+
+/// <summary>
+/// Response from LLM connectivity test
+/// </summary>
+public record LlmTestResponse(
+    bool Success,
+    string ProviderName,
+    string ModelName,
+    long ResponseTimeMs,
+    string GeneratedText,
+    int InputTokens,
+    int OutputTokens,
+    int TotalTokens,
+    bool IsLocalModel,
+    bool SupportsStreaming,
+    string Message,
+    string CorrelationId);
+
+/// <summary>
+/// LLM health status response
+/// </summary>
+public record LlmHealthResponse(
+    bool IsAvailable,
+    string ProviderName,
+    string? DefaultModel,
+    bool IsLocalModel,
+    bool SupportsStreaming,
+    bool SupportsTranslation,
+    int? MaxContextLength,
+    List<string>? KnownLimitations,
+    string? ErrorMessage,
+    string CorrelationId);
+
+/// <summary>
+/// Response with available LLM models
+/// </summary>
+public record LlmModelsResponse(
+    string ProviderName,
+    List<string> Models,
+    string? DefaultModel,
+    bool IsLocalProvider,
+    string CorrelationId);
 

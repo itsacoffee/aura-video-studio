@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Errors;
 using Aura.Core.Models.Localization;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Localization;
 using Microsoft.Extensions.Logging;
@@ -26,35 +26,16 @@ public class LocalizationService : ILocalizationService
     private readonly ResiliencePipeline<TranslationResult> _translationPipeline;
     private readonly ResiliencePipeline<CulturalAnalysisResult> _analysisPipeline;
 
-    /// <summary>
-    /// Supported ISO 639-1 language codes for validation
-    /// </summary>
-    private static readonly HashSet<string> SupportedLanguageCodes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "en", "es", "fr", "de", "it", "pt", "zh", "ja", "ko", "ar", "ru", "hi", "bn", "pa",
-        "nl", "sv", "no", "da", "fi", "pl", "tr", "el", "cs", "sk", "hu", "ro", "uk", "vi",
-        "th", "id", "ms", "tl", "sw", "he", "fa", "ur", "ta", "te", "ml", "gu", "kn", "mr"
-    };
-
-    /// <summary>
-    /// ISO 639-1 language code pattern (2-3 letters, optionally with region)
-    /// </summary>
-    private static readonly Regex LanguageCodePattern = new(
-        @"^[a-zA-Z]{2,3}(-[a-zA-Z]{2,4})?$",
-        RegexOptions.Compiled);
-
     public LocalizationService(
         ILogger<LocalizationService> logger,
         ILlmProvider llmProvider,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        LlmStageAdapter stageAdapter,
+        TranslationService translationService)
     {
         _logger = logger;
         _llmProvider = llmProvider;
-        
-        // Create the translation service once for reuse across all methods
-        _translationService = new TranslationService(
-            loggerFactory.CreateLogger<TranslationService>(),
-            llmProvider);
+        _translationService = translationService;
 
         // Build resilience pipeline for translation operations
         _translationPipeline = new ResiliencePipelineBuilder<TranslationResult>()
@@ -81,10 +62,13 @@ public class LocalizationService : ILocalizationService
             })
             .AddCircuitBreaker(new CircuitBreakerStrategyOptions<TranslationResult>
             {
+                // Require 50% failure ratio across minimum 5 requests before opening
                 FailureRatio = 0.5,
                 MinimumThroughput = 5,
-                SamplingDuration = TimeSpan.FromMinutes(1),
-                BreakDuration = TimeSpan.FromSeconds(30),
+                // Increased sampling window to 2 minutes to avoid false positives from slow LLM responses
+                SamplingDuration = TimeSpan.FromMinutes(2),
+                // Reduced break duration to 15 seconds for faster recovery attempts
+                BreakDuration = TimeSpan.FromSeconds(15),
                 ShouldHandle = new PredicateBuilder<TranslationResult>()
                     .Handle<ProviderException>()
                     .Handle<TimeoutException>(),
@@ -132,13 +116,33 @@ public class LocalizationService : ILocalizationService
             })
             .AddCircuitBreaker(new CircuitBreakerStrategyOptions<CulturalAnalysisResult>
             {
+                // Require 50% failure ratio across minimum 5 requests before opening
                 FailureRatio = 0.5,
                 MinimumThroughput = 5,
-                SamplingDuration = TimeSpan.FromMinutes(1),
-                BreakDuration = TimeSpan.FromSeconds(30),
+                // Increased sampling window to 2 minutes to avoid false positives from slow LLM responses
+                SamplingDuration = TimeSpan.FromMinutes(2),
+                // Reduced break duration to 15 seconds for faster recovery attempts
+                BreakDuration = TimeSpan.FromSeconds(15),
                 ShouldHandle = new PredicateBuilder<CulturalAnalysisResult>()
                     .Handle<ProviderException>()
-                    .Handle<TimeoutException>()
+                    .Handle<TimeoutException>(),
+                OnOpened = args =>
+                {
+                    _logger.LogError(
+                        "Cultural analysis circuit breaker opened for {Duration}s due to repeated failures",
+                        args.BreakDuration.TotalSeconds);
+                    return ValueTask.CompletedTask;
+                },
+                OnClosed = _ =>
+                {
+                    _logger.LogInformation("Cultural analysis circuit breaker closed - service recovered");
+                    return ValueTask.CompletedTask;
+                },
+                OnHalfOpened = _ =>
+                {
+                    _logger.LogInformation("Cultural analysis circuit breaker half-open - testing service");
+                    return ValueTask.CompletedTask;
+                }
             })
             .Build();
     }
@@ -190,54 +194,26 @@ public class LocalizationService : ILocalizationService
     /// <inheritdoc />
     public LanguageValidationResult ValidateLanguageCode(string languageCode)
     {
+        // Accept ANY non-empty string for language description
+        // The LLM can intelligently interpret any language input, including:
+        // - ISO 639-1 codes (e.g., "en", "es", "fr")
+        // - Full language names (e.g., "English", "Spanish")
+        // - Regional variants (e.g., "English (US)", "Spanish (Mexico)")
+        // - Historical/creative variants (e.g., "Medieval English", "Texan English in 1891")
+        // - Fictional languages (e.g., "Pirate Speak", "Formal Victorian English")
+        
         if (string.IsNullOrWhiteSpace(languageCode))
         {
             return new LanguageValidationResult(
                 false,
-                "Language code is required",
+                "Language description is required. You can use language codes (en, es), names (English, Spanish), or descriptive phrases (Medieval English, Formal Japanese).",
                 ErrorCode: "INVALID_LANGUAGE_EMPTY");
         }
 
-        // CRITICAL FIX: Accept descriptive language names, not just ISO codes
-        // The frontend allows users to enter full descriptions like "English (US)", "Klingon", etc.
-        // The LLM can intelligently interpret these descriptive inputs
-        
-        // First, check if it matches the strict ISO 639-1 pattern
-        if (LanguageCodePattern.IsMatch(languageCode))
-        {
-            // Extract base language code (without region)
-            var baseCode = languageCode.Split('-')[0].ToLowerInvariant();
-
-            // Check if it's a known language code
-            if (!SupportedLanguageCodes.Contains(baseCode))
-            {
-                // Allow custom languages but warn that they may have limited support
-                return new LanguageValidationResult(
-                    true,
-                    $"Language code '{languageCode}' is not in the standard list but will be processed by the LLM",
-                    IsWarning: true,
-                    ErrorCode: "LANGUAGE_NOT_IN_STANDARD_LIST");
-            }
-
-            return new LanguageValidationResult(true, "Valid language code");
-        }
-
-        // If not an ISO code, accept as a descriptive language name
-        // The LLM can interpret names like "English (US)", "Klingon", "Medieval English", etc.
-        // Require at least 2 characters to avoid single-character inputs
-        if (languageCode.Length >= 2)
-        {
-            return new LanguageValidationResult(
-                true,
-                $"Language description '{languageCode}' will be interpreted by the LLM for translation",
-                IsWarning: true,
-                ErrorCode: "DESCRIPTIVE_LANGUAGE_INPUT");
-        }
-
+        // Accept any non-empty string - the LLM will interpret it
         return new LanguageValidationResult(
-            false,
-            $"Language input '{languageCode}' is too short. Please provide a valid language code or description.",
-            ErrorCode: "INVALID_LANGUAGE_TOO_SHORT");
+            true, 
+            "Valid language description");
     }
 
     /// <inheritdoc />
@@ -277,6 +253,20 @@ public class LocalizationService : ILocalizationService
         if (ex is HttpRequestException httpEx)
         {
             // Network-related errors are typically transient
+            // Also check for HTTP 503 (Service Unavailable) in the message
+            var message = httpEx.Message.ToLowerInvariant();
+            if (message.Contains("503") || message.Contains("service unavailable"))
+            {
+                return true;
+            }
+            return true;
+        }
+
+        // Check for timeout-related messages in OperationCanceledException
+        // Note: User-initiated cancellations should NOT be retried, but timeout-induced ones may be
+        if (ex is OperationCanceledException oce && 
+            oce.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+        {
             return true;
         }
 
@@ -288,6 +278,17 @@ public class LocalizationService : ILocalizationService
 
         if (ex.Message.Contains("temporarily unavailable", StringComparison.OrdinalIgnoreCase) ||
             ex.Message.Contains("service unavailable", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Check for Ollama-specific transient errors (model loading, initialization, etc.)
+        if (ex.Message.Contains("model is loading", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("loading model", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("busy", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("503", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("initializing", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("warming up", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }

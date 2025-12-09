@@ -17,6 +17,7 @@ using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
+using Aura.Core.Services.Resilience;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Providers.Llm;
@@ -34,6 +35,7 @@ public class OpenAiLlmProvider : ILlmProvider
     private readonly int _maxRetries;
     private readonly TimeSpan _timeout;
     private readonly PromptCustomizationService _promptCustomizationService;
+    private CircuitBreaker? _circuitBreaker;
 
     /// <summary>
     /// Optional callback to enhance prompts before generation
@@ -45,6 +47,14 @@ public class OpenAiLlmProvider : ILlmProvider
     /// </summary>
     public Action<double, TimeSpan, bool>? PerformanceTrackingCallback { get; set; }
 
+    /// <summary>
+    /// Sets the circuit breaker for this provider. Called by the registry to enable resilience features.
+    /// </summary>
+    public void SetCircuitBreaker(CircuitBreaker circuitBreaker)
+    {
+        _circuitBreaker = circuitBreaker;
+    }
+
     public OpenAiLlmProvider(
         ILogger<OpenAiLlmProvider> logger,
         HttpClient httpClient,
@@ -52,7 +62,8 @@ public class OpenAiLlmProvider : ILlmProvider
         string model = "gpt-4o-mini",
         int maxRetries = 2,
         int timeoutSeconds = 120,
-        PromptCustomizationService? promptCustomizationService = null)
+        PromptCustomizationService? promptCustomizationService = null,
+        CircuitBreaker? circuitBreaker = null)
     {
         _logger = logger;
         _httpClient = httpClient;
@@ -60,6 +71,7 @@ public class OpenAiLlmProvider : ILlmProvider
         _model = model;
         _maxRetries = maxRetries;
         _timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        _circuitBreaker = circuitBreaker;
 
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)
@@ -106,6 +118,13 @@ public class OpenAiLlmProvider : ILlmProvider
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
+        // Check circuit breaker before attempting API call
+        if (_circuitBreaker != null && !_circuitBreaker.IsAllowed())
+        {
+            throw new CircuitBreakerOpenException(
+                $"Circuit breaker for OpenAI is open. The service may be experiencing issues. Please try again later.");
+        }
+
         // Use model override from LlmParameters if provided, otherwise use default model
         var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride)
             ? brief.LlmParameters.ModelOverride
@@ -274,6 +293,9 @@ public class OpenAiLlmProvider : ILlmProvider
                         // Track performance if callback configured
                         PerformanceTrackingCallback?.Invoke(80.0, duration, true);
 
+                        // Record success with circuit breaker
+                        _circuitBreaker?.RecordSuccess();
+
                         return script;
                     }
                 }
@@ -287,6 +309,7 @@ public class OpenAiLlmProvider : ILlmProvider
             catch (TaskCanceledException ex)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "OpenAI request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
@@ -299,6 +322,7 @@ public class OpenAiLlmProvider : ILlmProvider
             catch (HttpRequestException ex)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "Failed to connect to OpenAI API (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
@@ -318,11 +342,13 @@ public class OpenAiLlmProvider : ILlmProvider
             catch (Exception ex) when (attempt < _maxRetries)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "Error generating script with OpenAI (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
             }
             catch (Exception ex)
             {
                 var duration = DateTime.UtcNow - startTime;
+                _circuitBreaker?.RecordFailure();
                 PerformanceTrackingCallback?.Invoke(0, duration, false);
                 _logger.LogError(ex, "Error generating script with OpenAI after all retries");
                 throw;
@@ -1996,6 +2022,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         return new Core.Models.Providers.ProviderCapabilities
         {
             ProviderName = "OpenAI",
+            DefaultModel = _model,
             SupportsTranslation = true,
             SupportsStreaming = true,
             IsLocalModel = false,

@@ -1,12 +1,13 @@
-import apiClient from './api/apiClient';
 import type {
+  LineDto,
+  SubtitleOutputDto,
   TranslateAndPlanSSMLRequest,
   TranslatedSSMLResultDto,
-  VoiceRecommendationRequest,
   VoiceRecommendationDto,
-  SubtitleOutputDto,
-  LineDto,
+  VoiceRecommendationRequest,
 } from '@/types/api-v1';
+import { timeoutConfig } from '../config/timeouts';
+import apiClient from './api/apiClient';
 
 /**
  * Service for translation integration with SSML and subtitles
@@ -18,9 +19,11 @@ export const translationIntegrationService = {
   async translateAndPlanSSML(
     request: TranslateAndPlanSSMLRequest
   ): Promise<TranslatedSSMLResultDto> {
+    const timeout = timeoutConfig.getTimeout('localization');
     const response = await apiClient.post<TranslatedSSMLResultDto>(
       '/api/localization/translate-and-plan-ssml',
-      request
+      request,
+      { timeout }
     );
     return response.data;
   },

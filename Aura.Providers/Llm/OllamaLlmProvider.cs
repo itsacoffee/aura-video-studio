@@ -18,6 +18,7 @@ using Aura.Core.Models.Streaming;
 using Aura.Core.Models.Visual;
 using Aura.Core.Providers;
 using Aura.Core.Services.AI;
+using Aura.Core.Services.Resilience;
 using Aura.Core.Utilities;
 using Microsoft.Extensions.Logging;
 
@@ -36,6 +37,7 @@ public class OllamaLlmProvider : ILlmProvider
     private readonly int _maxRetries;
     private readonly TimeSpan _timeout;
     private readonly PromptCustomizationService _promptCustomizationService;
+    private CircuitBreaker? _circuitBreaker;
 
     // GPU configuration for hardware acceleration
     // -1 = use all available GPUs, 0 = CPU only, positive number = specific GPU count
@@ -60,7 +62,7 @@ public class OllamaLlmProvider : ILlmProvider
     private static readonly Regex MediaMarkerRegex = new(@"\[(MUSIC|SFX|CUT|FADE)[^\]]*\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
     private static readonly Regex ParagraphSplitRegex = new(@"\n\s*\n", RegexOptions.Compiled);
-    
+
     // Note: LLM meta-information cleanup is now handled by LlmScriptCleanup utility
     // Regex patterns kept for backward compatibility but should use LlmScriptCleanup instead
 
@@ -74,6 +76,14 @@ public class OllamaLlmProvider : ILlmProvider
     /// </summary>
     public Action<double, TimeSpan, bool>? PerformanceTrackingCallback { get; set; }
 
+    /// <summary>
+    /// Sets the circuit breaker for this provider. Called by the registry to enable resilience features.
+    /// </summary>
+    public void SetCircuitBreaker(CircuitBreaker circuitBreaker)
+    {
+        _circuitBreaker = circuitBreaker;
+    }
+
     public OllamaLlmProvider(
         ILogger<OllamaLlmProvider> logger,
         HttpClient httpClient,
@@ -84,10 +94,15 @@ public class OllamaLlmProvider : ILlmProvider
         PromptCustomizationService? promptCustomizationService = null,
         bool gpuEnabled = true,
         int numGpu = -1, // -1 = use all GPUs, 0 = CPU only
-        int numCtx = 4096) // Context window size
+        int numCtx = 4096, // Context window size
+        CircuitBreaker? circuitBreaker = null)
     {
         _logger = logger;
-        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _circuitBreaker = circuitBreaker;
+        _httpClient = OllamaHttpClientHelper.EnsureProperTimeout(
+            httpClient ?? throw new ArgumentNullException(nameof(httpClient)),
+            timeoutSeconds,
+            logger);
         _baseUrl = ValidateBaseUrl(baseUrl);
         _model = model;
         _maxRetries = maxRetries;
@@ -97,24 +112,6 @@ public class OllamaLlmProvider : ILlmProvider
         _gpuEnabled = gpuEnabled;
         _numGpu = gpuEnabled ? numGpu : 0; // Force CPU mode if GPU disabled
         _numCtx = numCtx;
-
-        // CRITICAL: Ensure HttpClient timeout is longer than provider timeout
-        // HttpClient has a default 100-second timeout that would kill connections
-        // before our 15-minute provider timeout is reached
-        if (_httpClient.Timeout < TimeSpan.FromSeconds(timeoutSeconds + 300))
-        {
-            _logger.LogWarning(
-                "HttpClient timeout ({HttpClientTimeout}s) is shorter than provider timeout ({ProviderTimeout}s). " +
-                "Increasing HttpClient timeout to prevent premature cancellation. " +
-                "This should be configured in DI registration instead.",
-                _httpClient.Timeout.TotalSeconds, timeoutSeconds);
-
-            _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds + 300); // Add 5-minute buffer
-
-            _logger.LogInformation(
-                "HttpClient timeout increased to {NewTimeout}s to accommodate slow Ollama generation",
-                _httpClient.Timeout.TotalSeconds);
-        }
 
         // Create PromptCustomizationService if not provided (using logger factory pattern)
         if (promptCustomizationService == null)
@@ -202,6 +199,13 @@ public class OllamaLlmProvider : ILlmProvider
 
     public async Task<string> DraftScriptAsync(Brief brief, PlanSpec spec, CancellationToken ct)
     {
+        // Check circuit breaker before attempting API call
+        if (_circuitBreaker != null && !_circuitBreaker.IsAllowed())
+        {
+            throw new CircuitBreakerOpenException(
+                $"Circuit breaker for Ollama is open. The service may be experiencing issues. Please try again later.");
+        }
+
         // Use model override from LlmParameters if provided, otherwise use default model
         var modelToUse = !string.IsNullOrWhiteSpace(brief.LlmParameters?.ModelOverride)
             ? brief.LlmParameters.ModelOverride
@@ -325,6 +329,9 @@ public class OllamaLlmProvider : ILlmProvider
                     // Track performance if callback configured
                     PerformanceTrackingCallback?.Invoke(75.0, duration, true);
 
+                    // Record success with circuit breaker
+                    _circuitBreaker?.RecordSuccess();
+
                     return script;
                 }
 
@@ -344,6 +351,7 @@ public class OllamaLlmProvider : ILlmProvider
             catch (TaskCanceledException ex)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "Ollama request timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
@@ -356,6 +364,7 @@ public class OllamaLlmProvider : ILlmProvider
             catch (HttpRequestException ex)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "Failed to connect to Ollama at {BaseUrl} (attempt {Attempt}/{MaxRetries})", _baseUrl, attempt + 1, _maxRetries + 1);
                 if (attempt >= _maxRetries)
                 {
@@ -368,11 +377,13 @@ public class OllamaLlmProvider : ILlmProvider
             catch (Exception ex) when (attempt < _maxRetries)
             {
                 lastException = ex;
+                _circuitBreaker?.RecordFailure();
                 _logger.LogWarning(ex, "Error generating script with Ollama (attempt {Attempt}/{MaxRetries})", attempt + 1, _maxRetries + 1);
             }
             catch (Exception ex)
             {
                 var duration = DateTime.UtcNow - startTime;
+                _circuitBreaker?.RecordFailure();
                 PerformanceTrackingCallback?.Invoke(0, duration, false);
                 _logger.LogError(ex, "Error generating script with Ollama after all retries");
                 throw;
@@ -593,12 +604,12 @@ public class OllamaLlmProvider : ILlmProvider
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-                    
+
                     // Try to detect model not found error from Ollama's response
                     // Ollama returns errors in JSON format with an "error" field
                     var isModelNotFoundError = false;
                     string? parsedErrorMessage = null;
-                    
+
                     if (!string.IsNullOrWhiteSpace(errorContent))
                     {
                         try
@@ -617,31 +628,31 @@ public class OllamaLlmProvider : ILlmProvider
                         {
                             // Fallback to string-based detection if JSON parsing fails
                             isModelNotFoundError = errorContent.Contains("model", StringComparison.OrdinalIgnoreCase) &&
-                                                   (errorContent.Contains("not found", StringComparison.OrdinalIgnoreCase) || 
+                                                   (errorContent.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
                                                     errorContent.Contains("does not exist", StringComparison.OrdinalIgnoreCase));
                         }
                     }
-                    
+
                     // Check for model not found error and try to use first available model
                     if (isModelNotFoundError)
                     {
-                        _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models. Error: {Error}", 
+                        _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models. Error: {Error}",
                             modelToUse, parsedErrorMessage ?? errorContent);
-                        
+
                         // Use a fixed 10-second timeout for model list query - this should be a fast operation
                         const int tagsTimeoutSeconds = 10;
-                        
+
                         try
                         {
                             using var tagsCts = new CancellationTokenSource();
                             tagsCts.CancelAfter(TimeSpan.FromSeconds(tagsTimeoutSeconds));
                             var tagsResponse = await _httpClient.GetAsync($"{_baseUrl}/api/tags", tagsCts.Token).ConfigureAwait(false);
-                            
+
                             if (tagsResponse.IsSuccessStatusCode)
                             {
                                 var tagsContent = await tagsResponse.Content.ReadAsStringAsync(tagsCts.Token).ConfigureAwait(false);
                                 var tagsDoc = JsonDocument.Parse(tagsContent);
-                                
+
                                 if (tagsDoc.RootElement.TryGetProperty("models", out var modelsArray) &&
                                     modelsArray.ValueKind == JsonValueKind.Array)
                                 {
@@ -657,7 +668,7 @@ public class OllamaLlmProvider : ILlmProvider
                                             }
                                         }
                                     }
-                                    
+
                                     if (availableModels.Count > 0)
                                     {
                                         // Use the first available model
@@ -665,7 +676,7 @@ public class OllamaLlmProvider : ILlmProvider
                                         _logger.LogInformation("Model '{RequestedModel}' not found, using first available model: '{FallbackModel}'. Available models: {AllModels}",
                                             modelToUse, fallbackModel, string.Join(", ", availableModels));
                                         modelToUse = fallbackModel;
-                                        
+
                                         // Rebuild request with the available model
                                         var fallbackRequestBodyDict = new Dictionary<string, object>
                                         {
@@ -674,25 +685,25 @@ public class OllamaLlmProvider : ILlmProvider
                                             { "stream", false },
                                             { "options", options }
                                         };
-                                        
-                                        if (!string.IsNullOrEmpty(responseFormat) && 
+
+                                        if (!string.IsNullOrEmpty(responseFormat) &&
                                             string.Equals(responseFormat, "json", StringComparison.OrdinalIgnoreCase))
                                         {
                                             fallbackRequestBodyDict["format"] = "json";
                                         }
-                                        
+
                                         var fallbackJson = JsonSerializer.Serialize(fallbackRequestBodyDict);
                                         var fallbackContent = new StringContent(fallbackJson, Encoding.UTF8, "application/json");
-                                        
+
                                         // Retry with the available model - if this fails, allow normal error handling flow
                                         response = await _httpClient.PostAsync($"{_baseUrl}/api/chat", fallbackContent, cts.Token).ConfigureAwait(false);
-                                        
+
                                         // If fallback request also fails, proceed to normal error handling
                                         if (!response.IsSuccessStatusCode)
                                         {
                                             var fallbackErrorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-                                            var errorPreview = string.IsNullOrEmpty(fallbackErrorContent) 
-                                                ? "(empty response)" 
+                                            var errorPreview = string.IsNullOrEmpty(fallbackErrorContent)
+                                                ? "(empty response)"
                                                 : fallbackErrorContent.Substring(0, Math.Min(500, fallbackErrorContent.Length));
                                             _logger.LogError("Fallback model '{Model}' also failed. Error: {Error}", modelToUse, errorPreview);
                                             // Don't throw here - let normal error handling below handle it
@@ -733,7 +744,7 @@ public class OllamaLlmProvider : ILlmProvider
                                 $"Please pull the model first using: ollama pull {modelToUse}");
                         }
                     }
-                    
+
                     // Handle other error cases (or fallback model failure)
                     if (!response.IsSuccessStatusCode)
                     {
@@ -2733,6 +2744,7 @@ Return ONLY the transition text, no explanations or additional commentary:";
         return new Core.Models.Providers.ProviderCapabilities
         {
             ProviderName = "Ollama",
+            DefaultModel = _model,
             SupportsTranslation = true,
             SupportsStreaming = true,
             IsLocalModel = true,

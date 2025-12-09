@@ -36,17 +36,17 @@ public class ModelSelectionController : ControllerBase
     [HttpGet("available")]
     public IActionResult GetAvailableModels([FromQuery] string? provider = null)
     {
-        try
+        _logger.LogInformation("Getting available models for provider: {Provider}", provider ?? "all");
+
+        var providerNames = string.IsNullOrWhiteSpace(provider)
+            ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama", "RuleBased" }
+            : new[] { provider };
+
+        var modelsByProvider = new Dictionary<string, List<ModelInfoDto>>();
+
+        foreach (var prov in providerNames)
         {
-            _logger.LogInformation("Getting available models for provider: {Provider}", provider ?? "all");
-
-            var providers = string.IsNullOrWhiteSpace(provider)
-                ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama" }
-                : new[] { provider };
-
-            var modelsByProvider = new Dictionary<string, List<ModelInfoDto>>();
-
-            foreach (var prov in providers)
+            try
             {
                 var models = _modelCatalog.GetAllModels(prov);
                 var modelDtos = models.Select(m => new ModelInfoDto
@@ -61,29 +61,26 @@ public class ModelSelectionController : ControllerBase
                     ReplacementModel = m.ReplacementModel
                 }).ToList();
 
-                if (modelDtos.Any())
-                {
-                    modelsByProvider[prov] = modelDtos;
-                }
+                // Always include provider entry even if empty - allows UI to show "configure API key" message
+                modelsByProvider[prov] = modelDtos;
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get models for provider {Provider}, returning empty list", prov);
+                // Return empty list for this provider instead of failing the whole request
+                modelsByProvider[prov] = new List<ModelInfoDto>();
+            }
+        }
 
-            return Ok(new
-            {
-                providers = modelsByProvider,
-                totalCount = modelsByProvider.Values.Sum(list => list.Count),
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-        catch (Exception ex)
+        // Always return HTTP 200 with whatever data we have
+        return Ok(new
         {
-            _logger.LogError(ex, "Failed to get available models");
-            return StatusCode(500, new
-            {
-                error = "Failed to retrieve available models",
-                detail = ex.Message,
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
+            providers = modelsByProvider,
+            totalCount = modelsByProvider.Values.Sum(list => list.Count),
+            catalogLastRefresh = _modelCatalog.GetLastRefreshTime(),
+            needsRefresh = _modelCatalog.NeedsRefresh(),
+            correlationId = HttpContext.TraceIdentifier
+        });
     }
 
     /// <summary>
@@ -488,15 +485,15 @@ public class ModelSelectionController : ControllerBase
     [HttpGet("deprecation-status")]
     public IActionResult GetDeprecationStatus([FromQuery] string? provider = null)
     {
-        try
+        var providerNames = string.IsNullOrWhiteSpace(provider)
+            ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama", "RuleBased" }
+            : new[] { provider };
+
+        var deprecatedModels = new List<DeprecationStatusDto>();
+
+        foreach (var prov in providerNames)
         {
-            var providers = string.IsNullOrWhiteSpace(provider)
-                ? new[] { "OpenAI", "Anthropic", "Gemini", "Azure", "Ollama" }
-                : new[] { provider };
-
-            var deprecatedModels = new List<DeprecationStatusDto>();
-
-            foreach (var prov in providers)
+            try
             {
                 var models = _modelCatalog.GetAllModels(prov);
                 foreach (var model in models.Where(m => m.DeprecationDate.HasValue))
@@ -514,24 +511,19 @@ public class ModelSelectionController : ControllerBase
                     });
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get deprecation status for provider {Provider}", prov);
+                // Continue with other providers
+            }
+        }
 
-            return Ok(new
-            {
-                deprecatedModels,
-                totalCount = deprecatedModels.Count,
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
-        catch (Exception ex)
+        return Ok(new
         {
-            _logger.LogError(ex, "Failed to get deprecation status");
-            return StatusCode(500, new
-            {
-                error = "Failed to get deprecation status",
-                detail = ex.Message,
-                correlationId = HttpContext.TraceIdentifier
-            });
-        }
+            deprecatedModels,
+            totalCount = deprecatedModels.Count,
+            correlationId = HttpContext.TraceIdentifier
+        });
     }
 }
 

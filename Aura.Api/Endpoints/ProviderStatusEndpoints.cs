@@ -18,6 +18,12 @@ namespace Aura.Api.Endpoints;
 public static class ProviderStatusEndpoints
 {
     /// <summary>
+    /// Name of the NullTtsProvider after type name processing.
+    /// This provider is always available as it generates silent audio.
+    /// </summary>
+    private const string NullTtsProviderName = "Null";
+    
+    /// <summary>
     /// Maps provider status endpoints to the API route group
     /// </summary>
     public static IEndpointRouteBuilder MapProviderStatusEndpoints(this IEndpointRouteBuilder endpoints)
@@ -36,6 +42,14 @@ public static class ProviderStatusEndpoints
             {
                 var loggerFactory = serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("ProviderStatusEndpoints");
+
+                // Wait for initial Ollama detection to complete (with short timeout)
+                // This ensures the first status request returns accurate Ollama status
+                if (ollamaDetection != null && !ollamaDetection.IsDetectionComplete)
+                {
+                    logger.LogDebug("Waiting for initial Ollama detection to complete");
+                    await ollamaDetection.WaitForInitialDetectionAsync(TimeSpan.FromSeconds(5), ct).ConfigureAwait(false);
+                }
 
                 // Get LLM provider status
                 var llmProviders = new List<ProviderStatusDto>();
@@ -283,6 +297,7 @@ public static class ProviderStatusEndpoints
         return providerName switch
         {
             "Piper" or "Mimic3" or "Windows" => "local",
+            NullTtsProviderName => "free", // NullTtsProvider is always available as a silent fallback
             "EdgeTTS" => "free",
             "ElevenLabs" or "PlayHT" or "Azure" or "OpenAI" => "paid",
             _ => "unknown"
@@ -327,6 +342,12 @@ public static class ProviderStatusEndpoints
 
     private static async Task<bool> CheckTtsProviderAvailabilityAsync(ITtsProvider provider, string providerName, CancellationToken ct)
     {
+        // NullTtsProvider is always available (it generates silent audio)
+        if (providerName == NullTtsProviderName)
+        {
+            return true;
+        }
+        
         try
         {
             // Check if provider has IsHealthyAsync method (like PiperTtsProvider)

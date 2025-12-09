@@ -233,6 +233,7 @@
 /* Panel body - consistent internal padding for all panels - Improved spacing */
 .aura-editor-panel__body {
   flex: 1;
+
   /* Tighter, production-grade density by default */
   padding: var(--editor-space-md) var(--editor-space-lg);
   overflow: auto;
@@ -260,6 +261,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   /* Slightly more compact header for better information density */
   min-height: 40px;
   padding: var(--editor-space-sm) var(--editor-space-md);

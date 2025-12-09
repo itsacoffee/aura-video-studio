@@ -12,13 +12,20 @@ namespace Aura.Core.Services.RAG;
 
 /// <summary>
 /// Service for generating text embeddings for RAG
-/// Supports local and provider-backed embedding generation
+/// Supports local and provider-backed embedding generation with batch processing and rate limit handling
 /// </summary>
 public class EmbeddingService
 {
     private readonly ILogger<EmbeddingService> _logger;
     private readonly HttpClient _httpClient;
     private readonly EmbeddingConfig _config;
+    
+    // Rate limiting state
+    private DateTime _lastRequestTime = DateTime.MinValue;
+    private int _consecutiveErrors;
+    private readonly TimeSpan _minRequestInterval = TimeSpan.FromMilliseconds(100);
+    private readonly int _maxRetries = 3;
+    private readonly int _batchSize = 100; // OpenAI supports up to 2048 inputs
 
     public EmbeddingService(
         ILogger<EmbeddingService> logger,
@@ -31,7 +38,7 @@ public class EmbeddingService
     }
 
     /// <summary>
-    /// Generate embeddings for a list of text chunks
+    /// Generate embeddings for a list of text chunks with batch processing
     /// </summary>
     public async Task<List<float[]>> GenerateEmbeddingsAsync(
         List<string> texts,
@@ -50,8 +57,8 @@ public class EmbeddingService
             return _config.Provider switch
             {
                 EmbeddingProvider.Local => await GenerateLocalEmbeddingsAsync(texts, ct).ConfigureAwait(false),
-                EmbeddingProvider.OpenAI => await GenerateOpenAIEmbeddingsAsync(texts, ct).ConfigureAwait(false),
-                EmbeddingProvider.Ollama => await GenerateOllamaEmbeddingsAsync(texts, ct).ConfigureAwait(false),
+                EmbeddingProvider.OpenAI => await GenerateOpenAIEmbeddingsBatchAsync(texts, ct).ConfigureAwait(false),
+                EmbeddingProvider.Ollama => await GenerateOllamaEmbeddingsBatchAsync(texts, ct).ConfigureAwait(false),
                 _ => GenerateSimpleEmbeddings(texts)
             };
         }
@@ -81,7 +88,10 @@ public class EmbeddingService
         return await Task.FromResult(GenerateSimpleEmbeddings(texts)).ConfigureAwait(false);
     }
 
-    private async Task<List<float[]>> GenerateOpenAIEmbeddingsAsync(
+    /// <summary>
+    /// Generate OpenAI embeddings with batch processing and rate limit handling
+    /// </summary>
+    private async Task<List<float[]>> GenerateOpenAIEmbeddingsBatchAsync(
         List<string> texts,
         CancellationToken ct)
     {
@@ -91,48 +101,105 @@ public class EmbeddingService
             return GenerateSimpleEmbeddings(texts);
         }
 
-        try
+        var allEmbeddings = new List<float[]>();
+
+        // Process in batches
+        for (int i = 0; i < texts.Count; i += _batchSize)
         {
-            var request = new
+            var batch = texts.Skip(i).Take(_batchSize).ToList();
+            var batchEmbeddings = await GenerateOpenAIEmbeddingsWithRetryAsync(batch, ct).ConfigureAwait(false);
+            allEmbeddings.AddRange(batchEmbeddings);
+
+            // Log progress for large batches
+            if (texts.Count > _batchSize)
             {
-                input = texts,
-                model = _config.ModelName ?? "text-embedding-ada-002"
-            };
-
-            var content = new StringContent(
-                JsonSerializer.Serialize(request),
-                Encoding.UTF8,
-                "application/json");
-
-            _httpClient.DefaultRequestHeaders.Clear();
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.ApiKey}");
-
-            var response = await _httpClient.PostAsync(
-                "https://api.openai.com/v1/embeddings",
-                content,
-                ct).ConfigureAwait(false);
-
-            response.EnsureSuccessStatusCode();
-
-            var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-            var result = JsonSerializer.Deserialize<OpenAIEmbeddingResponse>(responseBody);
-
-            if (result?.Data == null || result.Data.Count == 0)
-            {
-                _logger.LogWarning("No embeddings returned from OpenAI");
-                return GenerateSimpleEmbeddings(texts);
+                _logger.LogInformation("Processed {Processed}/{Total} embeddings", 
+                    Math.Min(i + _batchSize, texts.Count), texts.Count);
             }
+        }
 
-            return result.Data.Select(d => d.Embedding).ToList();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error calling OpenAI embeddings API");
-            return GenerateSimpleEmbeddings(texts);
-        }
+        return allEmbeddings;
     }
 
-    private async Task<List<float[]>> GenerateOllamaEmbeddingsAsync(
+    private async Task<List<float[]>> GenerateOpenAIEmbeddingsWithRetryAsync(
+        List<string> texts,
+        CancellationToken ct)
+    {
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
+            {
+                // Rate limiting - wait if needed
+                await ApplyRateLimitingAsync(ct).ConfigureAwait(false);
+
+                var request = new
+                {
+                    input = texts,
+                    model = _config.ModelName ?? "text-embedding-ada-002"
+                };
+
+                var content = new StringContent(
+                    JsonSerializer.Serialize(request),
+                    Encoding.UTF8,
+                    "application/json");
+
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.ApiKey}");
+
+                var response = await _httpClient.PostAsync(
+                    "https://api.openai.com/v1/embeddings",
+                    content,
+                    ct).ConfigureAwait(false);
+
+                // Handle rate limiting
+                if ((int)response.StatusCode == 429)
+                {
+                    var retryAfter = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
+                    _logger.LogWarning("Rate limited by OpenAI. Waiting {Seconds}s before retry (attempt {Attempt}/{MaxRetries})", 
+                        retryAfter.TotalSeconds, attempt + 1, _maxRetries);
+                    
+                    await Task.Delay(retryAfter, ct).ConfigureAwait(false);
+                    _consecutiveErrors++;
+                    continue;
+                }
+
+                response.EnsureSuccessStatusCode();
+                _consecutiveErrors = 0;
+
+                var responseBody = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                var result = JsonSerializer.Deserialize<OpenAIEmbeddingResponse>(responseBody);
+
+                if (result?.Data == null || result.Data.Count == 0)
+                {
+                    _logger.LogWarning("No embeddings returned from OpenAI");
+                    return GenerateSimpleEmbeddings(texts);
+                }
+
+                return result.Data.Select(d => d.Embedding).ToList();
+            }
+            catch (HttpRequestException ex) when (attempt < _maxRetries)
+            {
+                _consecutiveErrors++;
+                var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
+                _logger.LogWarning(ex, "OpenAI request failed (attempt {Attempt}/{MaxRetries}). Retrying in {Seconds}s", 
+                    attempt + 1, _maxRetries, backoffDelay.TotalSeconds);
+                await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling OpenAI embeddings API");
+                return GenerateSimpleEmbeddings(texts);
+            }
+        }
+
+        _logger.LogWarning("All retries exhausted for OpenAI embeddings, falling back to simple embeddings");
+        return GenerateSimpleEmbeddings(texts);
+    }
+
+    /// <summary>
+    /// Generate Ollama embeddings with batch processing
+    /// </summary>
+    private async Task<List<float[]>> GenerateOllamaEmbeddingsBatchAsync(
         List<string> texts,
         CancellationToken ct)
     {
@@ -144,6 +211,29 @@ public class EmbeddingService
             var embeddings = new List<float[]>();
 
             foreach (var text in texts)
+            {
+                var embedding = await GenerateOllamaEmbeddingWithRetryAsync(text, baseUrl, modelName, ct).ConfigureAwait(false);
+                embeddings.Add(embedding);
+            }
+
+            return embeddings;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Ollama embeddings API");
+            return GenerateSimpleEmbeddings(texts);
+        }
+    }
+
+    private async Task<float[]> GenerateOllamaEmbeddingWithRetryAsync(
+        string text,
+        string baseUrl,
+        string modelName,
+        CancellationToken ct)
+    {
+        for (int attempt = 0; attempt <= _maxRetries; attempt++)
+        {
+            try
             {
                 var request = new
                 {
@@ -168,22 +258,43 @@ public class EmbeddingService
 
                 if (result?.Embedding != null)
                 {
-                    embeddings.Add(result.Embedding);
+                    return result.Embedding;
                 }
-                else
-                {
-                    _logger.LogWarning("No embedding returned for text");
-                    embeddings.Add(GenerateSimpleEmbedding(text));
-                }
+                
+                _logger.LogWarning("No embedding returned from Ollama for text");
+                return GenerateSimpleEmbedding(text);
             }
+            catch (HttpRequestException ex) when (attempt < _maxRetries)
+            {
+                var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt + 1));
+                _logger.LogWarning(ex, "Ollama request failed (attempt {Attempt}/{MaxRetries}). Retrying in {Seconds}s", 
+                    attempt + 1, _maxRetries, backoffDelay.TotalSeconds);
+                await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
+            }
+        }
 
-            return embeddings;
-        }
-        catch (Exception ex)
+        return GenerateSimpleEmbedding(text);
+    }
+
+    private async Task ApplyRateLimitingAsync(CancellationToken ct)
+    {
+        var timeSinceLastRequest = DateTime.UtcNow - _lastRequestTime;
+        
+        // Apply exponential backoff based on consecutive errors
+        var requiredInterval = _minRequestInterval;
+        if (_consecutiveErrors > 0)
         {
-            _logger.LogError(ex, "Error calling Ollama embeddings API");
-            return GenerateSimpleEmbeddings(texts);
+            requiredInterval = TimeSpan.FromMilliseconds(
+                _minRequestInterval.TotalMilliseconds * Math.Pow(2, _consecutiveErrors));
         }
+
+        if (timeSinceLastRequest < requiredInterval)
+        {
+            var delay = requiredInterval - timeSinceLastRequest;
+            await Task.Delay(delay, ct).ConfigureAwait(false);
+        }
+
+        _lastRequestTime = DateTime.UtcNow;
     }
 
     private List<float[]> GenerateSimpleEmbeddings(List<string> texts)

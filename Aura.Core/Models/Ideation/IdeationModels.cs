@@ -143,7 +143,17 @@ public record BrainstormRequest(
 public record BrainstormResponse(
     List<ConceptIdea> Concepts,
     string OriginalTopic,
-    DateTime GeneratedAt
+    DateTime GeneratedAt,
+    BrainstormMetadata? Metadata = null
+);
+
+/// <summary>
+/// Metadata about the brainstorm operation, including fallback status
+/// </summary>
+public record BrainstormMetadata(
+    string ProviderUsed,
+    bool IsOfflineFallback,
+    string? FallbackReason = null
 );
 
 /// <summary>

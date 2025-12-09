@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   Card,
   Text,
@@ -123,7 +124,11 @@ function ProviderSection({ title, providers }: ProviderSectionProps) {
                     <Text
                       size={200}
                       weight="semibold"
-                      style={{ color: tokens.colorNeutralForeground2, display: 'block', marginBottom: tokens.spacingVerticalXXS }}
+                      style={{
+                        color: tokens.colorNeutralForeground2,
+                        display: 'block',
+                        marginBottom: tokens.spacingVerticalXXS,
+                      }}
                     >
                       How to fix:
                     </Text>
@@ -181,10 +186,50 @@ export function ProviderStatusPanel({
   compact = false,
 }: ProviderStatusPanelProps) {
   const styles = useStyles();
-  const { llmProviders, ttsProviders, imageProviders, isLoading, error, refresh, lastUpdated } =
-    useProviderStatus();
+  const {
+    llmProviders,
+    ttsProviders,
+    imageProviders,
+    isLoading,
+    error,
+    hasFetchError,
+    refresh,
+    lastUpdated,
+  } = useProviderStatus();
 
-  if (isLoading && llmProviders.length === 0) {
+  // Get the full status response to access health and flags
+  const [fullStatus, setFullStatus] = React.useState<{
+    overallHealth: 'Green' | 'Yellow' | 'Red';
+    ollamaActive: boolean;
+  }>({ overallHealth: 'Yellow', ollamaActive: false });
+
+  React.useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch('/api/provider-status');
+        if (response.ok) {
+          const data = await response.json();
+          const healthStr = data.overallHealth?.toString().toLowerCase() || 'yellow';
+          let health: 'Green' | 'Yellow' | 'Red' = 'Yellow';
+          if (healthStr === 'green' || healthStr === 'healthy') {
+            health = 'Green';
+          } else if (healthStr === 'red' || healthStr === 'unhealthy') {
+            health = 'Red';
+          }
+          setFullStatus({
+            overallHealth: health,
+            ollamaActive: data.ollamaActive ?? false,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch provider status:', err);
+      }
+    };
+    void fetchStatus();
+  }, [llmProviders, ttsProviders, imageProviders]);
+
+  // Show loading spinner during initial load (no cached data yet)
+  if (isLoading && llmProviders.length === 0 && !hasFetchError && !error) {
     return (
       <Card>
         <div className={styles.loadingContainer}>
@@ -195,7 +240,8 @@ export function ProviderStatusPanel({
     );
   }
 
-  if (error) {
+  // Show error state if there's an error OR fetch failed with no cached data
+  if (error || (hasFetchError && llmProviders.length === 0)) {
     return (
       <Card>
         <div className={styles.section}>
@@ -204,7 +250,8 @@ export function ProviderStatusPanel({
             <Text>Failed to load provider status</Text>
           </div>
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-            {error.message}
+            {error?.message ||
+              'Unable to connect to the provider status API. Please ensure the backend is running.'}
           </Text>
           <Button onClick={refresh} icon={<ArrowClockwise24Regular />}>
             Retry
@@ -214,10 +261,29 @@ export function ProviderStatusPanel({
     );
   }
 
+  // Get health badge color
+  const getHealthBadgeColor = (health: string) => {
+    if (health === 'Green') return 'success';
+    if (health === 'Red') return 'danger';
+    return 'warning';
+  };
+
+  // Get health message
+  const getHealthMessage = (health: string) => {
+    if (health === 'Green') return 'All providers operational';
+    if (health === 'Red') return 'Critical: Missing required providers';
+    return 'Some features may be limited';
+  };
+
   return (
     <Card className={styles.container}>
       <div className={styles.header}>
-        <Title3>AI Provider Status</Title3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
+          <Title3>AI Provider Status</Title3>
+          <Badge appearance="filled" color={getHealthBadgeColor(fullStatus.overallHealth)}>
+            {fullStatus.overallHealth}
+          </Badge>
+        </div>
         <Button
           appearance="subtle"
           icon={<ArrowClockwise24Regular />}
@@ -227,6 +293,12 @@ export function ProviderStatusPanel({
           Refresh
         </Button>
       </div>
+
+      {fullStatus.overallHealth !== 'Green' && (
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+          {getHealthMessage(fullStatus.overallHealth)}
+        </Text>
+      )}
 
       {isLoading && (
         <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
@@ -240,9 +312,7 @@ export function ProviderStatusPanel({
       <ProviderSection title="Images" providers={imageProviders} />
 
       {lastUpdated && (
-        <Text className={styles.lastUpdated}>
-          Last updated: {lastUpdated.toLocaleTimeString()}
-        </Text>
+        <Text className={styles.lastUpdated}>Last updated: {lastUpdated.toLocaleTimeString()}</Text>
       )}
 
       {showRecommendations && (
@@ -250,9 +320,10 @@ export function ProviderStatusPanel({
           llm={llmProviders}
           tts={ttsProviders}
           images={imageProviders}
+          overallHealth={fullStatus.overallHealth}
+          ollamaActive={fullStatus.ollamaActive}
         />
       )}
     </Card>
   );
 }
-

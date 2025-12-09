@@ -222,6 +222,43 @@ public class OllamaDetectionService : IHostedService, IDisposable
     }
 
     /// <summary>
+    /// Gets a recommended default model from the available models based on priority order.
+    /// Prefers well-known models suitable for video script generation: llama3.1, llama3, mistral, gemma, phi, qwen.
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>The name of the recommended model, or null if no models are available</returns>
+    public async Task<string?> GetRecommendedDefaultModelAsync(CancellationToken ct = default)
+    {
+        var models = await GetModelsAsync(ct).ConfigureAwait(false);
+        if (models.Count == 0)
+        {
+            _logger.LogInformation("No Ollama models available for recommendation");
+            return null;
+        }
+
+        // Priority order for default model selection
+        // These are common, well-tested models suitable for video script generation
+        var preferredModels = new[] { "llama3.1", "llama3", "mistral", "gemma", "phi", "qwen" };
+
+        foreach (var preferred in preferredModels)
+        {
+            var match = models.FirstOrDefault(m =>
+                m.Name.StartsWith(preferred, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                _logger.LogInformation("Recommended default Ollama model: {ModelName} (matched preference: {Preference})",
+                    match.Name, preferred);
+                return match.Name;
+            }
+        }
+
+        // Fallback to first available model
+        var fallbackModel = models.First().Name;
+        _logger.LogInformation("Using first available Ollama model as default: {ModelName}", fallbackModel);
+        return fallbackModel;
+    }
+
+    /// <summary>
     /// Checks if Ollama service is running and accessible using multiple endpoint checks
     /// </summary>
     public async Task<OllamaStatus> DetectOllamaAsync(CancellationToken ct = default)

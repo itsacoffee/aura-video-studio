@@ -3,10 +3,10 @@
  * Connects Video Creation Wizard steps to backend API endpoints
  */
 
-import { post, get, postWithTimeout } from './api/apiClient';
 import type { ExtendedAxiosRequestConfig } from './api/apiClient';
+import { get, post, postWithTimeout } from './api/apiClient';
+import type { StreamGenerationRequest, StreamingScriptEvent } from './api/ollamaService';
 import { streamGeneration } from './api/ollamaService';
-import type { StreamingScriptEvent, StreamGenerationRequest } from './api/ollamaService';
 import { loggingService as logger } from './loggingService';
 
 /**

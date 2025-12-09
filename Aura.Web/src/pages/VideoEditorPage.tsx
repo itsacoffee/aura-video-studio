@@ -1,3 +1,15 @@
+/**
+ * @deprecated Use OpenCut (/opencut route) instead. This component will be removed in a future release.
+ *
+ * VideoEditorPage is the LEGACY video editor. OpenCut is the PRIMARY and ACTIVE video editing interface.
+ *
+ * For video editing features, use:
+ * - OpenCutPage: /opencut route
+ * - OpenCutEditor component: src/components/OpenCut/
+ *
+ * This component is maintained for backwards compatibility only.
+ * Do NOT add new features to this component.
+ */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Aura.Api.Services;
 using Aura.Core.Configuration;
 using Aura.Core.Services.FFmpeg;
+using Aura.Core.Services.Setup;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -20,17 +21,20 @@ public class SystemController : ControllerBase
     private readonly IFFmpegStatusService _ffmpegStatusService;
     private readonly ShutdownOrchestrator _shutdownOrchestrator;
     private readonly FFmpegConfigurationStore _configStore;
+    private readonly PortableDetector? _portableDetector;
 
     public SystemController(
         ILogger<SystemController> logger,
         IFFmpegStatusService ffmpegStatusService,
         ShutdownOrchestrator shutdownOrchestrator,
-        FFmpegConfigurationStore configStore)
+        FFmpegConfigurationStore configStore,
+        PortableDetector? portableDetector = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _ffmpegStatusService = ffmpegStatusService ?? throw new ArgumentNullException(nameof(ffmpegStatusService));
         _shutdownOrchestrator = shutdownOrchestrator ?? throw new ArgumentNullException(nameof(shutdownOrchestrator));
         _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
+        _portableDetector = portableDetector;
     }
 
     /// <summary>
@@ -196,4 +200,263 @@ public class SystemController : ControllerBase
             });
         }
     }
+
+    /// <summary>
+    /// Get portable mode status and paths
+    /// </summary>
+    /// <remarks>
+    /// Returns information about whether the application is running in portable mode,
+    /// including all portable-relative paths and configuration status.
+    /// </remarks>
+    [HttpGet("portable-status")]
+    public IActionResult GetPortableStatus()
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] GET /api/system/portable-status", correlationId);
+
+            if (_portableDetector == null)
+            {
+                return Ok(new
+                {
+                    isPortableMode = false,
+                    portableRoot = (string?)null,
+                    toolsDirectory = (string?)null,
+                    dataDirectory = (string?)null,
+                    cacheDirectory = (string?)null,
+                    logsDirectory = (string?)null,
+                    configExists = false,
+                    needsFirstRunSetup = true,
+                    correlationId
+                });
+            }
+
+            var status = _portableDetector.GetPortableStatus();
+
+            return Ok(new
+            {
+                isPortableMode = status.IsPortableMode,
+                portableRoot = status.PortableRoot,
+                toolsDirectory = status.ToolsDirectory,
+                dataDirectory = status.DataDirectory,
+                cacheDirectory = status.CacheDirectory,
+                logsDirectory = status.LogsDirectory,
+                configExists = status.ConfigExists,
+                needsFirstRunSetup = status.NeedsFirstRunSetup,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error getting portable status", correlationId);
+
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Portable Status Error",
+                status = 500,
+                detail = $"Failed to get portable status: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Get summary of all dependencies (quick check)
+    /// </summary>
+    /// <remarks>
+    /// Returns a quick summary of all dependency installation status.
+    /// Use this for first-run wizard to determine what needs to be installed.
+    /// </remarks>
+    [HttpGet("dependencies/summary")]
+    public IActionResult GetDependenciesSummary()
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] GET /api/system/dependencies/summary", correlationId);
+
+            if (_portableDetector == null)
+            {
+                return Ok(new
+                {
+                    ffmpegInstalled = false,
+                    ffmpegPath = (string?)null,
+                    piperInstalled = false,
+                    piperPath = (string?)null,
+                    ollamaInstalled = false,
+                    ollamaPath = (string?)null,
+                    stableDiffusionInstalled = false,
+                    stableDiffusionPath = (string?)null,
+                    allRequiredInstalled = false,
+                    correlationId
+                });
+            }
+
+            var summary = _portableDetector.GetDependencySummary();
+
+            return Ok(new
+            {
+                ffmpegInstalled = summary.FFmpegInstalled,
+                ffmpegPath = summary.FFmpegPath,
+                piperInstalled = summary.PiperInstalled,
+                piperPath = summary.PiperPath,
+                ollamaInstalled = summary.OllamaInstalled,
+                ollamaPath = summary.OllamaPath,
+                stableDiffusionInstalled = summary.StableDiffusionInstalled,
+                stableDiffusionPath = summary.StableDiffusionPath,
+                allRequiredInstalled = summary.AllRequiredInstalled,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error getting dependencies summary", correlationId);
+
+            return StatusCode(500, new
+            {
+                type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E500",
+                title = "Dependencies Summary Error",
+                status = 500,
+                detail = $"Failed to get dependencies summary: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Initialize portable directories
+    /// </summary>
+    /// <remarks>
+    /// Creates all required directories for a portable installation.
+    /// Call this during first-run setup to prepare the portable environment.
+    /// </remarks>
+    [HttpPost("portable/initialize")]
+    public IActionResult InitializePortableDirectories()
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] POST /api/system/portable/initialize", correlationId);
+
+            if (_portableDetector == null)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    error = "Portable detector not available",
+                    correlationId
+                });
+            }
+
+            _portableDetector.EnsureDirectoriesExist();
+            _portableDetector.CreatePortableMarker();
+
+            var status = _portableDetector.GetPortableStatus();
+
+            return Ok(new
+            {
+                success = true,
+                message = "Portable directories initialized",
+                isPortableMode = status.IsPortableMode,
+                portableRoot = status.PortableRoot,
+                toolsDirectory = status.ToolsDirectory,
+                dataDirectory = status.DataDirectory,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error initializing portable directories", correlationId);
+
+            return StatusCode(500, new
+            {
+                success = false,
+                error = $"Failed to initialize portable directories: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+
+    /// <summary>
+    /// Validate and repair a dependency path
+    /// </summary>
+    /// <remarks>
+    /// Validates a configured path and attempts to repair it if invalid.
+    /// Use this after moving a portable installation to a new location.
+    /// </remarks>
+    [HttpPost("dependencies/validate-path")]
+    public IActionResult ValidateDependencyPath([FromBody] PortableValidatePathRequest request)
+    {
+        var correlationId = HttpContext.TraceIdentifier;
+
+        try
+        {
+            _logger.LogInformation(
+                "[{CorrelationId}] POST /api/system/dependencies/validate-path: {DependencyType}",
+                correlationId, request.DependencyType);
+
+            if (_portableDetector == null)
+            {
+                return BadRequest(new
+                {
+                    isValid = false,
+                    repairedPath = (string?)null,
+                    error = "Portable detector not available",
+                    correlationId
+                });
+            }
+
+            var defaultSubPath = request.DependencyType?.ToLowerInvariant() switch
+            {
+                "ffmpeg" => "Tools/ffmpeg/bin/ffmpeg.exe",
+                "piper" => "Tools/piper/piper.exe",
+                "ollama" => "Tools/ollama/ollama.exe",
+                "stable-diffusion" => "Tools/stable-diffusion-webui",
+                _ => ""
+            };
+
+            var (isValid, repairedPath) = _portableDetector.ValidateAndRepairPath(
+                request.ConfiguredPath, defaultSubPath);
+
+            return Ok(new
+            {
+                isValid,
+                repairedPath,
+                correlationId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] Error validating dependency path", correlationId);
+
+            return StatusCode(500, new
+            {
+                isValid = false,
+                repairedPath = (string?)null,
+                error = $"Failed to validate path: {ex.Message}",
+                correlationId
+            });
+        }
+    }
+}
+
+/// <summary>
+/// Request model for portable path validation
+/// </summary>
+public class PortableValidatePathRequest
+{
+    /// <summary>
+    /// Type of dependency (ffmpeg, piper, ollama, stable-diffusion)
+    /// </summary>
+    public string? DependencyType { get; set; }
+
+    /// <summary>
+    /// Currently configured path to validate
+    /// </summary>
+    public string? ConfiguredPath { get; set; }
 }

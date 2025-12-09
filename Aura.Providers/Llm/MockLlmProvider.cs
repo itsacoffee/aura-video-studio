@@ -23,12 +23,12 @@ public partial class MockLlmProvider : ILlmProvider
     private readonly ILogger<MockLlmProvider> _logger;
     private readonly MockBehavior _behavior;
     private readonly List<string> _callHistory = new();
-    
+
     /// <summary>
     /// Number of times each method has been called
     /// </summary>
     public Dictionary<string, int> CallCounts { get; } = new();
-    
+
     /// <summary>
     /// Access to call history for test assertions
     /// </summary>
@@ -355,7 +355,7 @@ public partial class MockLlmProvider : ILlmProvider
 ## Hook
 This is a mock script generated for testing purposes about {brief.Topic}.
 
-## Introduction  
+## Introduction
 We're going to explore this topic in depth, covering all the key points you need to know.
 
 ";
@@ -388,7 +388,7 @@ That's everything you need to know about this topic. Thank you for watching!";
     private void RecordCall(string methodName)
     {
         _callHistory.Add($"{methodName} at {DateTime.UtcNow:O}");
-        
+
         if (!CallCounts.TryGetValue(methodName, out var value))
         {
             value = 0;
@@ -469,6 +469,7 @@ public partial class MockLlmProvider
         return new Core.Models.Providers.ProviderCapabilities
         {
             ProviderName = "Mock",
+            DefaultModel = "mock-model",
             SupportsTranslation = true,
             SupportsStreaming = true,
             IsLocalModel = true,
@@ -486,8 +487,8 @@ public partial class MockLlmProvider
     /// Mock streaming implementation for testing
     /// </summary>
     public async IAsyncEnumerable<LlmStreamChunk> DraftScriptStreamAsync(
-        Brief brief, 
-        PlanSpec spec, 
+        Brief brief,
+        PlanSpec spec,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         RecordCall(nameof(DraftScriptStreamAsync));

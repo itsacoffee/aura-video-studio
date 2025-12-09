@@ -1,13 +1,13 @@
 import { apiUrl } from '../../config/api';
-import type { 
-  HealthSummaryResponse, 
+import type {
+  HealthSummaryResponse,
   HealthDetailsResponse,
   SystemHealthResponse,
-  AllProvidersStatusResponse,
   ValidateProviderConnectionResponse,
-  ValidateProviderKeyRequest
+  ValidateProviderKeyRequest,
 } from '../../types/api-v1';
 import { get, post } from './apiClient';
+import type { SystemProviderStatus } from './providerStatusApi';
 
 export interface HealthCheckEntry {
   name: string;
@@ -67,8 +67,8 @@ export async function getHealthByTag(tag: string): Promise<HealthCheckResponse> 
 /**
  * Get status of all providers
  */
-export async function getProvidersStatus(): Promise<AllProvidersStatusResponse> {
-  return get<AllProvidersStatusResponse>(`${apiUrl}/providers/status`);
+export async function getProvidersStatus(): Promise<SystemProviderStatus> {
+  return get<SystemProviderStatus>(`${apiUrl}/provider-status`);
 }
 
 /**

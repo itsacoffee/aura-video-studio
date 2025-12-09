@@ -36,9 +36,9 @@ import {
 import type { FC } from 'react';
 import { useCallback, useEffect, useState, useMemo } from 'react';
 import { apiUrl } from '@/config/api';
+import { useProviderStatus } from '@/hooks/useProviderStatus';
 import { useSSEConnection } from '@/hooks/useSSEConnection';
 import { loggingService } from '@/services/loggingService';
-import { useProviderStatus } from '@/hooks/useProviderStatus';
 
 const useStyles = makeStyles({
   container: {
@@ -466,10 +466,10 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
   // Determine active provider based on current stage
   const activeProvider = useMemo(() => {
     const currentPhase = phaseState.current;
-    
+
     // Script generation stage - show LLM provider (plan stage handles script generation)
     if (currentPhase === 'plan') {
-      const availableLlm = llmProviders.find(p => p.available);
+      const availableLlm = llmProviders.find((p) => p.available);
       if (availableLlm) {
         return {
           name: availableLlm.name,
@@ -478,10 +478,10 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
         };
       }
     }
-    
+
     // TTS stage - show TTS provider
     if (currentPhase === 'tts') {
-      const availableTts = ttsProviders.find(p => p.available);
+      const availableTts = ttsProviders.find((p) => p.available);
       if (availableTts) {
         return {
           name: availableTts.name,
@@ -490,10 +490,10 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
         };
       }
     }
-    
+
     // Image generation stage - show image provider
     if (currentPhase === 'visuals') {
-      const availableImage = imageProviders.find(p => p.available);
+      const availableImage = imageProviders.find((p) => p.available);
       if (availableImage) {
         return {
           name: availableImage.name,
@@ -502,7 +502,7 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
         };
       }
     }
-    
+
     return null;
   }, [phaseState.current, llmProviders, ttsProviders, imageProviders]);
 
@@ -881,7 +881,9 @@ export const VideoGenerationProgress: FC<VideoGenerationProgressProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXS }}>
             <Text weight="semibold">{overallProgress}% Complete</Text>
             {activeProvider && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}
+              >
                 <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
                   Using {activeProvider.type}:
                 </Text>

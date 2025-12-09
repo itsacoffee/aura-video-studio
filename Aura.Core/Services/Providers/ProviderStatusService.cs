@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Services;
+using Aura.Core.Models.Providers;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Providers;
@@ -466,6 +467,16 @@ public class ProviderStatusService
         availableFeatures.Add("Timeline Editing");
         availableFeatures.Add("Subtitle Generation");
 
+        // Compute category health
+        var categoryHealth = ComputeCategoryHealth(providers);
+
+        // Compute overall health status
+        var overallHealth = ComputeOverallHealth(categoryHealth);
+
+        // Check if Ollama is active (configured and healthy OR selected as LLM provider)
+        var ollamaProvider = providers.FirstOrDefault(p => p.Name.Contains("Ollama"));
+        var ollamaActive = ollamaProvider != null && ollamaProvider.IsAvailable;
+
         return new SystemProviderStatus
         {
             IsOfflineMode = isOfflineMode,
@@ -475,10 +486,131 @@ public class ProviderStatusService
             AvailableFeatures = availableFeatures,
             DegradedFeatures = degradedFeatures,
             LastUpdated = _lastUpdate,
-            Message = isOfflineMode
-                ? "Running in offline mode - using local providers and templates"
-                : $"{onlineProviders.Count} online providers available"
+            Message = GetHealthMessage(overallHealth, categoryHealth, isOfflineMode, onlineProviders.Count),
+            OverallHealth = overallHealth,
+            CategoryHealth = categoryHealth,
+            OllamaActive = ollamaActive,
+            HasAnyLlm = hasAnyLlm,
+            HasAnyTts = hasAnyTts,
+            HasAnyImageProvider = hasAnyImages
         };
+    }
+
+    /// <summary>
+    /// Compute health status for each provider category
+    /// </summary>
+    private List<ProviderCategoryHealth> ComputeCategoryHealth(List<ProviderStatus> providers)
+    {
+        var categoryHealth = new List<ProviderCategoryHealth>();
+
+        // LLM providers (required)
+        var llmProviders = providers.Where(p => p.Category == "LLM").ToList();
+        var healthyLlm = llmProviders.Where(p => p.IsAvailable).ToList();
+        categoryHealth.Add(new ProviderCategoryHealth
+        {
+            Category = "LLM",
+            Required = true,
+            ConfiguredCount = llmProviders.Count,
+            HealthyCount = healthyLlm.Count,
+            ActiveProviders = healthyLlm.Select(p => p.Name).ToList(),
+            Message = healthyLlm.Count > 0 ? $"{healthyLlm.Count} LLM provider(s) available" : "No LLM providers available"
+        });
+
+        // TTS providers (required)
+        var ttsProviders = providers.Where(p => p.Category == "TTS").ToList();
+        var healthyTts = ttsProviders.Where(p => p.IsAvailable).ToList();
+        categoryHealth.Add(new ProviderCategoryHealth
+        {
+            Category = "TTS",
+            Required = true,
+            ConfiguredCount = ttsProviders.Count,
+            HealthyCount = healthyTts.Count,
+            ActiveProviders = healthyTts.Select(p => p.Name).ToList(),
+            Message = healthyTts.Count > 0 ? $"{healthyTts.Count} TTS provider(s) available" : "No TTS providers available"
+        });
+
+        // Image providers (required for full experience, but can use placeholders)
+        var imageProviders = providers.Where(p => p.Category == "Images").ToList();
+        var healthyImages = imageProviders.Where(p => p.IsAvailable).ToList();
+        categoryHealth.Add(new ProviderCategoryHealth
+        {
+            Category = "Images",
+            Required = true,
+            ConfiguredCount = imageProviders.Count,
+            HealthyCount = healthyImages.Count,
+            ActiveProviders = healthyImages.Select(p => p.Name).ToList(),
+            Message = healthyImages.Count > 0 ? $"{healthyImages.Count} image provider(s) available" : "Using placeholder images"
+        });
+
+        // Music providers (optional)
+        var musicProviders = providers.Where(p => p.Category == "Music").ToList();
+        var healthyMusic = musicProviders.Where(p => p.IsAvailable).ToList();
+        if (musicProviders.Any())
+        {
+            categoryHealth.Add(new ProviderCategoryHealth
+            {
+                Category = "Music",
+                Required = false,
+                ConfiguredCount = musicProviders.Count,
+                HealthyCount = healthyMusic.Count,
+                ActiveProviders = healthyMusic.Select(p => p.Name).ToList(),
+                Message = healthyMusic.Count > 0 ? $"{healthyMusic.Count} music provider(s) available" : "No music providers available"
+            });
+        }
+
+        return categoryHealth;
+    }
+
+    /// <summary>
+    /// Compute overall health status based on category health
+    /// </summary>
+    private ProviderHealthStatus ComputeOverallHealth(List<ProviderCategoryHealth> categoryHealth)
+    {
+        // Red: Any required category has 0 healthy providers
+        if (categoryHealth.Any(c => c.Required && c.HealthyCount == 0))
+        {
+            return ProviderHealthStatus.Red;
+        }
+
+        // Green: All required categories have at least 1 healthy provider
+        if (categoryHealth.Where(c => c.Required).All(c => c.HealthyCount >= 1))
+        {
+            return ProviderHealthStatus.Green;
+        }
+
+        // Yellow: Degraded state (shouldn't normally reach here given the logic above)
+        return ProviderHealthStatus.Yellow;
+    }
+
+    /// <summary>
+    /// Get appropriate message based on health status
+    /// </summary>
+    private string GetHealthMessage(ProviderHealthStatus health, List<ProviderCategoryHealth> categoryHealth, bool isOfflineMode, int onlineCount)
+    {
+        switch (health)
+        {
+            case ProviderHealthStatus.Green:
+                return isOfflineMode
+                    ? "System ready with local providers"
+                    : $"System ready - {onlineCount} online provider(s) available";
+
+            case ProviderHealthStatus.Yellow:
+                var degradedCategories = categoryHealth.Where(c => c.Required && c.HealthyCount == 0).ToList();
+                if (degradedCategories.Any())
+                {
+                    var missing = string.Join(", ", degradedCategories.Select(c => c.Category));
+                    return $"Degraded: Missing required providers - {missing}";
+                }
+                return "System degraded - some features may be limited";
+
+            case ProviderHealthStatus.Red:
+                var missingCategories = categoryHealth.Where(c => c.Required && c.HealthyCount == 0).ToList();
+                var missingNames = string.Join(", ", missingCategories.Select(c => c.Category));
+                return $"System not ready: Missing required providers - {missingNames}";
+
+            default:
+                return "Unknown health status";
+        }
     }
 }
 
@@ -508,6 +640,25 @@ public class SystemProviderStatus
     public List<string> AvailableFeatures { get; set; } = new();
     public List<string> DegradedFeatures { get; set; } = new();
     public DateTime LastUpdated { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public ProviderHealthStatus OverallHealth { get; set; }
+    public List<ProviderCategoryHealth> CategoryHealth { get; set; } = new();
+    public bool OllamaActive { get; set; }
+    public bool HasAnyLlm { get; set; }
+    public bool HasAnyTts { get; set; }
+    public bool HasAnyImageProvider { get; set; }
+}
+
+/// <summary>
+/// Health status for a specific provider category
+/// </summary>
+public class ProviderCategoryHealth
+{
+    public string Category { get; set; } = string.Empty;
+    public bool Required { get; set; }
+    public int ConfiguredCount { get; set; }
+    public int HealthyCount { get; set; }
+    public List<string> ActiveProviders { get; set; } = new();
     public string Message { get; set; } = string.Empty;
 }
 

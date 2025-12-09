@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Data;
 using Aura.Core.Services.Health;
+using Aura.Core.Services.Resilience;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -26,6 +27,7 @@ public class HealthController : ControllerBase
     private readonly ProviderHealthMonitor _healthMonitor;
     private readonly ProviderHealthService _healthService;
     private readonly SystemHealthChecker _systemHealthChecker;
+    private readonly CircuitBreakerRegistry _circuitBreakerRegistry;
     private readonly ILogger<HealthController> _logger;
     private readonly IHostEnvironment _hostEnvironment;
     private readonly IDbContextFactory<AuraDbContext> _dbContextFactory;
@@ -34,6 +36,7 @@ public class HealthController : ControllerBase
         ProviderHealthMonitor healthMonitor,
         ProviderHealthService healthService,
         SystemHealthChecker systemHealthChecker,
+        CircuitBreakerRegistry circuitBreakerRegistry,
         ILogger<HealthController> logger,
         IHostEnvironment hostEnvironment,
         IDbContextFactory<AuraDbContext> dbContextFactory)
@@ -41,6 +44,7 @@ public class HealthController : ControllerBase
         _healthMonitor = healthMonitor;
         _healthService = healthService;
         _systemHealthChecker = systemHealthChecker;
+        _circuitBreakerRegistry = circuitBreakerRegistry;
         _logger = logger;
         _hostEnvironment = hostEnvironment;
         _dbContextFactory = dbContextFactory;
@@ -99,20 +103,32 @@ public class HealthController : ControllerBase
     /// Trigger immediate health check for a specific provider
     /// </summary>
     [HttpPost("providers/{name}/check")]
-    public Task<ActionResult<ProviderHealthCheckDto>> CheckProvider(
+    public async Task<ActionResult<ProviderHealthCheckDto>> CheckProvider(
         string name,
         CancellationToken ct)
     {
-        // Note: This requires registered health check functions
-        // For now, return the cached metrics
-        var metrics = _healthMonitor.GetProviderHealth(name);
-        if (metrics == null)
+        // Prefer running the registered health check if available so the dashboard reflects real status
+        if (_healthMonitor.TryGetHealthCheck(name, out var healthCheck) && healthCheck != null)
         {
-            return Task.FromResult<ActionResult<ProviderHealthCheckDto>>(NotFound(new { error = $"Provider '{name}' not found" }));
+            _logger.LogInformation("Manual health check requested for provider: {ProviderName}", name);
+
+            var metrics = await _healthMonitor.CheckProviderHealthAsync(name, healthCheck, ct).ConfigureAwait(false);
+            var dto = ToDto(metrics);
+
+            return metrics.IsHealthy
+                ? Ok(dto)
+                : StatusCode(503, dto);
         }
 
-        _logger.LogInformation("Manual health check requested for provider: {ProviderName}", name);
-        return Task.FromResult<ActionResult<ProviderHealthCheckDto>>(Ok(ToDto(metrics)));
+        // Fallback: return cached metrics if no health check is registered
+        var cachedMetrics = _healthMonitor.GetProviderHealth(name);
+        if (cachedMetrics == null)
+        {
+            return NotFound(new { error = $"Provider '{name}' not found" });
+        }
+
+        _logger.LogInformation("Manual health check requested for provider (cached only): {ProviderName}", name);
+        return Ok(ToDto(cachedMetrics));
     }
 
     /// <summary>
@@ -122,7 +138,7 @@ public class HealthController : ControllerBase
     public ActionResult<IEnumerable<ProviderHealthCheckDto>> CheckAllProviders()
     {
         _logger.LogInformation("Manual health check requested for all providers");
-        
+
         var metrics = _healthMonitor.GetAllProviderHealth();
         var dtos = metrics.Values.Select(ToDto).ToList();
         return Ok(dtos);
@@ -135,15 +151,15 @@ public class HealthController : ControllerBase
     public ActionResult<ProviderHealthSummaryDto> GetProvidersSummary()
     {
         var allMetrics = _healthMonitor.GetAllProviderHealth();
-        
+
         var summary = new ProviderHealthSummaryDto
         {
             TotalProviders = allMetrics.Count,
             HealthyProviders = allMetrics.Values.Count(m => m.IsHealthy),
             DegradedProviders = allMetrics.Values.Count(m => !m.IsHealthy && m.ConsecutiveFailures < 3),
             OfflineProviders = allMetrics.Values.Count(m => m.ConsecutiveFailures >= 3),
-            LastUpdateTime = allMetrics.Values.Any() 
-                ? allMetrics.Values.Max(m => m.LastCheckTime) 
+            LastUpdateTime = allMetrics.Values.Any()
+                ? allMetrics.Values.Max(m => m.LastCheckTime)
                 : DateTime.MinValue,
             ProvidersByType = GroupProvidersByType(allMetrics)
         };
@@ -270,7 +286,9 @@ public class HealthController : ControllerBase
         name.Equals("Ollama", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("OpenAI", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("Azure", StringComparison.OrdinalIgnoreCase) ||
-        name.Equals("Gemini", StringComparison.OrdinalIgnoreCase);
+        name.Equals("Gemini", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Anthropic", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Qwen", StringComparison.OrdinalIgnoreCase);
 
     private bool IsTtsProvider(string name) =>
         name.Contains("tts", StringComparison.OrdinalIgnoreCase) ||
@@ -282,7 +300,14 @@ public class HealthController : ControllerBase
         name.Contains("image", StringComparison.OrdinalIgnoreCase) ||
         name.Contains("visual", StringComparison.OrdinalIgnoreCase) ||
         name.Equals("StableDiffusion", StringComparison.OrdinalIgnoreCase) ||
-        name.Equals("Stock", StringComparison.OrdinalIgnoreCase);
+        name.Equals("Stability", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Stock", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("LocalStock", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Pexels", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Unsplash", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("Midjourney", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("DallE", StringComparison.OrdinalIgnoreCase) ||
+        name.Equals("DallE3", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Get health status for all LLM providers
@@ -292,7 +317,7 @@ public class HealthController : ControllerBase
     {
         var providers = _healthService.GetLlmProvidersHealth();
         var allDown = _healthService.AreAllProvidersDown("llm");
-        
+
         var dto = new ProviderTypeHealthDto
         {
             ProviderType = "llm",
@@ -313,7 +338,7 @@ public class HealthController : ControllerBase
     {
         var providers = _healthService.GetTtsProvidersHealth();
         var allDown = _healthService.AreAllProvidersDown("tts");
-        
+
         var dto = new ProviderTypeHealthDto
         {
             ProviderType = "tts",
@@ -334,7 +359,7 @@ public class HealthController : ControllerBase
     {
         var providers = _healthService.GetImageProvidersHealth();
         var allDown = _healthService.AreAllProvidersDown("images");
-        
+
         var dto = new ProviderTypeHealthDto
         {
             ProviderType = "images",
@@ -354,7 +379,7 @@ public class HealthController : ControllerBase
     public async Task<ActionResult<SystemHealthDto>> GetSystemHealth(CancellationToken ct)
     {
         var metrics = await _systemHealthChecker.CheckSystemHealthAsync(ct).ConfigureAwait(false);
-        
+
         var dto = new SystemHealthDto
         {
             FFmpegAvailable = metrics.FFmpegAvailable,
@@ -375,7 +400,7 @@ public class HealthController : ControllerBase
     public async Task<ActionResult> ResetProviderCircuitBreaker(string name, CancellationToken ct)
     {
         var success = await _healthService.ResetCircuitBreakerAsync(name, ct).ConfigureAwait(false);
-        
+
         if (!success)
         {
             return NotFound(new { error = $"Provider '{name}' not found" });
@@ -383,6 +408,66 @@ public class HealthController : ControllerBase
 
         _logger.LogInformation("Circuit breaker reset for provider: {ProviderName}", name);
         return Ok(new { message = $"Circuit breaker reset for provider '{name}'" });
+    }
+
+    /// <summary>
+    /// Get status of all circuit breakers
+    /// </summary>
+    [HttpGet("circuit-breakers")]
+    public ActionResult<Dictionary<string, string>> GetCircuitBreakerStatus()
+    {
+        var states = _circuitBreakerRegistry.GetAllStates();
+        return Ok(states.ToDictionary(
+            kvp => kvp.Key,
+            kvp => kvp.Value.ToString()
+        ));
+    }
+
+    /// <summary>
+    /// Get detailed information about all circuit breakers
+    /// </summary>
+    [HttpGet("circuit-breakers/details")]
+    public ActionResult<Dictionary<string, CircuitBreakerInfoDto>> GetCircuitBreakerDetails()
+    {
+        var info = _circuitBreakerRegistry.GetAllInfo();
+        return Ok(info.ToDictionary(
+            kvp => kvp.Key,
+            kvp => new CircuitBreakerInfoDto
+            {
+                ServiceName = kvp.Value.ServiceName,
+                State = kvp.Value.State.ToString(),
+                FailureCount = kvp.Value.FailureCount,
+                OpenedAt = kvp.Value.OpenedAt
+            }
+        ));
+    }
+
+    /// <summary>
+    /// Reset circuit breaker for a specific service
+    /// </summary>
+    [HttpPost("circuit-breakers/{serviceName}/reset")]
+    public ActionResult ResetCircuitBreaker(string serviceName)
+    {
+        var success = _circuitBreakerRegistry.Reset(serviceName);
+
+        if (!success)
+        {
+            return NotFound(new { error = $"Circuit breaker for '{serviceName}' not found" });
+        }
+
+        _logger.LogInformation("Circuit breaker reset for service: {ServiceName}", serviceName);
+        return Ok(new { message = $"Circuit breaker for {serviceName} reset" });
+    }
+
+    /// <summary>
+    /// Reset all circuit breakers
+    /// </summary>
+    [HttpPost("circuit-breakers/reset-all")]
+    public ActionResult ResetAllCircuitBreakers()
+    {
+        _circuitBreakerRegistry.ResetAll();
+        _logger.LogInformation("All circuit breakers reset");
+        return Ok(new { message = "All circuit breakers reset" });
     }
 
     private ProviderHealthCheckDto ToDto(ProviderHealthMetrics metrics)
@@ -506,4 +591,15 @@ public class SystemHealthDto
     public double MemoryUsagePercent { get; set; }
     public bool IsHealthy { get; set; }
     public List<string> Issues { get; set; } = new();
+}
+
+/// <summary>
+/// DTO for circuit breaker information
+/// </summary>
+public class CircuitBreakerInfoDto
+{
+    public string ServiceName { get; set; } = string.Empty;
+    public string State { get; set; } = "Closed";
+    public int FailureCount { get; set; }
+    public DateTime? OpenedAt { get; set; }
 }

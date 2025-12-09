@@ -53,7 +53,7 @@
     "postinstall": "node -e \"try{const fs=require('fs');const path=require('path');const electronPath=path.join('node_modules','electron');const electronBuilderPath=path.join('node_modules','electron-builder');if(fs.existsSync(electronPath)&&fs.existsSync(electronBuilderPath)){try{require('child_process').execSync('npx electron-builder install-app-deps',{stdio:'inherit',cwd:process.cwd()});}catch(e){console.log('Warning: electron-builder install-app-deps failed:',e.message);console.log('This may be non-fatal. Native deps will be rebuilt during build process.');}}else{console.log('Info: Electron or electron-builder not installed, skipping native dependency rebuild');}}catch(e){console.log('Info: postinstall completed (native deps will be rebuilt during build if needed)');}\"",
     "pack": "npm run build:all && electron-builder --dir",
     "dist": "npm run build:all && electron-builder --win",
-    "test": "node test/test-backend-path-detection.js && node test/test-electron-backend-integration.js && node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js && node test/test-menu-command-map.js && node test/test-menu-command-handler.js && node test/test-safe-mode.js && node test/test-window-loading-diagnostics.js && node test/test-shutdown-orchestrator.js && node test/test-process-manager.js && node test/test-legacy-electron-guard.js && node test/test-legacy-preload-redirect.js && node test/test-package-entry-points.js && node test/test-process-lifecycle.js && node test/test-build-backend-script.js && node test/test-backend-logger-initialization.js && node test/test-window-close-behavior.js && node test/test-context-menu-system.js",
+    "test": "node test/test-backend-path-detection.js && node test/test-electron-backend-integration.js && node test/test-startup-logger.js && node test/test-startup-diagnostics.js && node test/test-initialization-tracker.js && node test/test-early-crash-logger.js && node test/test-integration-corrupted-config.js && node test/test-preload-menu-events.js && node test/test-menu-ipc-integration.js && node test/test-menu-command-map.js && node test/test-menu-command-handler.js && node test/test-safe-mode.js && node test/test-window-loading-diagnostics.js && node test/test-shutdown-orchestrator.js && node test/test-process-manager.js && node test/test-legacy-electron-guard.js && node test/test-legacy-preload-redirect.js && node test/test-package-entry-points.js && node test/test-process-lifecycle.js && node test/test-build-backend-script.js && node test/test-backend-logger-initialization.js && node test/test-window-close-behavior.js && node test/test-context-menu-system.js && node test/test-opencut-build-output.js && node test/test-lodash-isequal-module.js",
     "test:backend-path": "node test/test-backend-path-detection.js",
     "test:backend-logger": "node test/test-backend-logger-initialization.js",
     "test:backend-integration": "node test/test-electron-backend-integration.js",
@@ -80,6 +80,8 @@
     "test:context-menus": "node test/unit/context-menu-builder.test.js",
     "test:e2e:context-menus": "node test/e2e/context-menus.spec.js",
     "test:all-context-menus": "npm run test:context-menu && npm run test:context-menus && npm run test:e2e:context-menus",
+    "test:opencut": "node test/test-opencut-build-output.js",
+    "test:lodash": "node test/test-lodash-isequal-module.js",
     "validate": "node scripts/validate-build-config.js",
     "validate:electron": "node scripts/validate-electron-config.js",
     "validate:menu": "node scripts/validate-menu-events.js"
@@ -126,53 +128,6 @@
         "filter": [
           "**/*"
         ]
-      },
-      {
-        "from": "../OpenCut/apps/web/.next/standalone/apps/web",
-        "to": "opencut",
-        "filter": [
-          "**/*",
-          "!**/node_modules/**/@ffmpeg/core/**",
-          "!**/node_modules/**/@ffmpeg/ffmpeg/**",
-          "!**/node_modules/**/bun-types/**",
-          "!**/node_modules/**/.bun/**",
-          "!**/node_modules/**/next/**",
-          "!**/node_modules/**/react/**"
-        ]
-      },
-      {
-        "from": "../OpenCut/apps/web/.next/standalone/node_modules",
-        "to": "opencut/node_modules",
-        "filter": [
-          "**/*",
-          "!**/@ffmpeg/core/**",
-          "!**/@ffmpeg/ffmpeg/**",
-          "!**/bun-types/**",
-          "!**/.bun/**",
-          "!**/next/**",
-          "!**/react/**"
-        ]
-      },
-      {
-        "from": "../OpenCut/apps/web/.next/standalone/packages",
-        "to": "opencut/packages",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "../OpenCut/apps/web/.next/static",
-        "to": "opencut/.next/static",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "../OpenCut/apps/web/public",
-        "to": "opencut/public",
-        "filter": [
-          "**/*"
-        ]
       }
     ],
     "mac": null,
@@ -193,10 +148,12 @@
         }
       ],
       "icon": "assets/icons/icon.ico",
-      "publisherName": "Coffee285",
       "requestedExecutionLevel": "asInvoker",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "sign": "./scripts/sign-windows.js",
+      "signtoolOptions": {
+        "sign": "./scripts/sign-windows.js",
+        "publisherName": "Coffee285"
+      },
       "verifyUpdateCodeSignature": false,
       "fileAssociations": [
         {
@@ -265,17 +222,27 @@
   "dependencies": {
     "axios": "^1.7.7",
     "electron-store": "^8.1.0",
-    "electron-updater": "^6.3.9",
+    "electron-updater": "^6.7.2",
+    "lodash.isequal": "^4.5.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "electron": "32.2.5",
-    "electron-builder": "^25.1.8",
+    "electron": "^39.2.6",
+    "electron-builder": "^26.3.3",
     "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=9.0.0"
+  },
+  "overrides": {
+    "@electron/asar": "^4.0.1",
+    "@electron/get": {
+      ".": "^4.0.2",
+      "global-agent": "npm:noop-package@1.0.0"
+    },
+    "rimraf": "^4.4.1",
+    "glob": "^10.4.5"
   }
 }

@@ -1,13 +1,21 @@
 using Aura.Core.Artifacts;
+using Aura.Core.Configuration;
 using Aura.Core.Models;
 using Aura.Core.Orchestrator;
+using Aura.Core.Providers;
 using Aura.Core.Services;
 using Aura.Core.Services.Export;
 using Aura.Api.Models.ApiModels.V1;
+using Aura.Providers.Images;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
+using System.Collections.Generic;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Aura.Api.Controllers;
 
@@ -175,6 +183,28 @@ public class JobsController : ControllerBase
                 EnableSceneCut: request.RenderSpec.EnableSceneCut
             );
 
+            IImageProvider? imageProviderOverride = null;
+
+            if (!string.IsNullOrWhiteSpace(request.ImageProvider))
+            {
+                if (!TryResolveImageProvider(
+                        request.ImageProvider,
+                        correlationId,
+                        out imageProviderOverride,
+                        out var providerError))
+                {
+                    return BadRequest(new
+                    {
+                        type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#E400",
+                        title = "Invalid Request",
+                        status = 400,
+                        detail = providerError,
+                        correlationId,
+                        provider = request.ImageProvider
+                    });
+                }
+            }
+
             var job = await _jobRunner.CreateAndStartJobAsync(
                 brief,
                 planSpec,
@@ -182,7 +212,8 @@ public class JobsController : ControllerBase
                 renderSpec,
                 correlationId,
                 isQuickDemo: false,
-                ct
+                ct,
+                imageProviderOverride
             ).ConfigureAwait(false);
 
             Log.Information("[{CorrelationId}] Job created successfully with ID: {JobId}, Status: {Status}", correlationId, job.Id, job.Status);
@@ -317,6 +348,89 @@ public class JobsController : ControllerBase
                 }
             });
         }
+    }
+
+    private bool TryResolveImageProvider(
+        string providerId,
+        string correlationId,
+        out IImageProvider? imageProvider,
+        out string? errorMessage)
+    {
+        imageProvider = null;
+        errorMessage = null;
+
+        var services = HttpContext.RequestServices;
+        var providerSettings = services.GetRequiredService<ProviderSettings>();
+        var httpClientFactory = services.GetRequiredService<IHttpClientFactory>();
+        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+        var placeholderProvider = services.GetRequiredService<PlaceholderImageProvider>();
+
+        var normalized = providerId.Trim().ToLowerInvariant();
+        var primaryProviders = new List<IStockProvider>();
+
+        switch (normalized)
+        {
+            case "pexels":
+            {
+                var apiKey = providerSettings.GetPexelsApiKey();
+                if (string.IsNullOrWhiteSpace(apiKey))
+                {
+                    errorMessage = "Pexels API key is not configured. Add it in Settings to use Pexels for visuals.";
+                    return false;
+                }
+
+                primaryProviders.Add(new PexelsStockProvider(
+                    loggerFactory.CreateLogger<PexelsStockProvider>(),
+                    httpClientFactory.CreateClient(),
+                    apiKey));
+                break;
+            }
+            case "pixabay":
+            {
+                var apiKey = providerSettings.GetPixabayApiKey();
+                if (string.IsNullOrWhiteSpace(apiKey))
+                {
+                    errorMessage = "Pixabay API key is not configured. Add it in Settings to use Pixabay for visuals.";
+                    return false;
+                }
+
+                primaryProviders.Add(new PixabayStockProvider(
+                    loggerFactory.CreateLogger<PixabayStockProvider>(),
+                    httpClientFactory.CreateClient(),
+                    apiKey));
+                break;
+            }
+            case "unsplash":
+            {
+                var accessKey = providerSettings.GetUnsplashAccessKey();
+                if (string.IsNullOrWhiteSpace(accessKey))
+                {
+                    errorMessage = "Unsplash access key is not configured. Add it in Settings to use Unsplash for visuals.";
+                    return false;
+                }
+
+                primaryProviders.Add(new UnsplashStockProvider(
+                    loggerFactory.CreateLogger<UnsplashStockProvider>(),
+                    httpClientFactory.CreateClient(),
+                    accessKey));
+                break;
+            }
+            case "placeholder":
+                break;
+            default:
+                errorMessage = $"Unknown image provider '{providerId}'.";
+                return false;
+        }
+
+        var fallbackLogger = loggerFactory.CreateLogger<FallbackImageProvider>();
+        imageProvider = new FallbackImageProvider(fallbackLogger, primaryProviders, placeholderProvider);
+
+        Log.Information(
+            "[{CorrelationId}] Using image provider override: {Provider}",
+            correlationId,
+            normalized);
+
+        return true;
     }
 
     /// <summary>
@@ -629,9 +743,15 @@ public class JobsController : ControllerBase
             var lastProgressMessage = "";
             var lastLogCount = job.Logs.Count;
             var lastPingTime = DateTime.UtcNow;
+            var lastProgressChangeTime = DateTime.UtcNow;
             var pingIntervalSeconds = 5; // 5-second heartbeat as per requirements
             var pollIntervalMs = 500; // Poll every 500ms for responsiveness
             var eventIdCounter = 0;
+            // Stall warning threshold in seconds. Can be made configurable via IConfiguration if needed.
+            var stallWarningThresholdSeconds = 120; // 2 minutes for warning
+            var stallFailureThresholdSeconds = 180; // 3 minutes for automatic failure
+            var stallWarningEmitted = false;
+            var stallFailureEmitted = false;
 
             while (!cancellationToken.IsCancellationRequested && job.Status != JobStatus.Done && job.Status != JobStatus.Failed && job.Status != JobStatus.Canceled)
             {
@@ -649,6 +769,68 @@ public class JobsController : ControllerBase
                     );
                     await SendSseEventWithId("heartbeat", heartbeat, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
                     lastPingTime = DateTime.UtcNow;
+                }
+
+                // Stall detection: warn if no progress change for 2+ minutes
+                if (job.Percent != lastPercent)
+                {
+                    lastProgressChangeTime = DateTime.UtcNow;
+                    stallWarningEmitted = false; // Reset stall warning on progress
+                    stallFailureEmitted = false; // Reset failure flag on progress
+                }
+                else
+                {
+                    var timeSinceLastProgress = (DateTime.UtcNow - lastProgressChangeTime).TotalSeconds;
+
+                    // Warning at 2 minutes
+                    if (timeSinceLastProgress >= stallWarningThresholdSeconds && !stallWarningEmitted)
+                    {
+                        Log.Warning(
+                            "[{CorrelationId}] Job {JobId} appears stalled at {Percent}% (stage: {Stage}) - no progress for {Seconds:F0}s",
+                            correlationId, jobId, job.Percent, job.Stage, timeSinceLastProgress);
+
+                        await SendSseEventWithId("warning", new
+                        {
+                            message = $"Job progress appears stalled at {job.Percent}% ({job.Stage}). If this persists, consider cancelling and retrying.",
+                            step = job.Stage,
+                            percent = job.Percent,
+                            stallDurationSeconds = (int)timeSinceLastProgress,
+                            correlationId
+                        }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
+
+                        stallWarningEmitted = true;
+                    }
+
+                    // Failure at 3 minutes - emit job-failed event so frontend can react
+                    if (timeSinceLastProgress >= stallFailureThresholdSeconds && !stallFailureEmitted)
+                    {
+                        Log.Error(
+                            "[{CorrelationId}] Job {JobId} stalled for {Seconds:F0}s at {Percent}% ({Stage}), emitting failure event",
+                            correlationId, jobId, timeSinceLastProgress, job.Percent, job.Stage);
+
+                        var stallError = new JobStepError
+                        {
+                            Code = "STALL_TIMEOUT",
+                            Message = $"Job stalled at {job.Stage} stage ({job.Percent}%) with no progress for {(int)timeSinceLastProgress} seconds",
+                            Remediation = "Cancel and retry the job, or check the logs for potential issues"
+                        };
+
+                        await SendSseEventWithId("job-failed", new
+                        {
+                            status = "Failed",
+                            jobId = job.Id,
+                            stage = job.Stage,
+                            percent = job.Percent,
+                            errors = new[] { stallError },
+                            errorMessage = $"Job stalled at {job.Stage} stage with no progress for over {stallFailureThresholdSeconds / 60.0:F0} minutes",
+                            stallDurationSeconds = (int)timeSinceLastProgress,
+                            correlationId
+                        }, GenerateEventId(++eventIdCounter), cancellationToken).ConfigureAwait(false);
+
+                        stallFailureEmitted = true;
+                        // Note: We emit the event but don't break the loop, allowing the job to
+                        // potentially recover. The frontend should handle the job-failed event.
+                    }
                 }
 
                 // Send status change events
@@ -760,10 +942,16 @@ public class JobsController : ControllerBase
                 var videoArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4");
                 var subtitleArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "subtitle" || a.Type == "text/srt");
 
+                // Log job completion details for debugging
+                Log.Information(
+                    "[{CorrelationId}] Job {JobId} completed via events endpoint. OutputPath={OutputPath}, Artifacts={ArtifactCount}",
+                    correlationId, job.Id, job.OutputPath ?? "NULL", job.Artifacts?.Count ?? 0);
+
                 await SendSseEventWithId("job-completed", new
                 {
                     status = "Succeeded",
                     jobId = job.Id,
+                    outputPath = job.OutputPath ?? videoArtifact?.Path ?? "",
                     artifacts = job.Artifacts.Select(a => new {
                         name = a.Name,
                         path = a.Path,
@@ -1365,7 +1553,7 @@ public class JobsController : ControllerBase
 
             if (job != null)
             {
-                Log.Information("[{CorrelationId}] Streaming video generation job {JobId} via SSE (found after {WaitAttempts} attempts)", 
+                Log.Information("[{CorrelationId}] Streaming video generation job {JobId} via SSE (found after {WaitAttempts} attempts)",
                     correlationId, jobId, waitAttempts);
 
                 // Send initial state with normalized status
@@ -1387,6 +1575,11 @@ public class JobsController : ControllerBase
                 var lastStage = job.Stage;
                 var pollIntervalMs = 500; // Poll every 500ms for responsiveness
                 var heartbeatCounter = 0;
+                var lastProgressChangeTime = DateTime.UtcNow;
+                var stallWarningThresholdSeconds = 120; // Warn after 2 minutes without progress
+                var stallFailureThresholdSeconds = 180; // Fail after 3 minutes without progress
+                var stallWarningEmitted = false;
+                var stallFailureEmitted = false;
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
@@ -1396,9 +1589,76 @@ public class JobsController : ControllerBase
                     job = _jobRunner.GetJob(jobId);
                     if (job == null) break;
 
+                    // Detect stalled jobs and emit warning/failure events so the client can react
+                    if (job.Percent != lastPercent)
+                    {
+                        lastProgressChangeTime = DateTime.UtcNow;
+                        stallWarningEmitted = false;
+                        stallFailureEmitted = false;
+                    }
+                    else
+                    {
+                        var timeSinceLastProgress = (DateTime.UtcNow - lastProgressChangeTime).TotalSeconds;
+
+                        if (timeSinceLastProgress >= stallWarningThresholdSeconds && !stallWarningEmitted)
+                        {
+                            Log.Warning(
+                                "[{CorrelationId}] Job {JobId} appears stalled at {Percent}% (stage: {Stage}) - no progress for {Seconds:F0}s",
+                                correlationId, jobId, job.Percent, job.Stage, timeSinceLastProgress);
+
+                            var warningData = JsonSerializer.Serialize(new
+                            {
+                                message = $"Job progress appears stalled at {job.Percent}% ({job.Stage}). If this persists, consider cancelling and retrying.",
+                                step = job.Stage,
+                                percent = job.Percent,
+                                stallDurationSeconds = (int)timeSinceLastProgress,
+                                correlationId
+                            });
+
+                            await Response.WriteAsync("event: warning\n", cancellationToken).ConfigureAwait(false);
+                            await Response.WriteAsync($"data: {warningData}\n\n", cancellationToken).ConfigureAwait(false);
+                            await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                            stallWarningEmitted = true;
+                        }
+
+                        if (timeSinceLastProgress >= stallFailureThresholdSeconds && !stallFailureEmitted)
+                        {
+                            Log.Error(
+                                "[{CorrelationId}] Job {JobId} stalled for {Seconds:F0}s at {Percent}% ({Stage}), emitting failure event and marking as failed",
+                                correlationId, jobId, timeSinceLastProgress, job.Percent, job.Stage);
+
+                            var failureMessage =
+                                $"Job stalled at {job.Stage} stage with no progress for over {stallFailureThresholdSeconds / 60.0:F0} minutes";
+
+                            // Force the job into a failed terminal state so polling endpoints also report failure
+                            _jobRunner.FailJobAsStalled(
+                                jobId,
+                                job.Stage,
+                                job.Percent,
+                                TimeSpan.FromSeconds(timeSinceLastProgress),
+                                correlationId);
+
+                            var failureData = JsonSerializer.Serialize(new
+                            {
+                                status = "Failed",
+                                jobId = job.Id,
+                                stage = job.Stage,
+                                percent = job.Percent,
+                                errorMessage = failureMessage,
+                                stallDurationSeconds = (int)timeSinceLastProgress,
+                                correlationId
+                            });
+
+                            await Response.WriteAsync("event: job-failed\n", cancellationToken).ConfigureAwait(false);
+                            await Response.WriteAsync($"data: {failureData}\n\n", cancellationToken).ConfigureAwait(false);
+                            await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+                            stallFailureEmitted = true;
+                        }
+                    }
+
                     // Send updates when something changed OR every 10 polls (5 seconds) as heartbeat
-                    var shouldSendUpdate = job.Percent != lastPercent || 
-                                           job.Status != lastStatus || 
+                    var shouldSendUpdate = job.Percent != lastPercent ||
+                                           job.Status != lastStatus ||
                                            job.Stage != lastStage ||
                                            heartbeatCounter >= 10;
 
@@ -1427,13 +1687,20 @@ public class JobsController : ControllerBase
                     if (job.Status == JobStatus.Done || job.Status == JobStatus.Succeeded ||
                         job.Status == JobStatus.Failed || job.Status == JobStatus.Canceled)
                     {
+                        // Log job completion details for debugging
+                        var videoArtifact = job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4");
+                        Log.Information(
+                            "[{CorrelationId}] Job {JobId} completed. Status={Status}, OutputPath={OutputPath}, Artifacts={ArtifactCount}",
+                            correlationId, jobId, job.Status,
+                            job.OutputPath ?? "NULL", job.Artifacts?.Count ?? 0);
+
                         var finalData = JsonSerializer.Serialize(new
                         {
                             percent = job.Percent,
                             stage = job.Stage,
                             status = MapJobStatus(job.Status.ToString()),
                             message = job.Logs.LastOrDefault() ?? "",
-                            outputPath = job.OutputPath ?? job.Artifacts.FirstOrDefault(a => a.Type == "video" || a.Type == "video/mp4")?.Path
+                            outputPath = job.OutputPath ?? videoArtifact?.Path
                         });
 
                         await Response.WriteAsync($"event: job-completed\n", cancellationToken).ConfigureAwait(false);
@@ -1579,5 +1846,6 @@ public record CreateJobRequest(
     BriefDto Brief,
     PlanSpec PlanSpec,
     VoiceSpec VoiceSpec,
-    RenderSpec RenderSpec
+    RenderSpec RenderSpec,
+    string? ImageProvider = null
 );

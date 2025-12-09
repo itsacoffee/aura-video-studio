@@ -38,7 +38,9 @@ public class PexelsStockProvider : IStockProvider
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
-            _logger.LogWarning("Pexels API key not provided, returning empty results");
+            _logger.LogWarning(
+                "Pexels API key not configured. Get a free API key at https://www.pexels.com/api/ and configure it in Settings > Providers");
+            // Return empty list to let caller handle fallback gracefully
             return Array.Empty<Asset>();
         }
 

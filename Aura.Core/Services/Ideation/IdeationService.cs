@@ -25,12 +25,14 @@ public class IdeationService
 {
     private readonly ILogger<IdeationService> _logger;
     private readonly ILlmProvider _llmProvider;
-    private readonly LlmStageAdapter? _stageAdapter;
+    private readonly LlmStageAdapter _stageAdapter;
     private readonly ProjectContextManager _projectManager;
     private readonly ConversationContextManager _conversationManager;
     private readonly TrendingTopicsService _trendingTopicsService;
     private readonly RagContextBuilder? _ragContextBuilder;
     private readonly WebSearchService? _webSearchService;
+    // ARCHITECTURAL FIX: Inject IOllamaDirectClient instead of using reflection
+    private readonly IOllamaDirectClient? _ollamaDirectClient;
 
     private const int MinConceptCount = 3;
     private const int MaxConceptCount = 9;
@@ -43,9 +45,10 @@ public class IdeationService
         ProjectContextManager projectManager,
         ConversationContextManager conversationManager,
         TrendingTopicsService trendingTopicsService,
-        LlmStageAdapter? stageAdapter = null,
+        LlmStageAdapter stageAdapter,
         RagContextBuilder? ragContextBuilder = null,
-        WebSearchService? webSearchService = null)
+        WebSearchService? webSearchService = null,
+        IOllamaDirectClient? ollamaDirectClient = null)
     {
         _logger = logger;
         _llmProvider = llmProvider;
@@ -55,6 +58,56 @@ public class IdeationService
         _stageAdapter = stageAdapter;
         _ragContextBuilder = ragContextBuilder;
         _webSearchService = webSearchService;
+        _ollamaDirectClient = ollamaDirectClient;
+
+        _logger.LogInformation("IdeationService constructed:");
+        _logger.LogInformation("  ILlmProvider: {Type}", _llmProvider.GetType().Name);
+        _logger.LogInformation("  IOllamaDirectClient: {Status}",
+            _ollamaDirectClient != null ? "✓ Injected" : "✗ NULL");
+    }
+
+    /// <summary>
+    /// Check if an LLM provider is available for ideation
+    /// </summary>
+    public async Task<(bool IsAvailable, string? ErrorMessage)> CheckProviderAvailabilityAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var providerTypeName = _llmProvider.GetType().Name;
+
+            // Check if we're using the RuleBased fallback (no real LLM)
+            if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, "No AI provider is configured. Please start Ollama or configure another AI provider in Settings.");
+            }
+
+            // If Ollama provider, verify it's running
+            if (providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase))
+            {
+                if (_ollamaDirectClient == null)
+                {
+                    return (false, "Ollama client not configured. Please check your Ollama installation.");
+                }
+
+                var isAvailable = await _ollamaDirectClient.IsAvailableAsync(ct).ConfigureAwait(false);
+                if (!isAvailable)
+                {
+                    return (false, "Ollama is not running. Start it with 'ollama serve' in a terminal.");
+                }
+
+                var models = await _ollamaDirectClient.ListModelsAsync(ct).ConfigureAwait(false);
+                if (models.Count == 0)
+                {
+                    return (false, "No Ollama models installed. Install one with 'ollama pull llama3.1' or 'ollama pull qwen2.5'.");
+                }
+            }
+
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Failed to check provider availability: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -273,6 +326,7 @@ You MUST analyze the topic deeply and provide concepts that are genuinely useful
             string? jsonResponse = null;
             Exception? lastException = null;
             bool lastAttemptHadGenericContent = false;
+            string? providerUsed = null;
 
             // Create LLM parameters with JSON format for ideation (requires structured output)
             // This ensures Ollama and other providers return valid JSON
@@ -336,61 +390,68 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     // Verify provider type and log detailed information
                     var providerType = _llmProvider.GetType();
                     var providerTypeName = providerType.Name;
-                    var isComposite = providerTypeName == "CompositeLlmProvider";
+
+                    // Log progress during initialization phase
+                    if (attempt == 0)
+                    {
+                        _logger.LogInformation("Connecting to AI provider for ideation...");
+                    }
 
                     _logger.LogInformation(
                         "Calling LLM for ideation (Attempt {Attempt}/{Max}, Provider: {Provider}, Topic: {Topic})",
                         attempt + 1, maxRetries + 1, providerTypeName, request.Topic);
 
-                    // CRITICAL: Verify we're not using RuleBased or mock providers
-                    if (providerTypeName.Contains("RuleBased", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogError(
-                            "CRITICAL: Ideation is using RuleBased provider instead of real LLM (Ollama). " +
-                            "This will produce low-quality placeholder concepts. Check Ollama is running and configured.");
-                    }
-                    else if (providerTypeName.Contains("Mock", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogError(
-                            "CRITICAL: Ideation is using Mock provider. This should never happen in production. " +
-                            "Check LLM provider configuration.");
-                    }
-                    else if (isComposite)
-                    {
-                        // For CompositeLlmProvider, log that it will select the best available provider
-                        _logger.LogInformation(
-                            "Using CompositeLlmProvider - it will select the best available provider (Ollama if available)");
-                    }
-                    else
-                    {
-                        _logger.LogInformation(
-                            "Using direct provider: {Provider} - this should be Ollama or another real LLM provider",
-                            providerTypeName);
-                    }
-
                     var callStartTime = DateTime.UtcNow;
 
-                    // Try direct Ollama call first (similar to script generation) for better reliability
-                    // This bypasses CompositeLlmProvider fallback logic and ensures we use Ollama when available
+                    // Log progress: generating concepts
+                    _logger.LogInformation("Generating concepts for topic: {Topic}...", request.Topic);
+
+                    bool isOllamaProvider = providerTypeName.Contains("Ollama", StringComparison.OrdinalIgnoreCase);
+                    // Prefer StageAdapter (same path as script generation), then fall back to direct Ollama if allowed.
+                    var stageAdapterFailed = false;
                     try
                     {
+                        _logger.LogInformation("Using LlmStageAdapter for ideation (primary path)");
+                        var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                            currentSystemPrompt,
+                            currentUserPrompt,
+                            "Free", // Use Free tier for ideation (works with Ollama)
+                            false,  // Allow online providers
+                            ideationParams,
+                            ct).ConfigureAwait(false);
+
+                        if (!orchestrationResult.IsSuccess || string.IsNullOrWhiteSpace(orchestrationResult.Data))
+                        {
+                            stageAdapterFailed = true;
+                            var err = orchestrationResult.ErrorMessage ?? "LLM orchestration failed or returned empty data for ideation";
+                            _logger.LogWarning("LlmStageAdapter ideation failed/empty: {Error}", err);
+                        }
+                        else
+                        {
+                            jsonResponse = orchestrationResult.Data;
+                            providerUsed = orchestrationResult.ProviderUsed;
+                            _logger.LogInformation("Successfully generated ideation response via LlmStageAdapter (Provider: {Provider})",
+                                orchestrationResult.ProviderUsed ?? "Unknown");
+                        }
+                    }
+                    catch (Exception stageEx)
+                    {
+                        stageAdapterFailed = true;
+                        _logger.LogWarning(stageEx, "LlmStageAdapter ideation path threw, will try direct Ollama if permitted");
+                    }
+
+                    // Fallback: direct Ollama when StageAdapter failed or returned empty
+                    if (jsonResponse == null && stageAdapterFailed && isOllamaProvider)
+                    {
+                        _logger.LogInformation("Falling back to direct Ollama path with heartbeat logging for ideation");
                         jsonResponse = await GenerateWithOllamaDirectAsync(
                             currentSystemPrompt,
                             currentUserPrompt,
                             ideationParams,
                             request,
                             ct).ConfigureAwait(false);
-                        _logger.LogInformation("Successfully used direct Ollama API call for ideation");
-                    }
-                    catch (InvalidOperationException ex) when (ex.Message.Contains("Ollama") || ex.Message.Contains("not available") || ex.Message.Contains("cannot be used"))
-                    {
-                        // Ollama not available or direct call failed - fall back to CompositeLlmProvider
-                        _logger.LogInformation("Direct Ollama call not available, falling back to CompositeLlmProvider: {Error}", ex.Message);
-                        jsonResponse = await _llmProvider.GenerateChatCompletionAsync(
-                            currentSystemPrompt,
-                            currentUserPrompt,
-                            ideationParams,
-                            ct).ConfigureAwait(false);
+                        providerUsed = "Ollama";
+                        _logger.LogInformation("Successfully generated ideation response via direct Ollama API call");
                     }
 
                     var callDuration = DateTime.UtcNow - callStartTime;
@@ -413,11 +474,48 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                         attempt + 1, callDuration.TotalMilliseconds, jsonResponse.Length,
                         jsonResponse.Substring(0, Math.Min(200, jsonResponse.Length)));
 
-                    // Clean response before parsing (remove markdown code blocks)
-                    var cleanedResponse = CleanJsonResponse(jsonResponse);
+                    // Clean response before parsing (remove markdown code blocks, BOM, etc.)
+                    var cleanedResponse = RepairJsonResponse(jsonResponse);
 
-                    // Validate JSON structure before breaking
-                    var testDoc = JsonDocument.Parse(cleanedResponse);
+                    _logger.LogDebug("Repaired JSON response (length: {Length}): {Preview}",
+                        cleanedResponse.Length,
+                        cleanedResponse.Substring(0, Math.Min(500, cleanedResponse.Length)));
+
+                    // CRITICAL FIX: Wrap JSON parsing in try-catch with detailed error reporting
+                    JsonDocument testDoc;
+                    try
+                    {
+                        // Validate JSON structure before breaking with proper options
+                        testDoc = JsonDocument.Parse(cleanedResponse, new JsonDocumentOptions
+                        {
+                            AllowTrailingCommas = true,
+                            CommentHandling = JsonCommentHandling.Skip
+                        });
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        _logger.LogError(jsonEx,
+                            "Failed to parse JSON response (Attempt {Attempt}). Response preview: {Preview}",
+                            attempt + 1,
+                            cleanedResponse.Substring(0, Math.Min(500, cleanedResponse.Length)));
+
+                        // If this is not the last attempt, retry
+                        if (attempt < maxRetries)
+                        {
+                            _logger.LogWarning("JSON parsing failed, will retry (attempt {Attempt}/{MaxRetries})",
+                                attempt + 1, maxRetries + 1);
+                            lastException = jsonEx;
+                            continue;
+                        }
+
+                        // Last attempt failed - provide detailed error
+                        throw new InvalidOperationException(
+                            $"Failed to parse Ollama JSON response after {maxRetries + 1} attempts. " +
+                            $"Last error: {jsonEx.Message}. " +
+                            $"Response preview: {cleanedResponse.Substring(0, Math.Min(200, cleanedResponse.Length))}...",
+                            jsonEx);
+                    }
+
                     if (testDoc.RootElement.TryGetProperty("concepts", out var conceptsArray) &&
                         conceptsArray.ValueKind == JsonValueKind.Array &&
                         conceptsArray.GetArrayLength() > 0)
@@ -576,7 +674,8 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             // Validate concepts are not generic placeholders
             // Focus on actual placeholder phrases rather than strict length requirements
             // Local LLMs like Ollama may produce shorter but valid content
-            var hasGenericContent = concepts.Any(c =>
+            // IMPORTANT: Only reject if ALL concepts are generic (not just one or some)
+            var genericConcepts = concepts.Where(c =>
                 c.Description.Contains("This approach provides unique value through its specific perspective") ||
                 (c.Description.Contains("Introduction to how to") && c.Description.Length < 80) ||
                 (c.Description.Contains("Key aspects of") && !c.Description.Contains(request.Topic) && c.Description.Length < 60) ||
@@ -586,25 +685,18 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 (c.Description.Length < 30 && (
                     c.Description.Contains("This approach") ||
                     c.Description.Contains("Introduction to") ||
-                    c.Description.Contains("Key aspects"))));
+                    c.Description.Contains("Key aspects")))).ToList();
 
-            if (hasGenericContent)
+            // Only fail if ALL concepts are generic (reduce false positives)
+            var hasAllGenericContent = genericConcepts.Count > 0 && genericConcepts.Count == concepts.Count;
+
+            if (hasAllGenericContent)
             {
                 // Log detailed diagnostic information
                 var providerType = _llmProvider.GetType().Name;
-                var genericConcepts = concepts.Where(c =>
-                    c.Description.Contains("This approach provides unique value through its specific perspective") ||
-                    (c.Description.Contains("Introduction to how to") && c.Description.Length < 80) ||
-                    (c.Description.Contains("Key aspects of") && !c.Description.Contains(request.Topic) && c.Description.Length < 60) ||
-                    c.TalkingPoints?.Any(tp => tp.Contains("Introduction to") && !tp.Contains(request.Topic)) == true ||
-                    c.Pros.Any(p => p == "Engaging and accessible format") ||
-                    (c.Description.Length < 30 && (
-                        c.Description.Contains("This approach") ||
-                        c.Description.Contains("Introduction to") ||
-                        c.Description.Contains("Key aspects")))).ToList();
 
                 _logger.LogError(
-                    "Parsed concepts contain generic/placeholder content after all retries. " +
+                    "ALL parsed concepts contain generic/placeholder content after all retries. " +
                     "Provider: {Provider}, Response length: {Length}, Generic concepts: {GenericCount}/{TotalCount}. " +
                     "Response preview: {Preview}. " +
                     "This indicates the LLM may not be properly configured, the model is too small/weak, or needs different prompting.",
@@ -630,14 +722,47 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     "This usually means: (1) The LLM provider is not properly configured, (2) The model is not responding correctly, " +
                     "or (3) The prompt needs adjustment. Please check your LLM provider settings and try again.");
             }
+            else if (genericConcepts.Count > 0)
+            {
+                // Some generic content found, but not all - log a warning but continue
+                _logger.LogWarning(
+                    "Some concepts contain generic/placeholder content, but not all. " +
+                    "Generic: {GenericCount}/{TotalCount}. Continuing with valid concepts.",
+                    genericConcepts.Count,
+                    concepts.Count);
+            }
 
             _logger.LogInformation("Successfully generated {Count} concepts for topic: {Topic}",
                 concepts.Count, request.Topic);
 
+            // Determine if RuleBased provider was used (offline fallback)
+            // The RuleBased provider is the offline fallback that generates basic template content
+            const string RuleBasedProviderName = "RuleBased";
+            var isOfflineFallback = providerUsed != null &&
+                providerUsed.Contains(RuleBasedProviderName, StringComparison.OrdinalIgnoreCase);
+
+            string? fallbackReason = null;
+            if (isOfflineFallback)
+            {
+                // Provide a more informative fallback reason based on common scenarios
+                fallbackReason = "Primary AI provider not available. Ensure Ollama is running or configure an alternative AI provider.";
+                _logger.LogWarning(
+                    "OFFLINE FALLBACK USED: Ideation used {Provider} provider for topic: {Topic}. " +
+                    "For better results, ensure Ollama is running: 'ollama serve'",
+                    RuleBasedProviderName, request.Topic);
+            }
+
+            var metadata = new BrainstormMetadata(
+                ProviderUsed: providerUsed ?? "Unknown",
+                IsOfflineFallback: isOfflineFallback,
+                FallbackReason: fallbackReason
+            );
+
             return new BrainstormResponse(
                 Concepts: concepts,
                 OriginalTopic: request.Topic,
-                GeneratedAt: DateTime.UtcNow
+                GeneratedAt: DateTime.UtcNow,
+                Metadata: metadata
             );
         }
         catch (OperationCanceledException)
@@ -1818,7 +1943,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         try
         {
             // Clean the response - remove markdown code blocks and other LLM formatting artifacts
-            var cleanedResponse = CleanJsonResponse(response);
+            var cleanedResponse = RepairJsonResponse(response);
 
             if (string.IsNullOrWhiteSpace(cleanedResponse))
             {
@@ -1827,8 +1952,21 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             }
             else
             {
-                // Parse JSON response
-                var jsonDoc = JsonDocument.Parse(cleanedResponse);
+                // Create lenient JSON serializer options
+                var jsonOptions = new JsonSerializerOptions
+                {
+                    AllowTrailingCommas = true,
+                    ReadCommentHandling = JsonCommentHandling.Skip,
+                    PropertyNameCaseInsensitive = true
+                };
+
+                // Parse JSON response with lenient options
+                var jsonDoc = JsonDocument.Parse(cleanedResponse, new JsonDocumentOptions
+                {
+                    AllowTrailingCommas = true,
+                    CommentHandling = JsonCommentHandling.Skip
+                });
+
                 if (jsonDoc.RootElement.TryGetProperty("concepts", out var conceptsArray))
                 {
                     foreach (var conceptElement in conceptsArray.EnumerateArray())
@@ -1963,10 +2101,14 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                 ex.Message,
                 response.Substring(0, Math.Min(500, response.Length)));
 
+            // Log the raw response on parse failure for debugging
+            _logger.LogDebug("Raw LLM response that failed to parse: {RawResponse}",
+                response.Substring(0, Math.Min(2000, response.Length)));
+
             // Log the cleaned response for debugging
             try
             {
-                var cleaned = CleanJsonResponse(response);
+                var cleaned = RepairJsonResponse(response);
                 if (!string.IsNullOrWhiteSpace(cleaned) && cleaned != response)
                 {
                     _logger.LogDebug("Cleaned response (length: {Length}): {CleanedPreview}",
@@ -2020,7 +2162,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     "Full response preview: {Preview}",
                     originalTopic, response.Length, responsePreview);
 
-                // Provide more helpful error message
+                // Provide more helpful error message based on response characteristics
                 var errorMessage = response.Length < 50
                     ? $"LLM returned an incomplete response ({response.Length} characters). The response is too short to contain valid JSON. Please try again or check your LLM provider configuration."
                     : $"Failed to generate concepts from LLM response. The response could not be parsed as JSON and no meaningful content could be extracted. " +
@@ -3544,8 +3686,9 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
     }
 
     /// <summary>
-    /// Helper method to execute LLM generation with proper parameter handling for all providers
-    /// Supports model override, temperature, and other LLM parameters
+    /// Helper method to execute LLM generation with proper parameter handling for all providers.
+    /// Uses LlmStageAdapter for unified orchestration (same path as script generation).
+    /// Supports model override, temperature, and other LLM parameters.
     /// </summary>
     private async Task<string> GenerateWithLlmAsync(
         string prompt,
@@ -3566,65 +3709,55 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             prompt = prompt.Substring(0, MaxPromptLength);
         }
 
-        var providerType = _llmProvider.GetType().Name;
         var llmParams = request?.LlmParameters;
 
         _logger.LogInformation(
-            "Calling LLM provider for ideation (Provider: {Provider}, ModelOverride: {ModelOverride}, Temperature: {Temperature})",
-            providerType, llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
+            "Calling LLM for ideation via orchestration (ModelOverride: {ModelOverride}, Temperature: {Temperature})",
+            llmParams?.ModelOverride ?? "default", llmParams?.Temperature?.ToString() ?? "default");
 
         try
         {
             var startTime = DateTime.UtcNow;
             string response;
 
-            // Use provider-specific parameter handling if LLM parameters are provided
-            if (request != null && llmParams != null)
-            {
+            // Use LlmStageAdapter for unified orchestration (same path as script generation)
+            // This ensures proper provider selection, fallback logic, and timeout configuration
+            _logger.LogDebug("Using LlmStageAdapter for ideation LLM call");
+            var orchestrationResult = await _stageAdapter.GenerateChatCompletionAsync(
+                string.Empty, // No system prompt for raw completion style
+                prompt,
+                "Free", // Use Free tier for ideation (works with Ollama)
+                false,  // Allow online providers
+                llmParams,
+                ct).ConfigureAwait(false);
 
-                // Use DraftScriptAsync for proper parameter support if any parameters are specified
-                if (!string.IsNullOrWhiteSpace(llmParams.ModelOverride) ||
-                    llmParams.Temperature.HasValue || llmParams.TopP.HasValue ||
-                    llmParams.TopK.HasValue || llmParams.MaxTokens.HasValue)
-                {
-                    // LLM parameters specified - use provider-specific handling
-                    response = await GenerateWithDraftScriptAsync(prompt, request, ct).ConfigureAwait(false);
-                }
-                else
-                {
-                    // No special parameters - use CompleteAsync for simplicity
-                    _logger.LogDebug("Using CompleteAsync (no special parameters)");
-                    response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
-                }
-            }
-            else
+            if (!orchestrationResult.IsSuccess)
             {
-                // No request or LLM parameters - use CompleteAsync for simplicity
-                _logger.LogDebug("Using CompleteAsync (no LLM parameters provided)");
-                response = await _llmProvider.CompleteAsync(prompt, ct).ConfigureAwait(false);
+                ThrowOrchestrationError(orchestrationResult);
             }
+
+            response = orchestrationResult.Data ?? string.Empty;
+            _logger.LogInformation("Ideation LLM call completed via LlmStageAdapter (Provider: {Provider})",
+                orchestrationResult.ProviderUsed ?? "Unknown");
 
             var duration = DateTime.UtcNow - startTime;
-            _logger.LogDebug("LLM provider completed in {Duration}ms", duration.TotalMilliseconds);
+            _logger.LogDebug("LLM call completed in {Duration}ms", duration.TotalMilliseconds);
 
             if (string.IsNullOrWhiteSpace(response))
             {
-                _logger.LogWarning("LLM provider ({Provider}) returned empty response", providerType);
+                _logger.LogWarning("LLM returned empty response");
                 throw new InvalidOperationException("LLM provider returned an empty response. Please try again.");
             }
 
             // Validate response quality - check for common error patterns
             var trimmedResponse = response.Trim();
-            _logger.LogDebug("LLM provider ({Provider}) returned response of length {Length} characters",
-                providerType, response.Length);
+            _logger.LogDebug("LLM returned response of length {Length} characters", response.Length);
 
             if (trimmedResponse.Length < 50)
             {
                 _logger.LogWarning(
-                    "LLM response is suspiciously short ({Length} chars) from provider {Provider}. " +
-                    "Response: {Response}",
+                    "LLM response is suspiciously short ({Length} chars). Response: {Response}",
                     trimmedResponse.Length,
-                    providerType,
                     trimmedResponse.Substring(0, Math.Min(100, trimmedResponse.Length)));
             }
             else
@@ -3638,7 +3771,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            _logger.LogError("LLM generation timed out for provider {Provider}", providerType);
+            _logger.LogError("LLM generation timed out");
             throw new TimeoutException("LLM generation timed out. Please try again.", ex);
         }
         catch (OperationCanceledException)
@@ -3646,20 +3779,10 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             _logger.LogWarning("LLM generation was cancelled");
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not InvalidOperationException)
         {
-            _logger.LogError(ex, "Error calling LLM provider {Provider}: {ErrorMessage}", providerType, ex.Message);
-
-            // Provide helpful error message based on provider type
-            var errorMessage = providerType switch
-            {
-                "OllamaLlmProvider" => "Failed to generate concepts with Ollama. Please ensure Ollama is running and the model is available.",
-                "OpenAiLlmProvider" => "Failed to generate concepts with OpenAI. Please check your API key and network connection.",
-                "GeminiLlmProvider" => "Failed to generate concepts with Gemini. Please check your API key and network connection.",
-                _ => "Failed to generate concepts. Please try again or check your LLM provider configuration."
-            };
-
-            throw new InvalidOperationException(errorMessage, ex);
+            _logger.LogError(ex, "Error calling LLM: {ErrorMessage}", ex.Message);
+            throw new InvalidOperationException("Failed to generate concepts. Please try again or check your LLM provider configuration.", ex);
         }
     }
 
@@ -3694,9 +3817,9 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
     }
 
     /// <summary>
-    /// Generate using Ollama API directly with /api/chat endpoint (similar to script generation approach)
-    /// This bypasses CompositeLlmProvider fallback logic and ensures we use Ollama when available
-    /// Uses /api/chat with format=json for ideation (requires structured JSON output)
+    /// Generate using Ollama API directly with clean DI instead of reflection.
+    /// ARCHITECTURAL FIX: Uses IOllamaDirectClient instead of reflection-based access.
+    /// This is more maintainable and doesn't break when provider implementation changes.
     /// </summary>
     private async Task<string> GenerateWithOllamaDirectAsync(
         string systemPrompt,
@@ -3705,465 +3828,82 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         BrainstormRequest request,
         CancellationToken ct)
     {
-        // Use reflection to access Ollama provider's internal HttpClient and configuration
-        // This allows us to call Ollama API directly with proper parameters (like script generation)
-        var providerType = _llmProvider.GetType();
-        System.Net.Http.HttpClient? httpClient = null;
-        string baseUrl = "http://127.0.0.1:11434";
-        string? defaultModel = null; // No hardcoded fallback - must get from provider configuration
-        // Use a reasonable timeout - 3 minutes max for ideation to prevent indefinite hangs
-        // If Ollama is unresponsive, we want to fail fast and fall back to CompositeLlmProvider
-        TimeSpan timeout = TimeSpan.FromMinutes(3);
-        int maxRetries = 3;
-
-        // Check availability first (like script generation does)
-        ILlmProvider? ollamaProvider = null;
-
-        // Try to get Ollama provider - handle both direct OllamaLlmProvider and CompositeLlmProvider
-        if (providerType.Name == "OllamaLlmProvider")
-        {
-            // Direct Ollama provider - get fields via reflection
-            var httpClientField = providerType.GetField("_httpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var baseUrlField = providerType.GetField("_baseUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var modelField = providerType.GetField("_model", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var timeoutField = providerType.GetField("_timeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var maxRetriesField = providerType.GetField("_maxRetries", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            if (httpClientField != null && baseUrlField != null && modelField != null)
-            {
-                httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(_llmProvider);
-                baseUrl = (string?)baseUrlField.GetValue(_llmProvider) ?? baseUrl;
-                defaultModel = (string?)modelField.GetValue(_llmProvider); // Get from provider, no fallback
-                timeout = timeoutField?.GetValue(_llmProvider) as TimeSpan? ?? timeout;
-                maxRetries = (int)(maxRetriesField?.GetValue(_llmProvider) ?? maxRetries);
-            }
-        }
-        else if (providerType.Name == "CompositeLlmProvider")
-        {
-            // Composite provider - try to get Ollama provider from its internal providers
-            try
-            {
-                // First, try to get providers via GetProviders() method to ensure they're initialized
-                var getProvidersMethod = providerType.GetMethod("GetProviders", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                System.Collections.Generic.Dictionary<string, ILlmProvider>? providers = null;
-
-                if (getProvidersMethod != null)
-                {
-                    // Call GetProviders(false) to get cached providers without forcing refresh
-                    var providersResult = getProvidersMethod.Invoke(_llmProvider, new object[] { false });
-                    providers = providersResult as System.Collections.Generic.Dictionary<string, ILlmProvider>;
-                }
-
-                // Fallback: try direct field access if method doesn't work
-                if (providers == null)
-                {
-                    var providersField = providerType.GetField("_cachedProviders", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (providersField != null)
-                    {
-                        providers = providersField.GetValue(_llmProvider) as System.Collections.Generic.Dictionary<string, ILlmProvider>;
-                    }
-                }
-
-                if (providers != null && providers.TryGetValue("Ollama", out ollamaProvider) && ollamaProvider != null)
-                {
-                    var ollamaProviderType = ollamaProvider.GetType();
-                    var httpClientField = ollamaProviderType.GetField("_httpClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    var baseUrlField = ollamaProviderType.GetField("_baseUrl", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    var modelField = ollamaProviderType.GetField("_model", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    var timeoutField = ollamaProviderType.GetField("_timeout", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    var maxRetriesField = ollamaProviderType.GetField("_maxRetries", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-                    if (httpClientField != null && baseUrlField != null && modelField != null)
-                    {
-                        httpClient = (System.Net.Http.HttpClient?)httpClientField.GetValue(ollamaProvider);
-                        baseUrl = (string?)baseUrlField.GetValue(ollamaProvider) ?? baseUrl;
-                        defaultModel = (string?)modelField.GetValue(ollamaProvider) ?? defaultModel; // Get from provider (may be null if not set)
-                        timeout = timeoutField?.GetValue(ollamaProvider) as TimeSpan? ?? timeout;
-                        maxRetries = (int)(maxRetriesField?.GetValue(ollamaProvider) ?? maxRetries);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not extract Ollama provider from CompositeLlmProvider via reflection");
-            }
-        }
-
-        // Check availability first (like script generation does)
-        if (ollamaProvider != null)
-        {
-            try
-            {
-                var availabilityMethod = ollamaProvider.GetType().GetMethod("IsServiceAvailableAsync",
-                    new[] { typeof(CancellationToken), typeof(bool) });
-                if (availabilityMethod != null)
-                {
-                    using var availabilityCts = new System.Threading.CancellationTokenSource();
-                    availabilityCts.CancelAfter(TimeSpan.FromSeconds(5));
-                    var availabilityTask = (Task<bool>)availabilityMethod.Invoke(ollamaProvider,
-                        new object[] { availabilityCts.Token, false })!;
-                    var isAvailable = await availabilityTask.ConfigureAwait(false);
-
-                    if (!isAvailable)
-                    {
-                        _logger.LogError("Ollama is not available for ideation. Please ensure Ollama is running: 'ollama serve'");
-                        throw new InvalidOperationException(
-                            "Ollama is required for ideation but is not available. " +
-                            "Please ensure Ollama is running: 'ollama serve' and verify models are installed: 'ollama list'");
-                    }
-                    _logger.LogInformation("Ollama availability check passed for ideation");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not check Ollama availability, proceeding with request attempt");
-            }
-        }
-
-        // Track if we created the HttpClient so we can dispose it properly
-        bool createdHttpClient = false;
-        if (httpClient == null)
-        {
-            _logger.LogInformation("Creating new HttpClient for direct Ollama API call (baseUrl: {BaseUrl})", baseUrl);
-            // Use a reasonable timeout - 5 minutes max for ideation (ideation can take time but shouldn't hang forever)
-            // This prevents indefinite hangs if Ollama is unresponsive
-            var httpTimeout = TimeSpan.FromMinutes(5);
-            httpClient = new System.Net.Http.HttpClient
-            {
-                Timeout = httpTimeout
-            };
-            createdHttpClient = true;
-            // Update the timeout to match HTTP client timeout to avoid confusion
-            timeout = httpTimeout;
-        }
-
-        // Get LLM parameters with defaults (like script generation does)
-        var llmParams = request.LlmParameters;
-        
-        // Apply user's explicit model override from the request (e.g., from the LLM selector in the UI)
-        // Priority: request.LlmModel > llmParams.ModelOverride > defaultModel (from provider config)
-        string? requestModelOverride = null;
-        if (!string.IsNullOrWhiteSpace(request.LlmModel))
-        {
-            requestModelOverride = request.LlmModel;
-            _logger.LogInformation("Using explicit model override from request: {Model} (Provider: {Provider})",
-                request.LlmModel, request.LlmProvider ?? "not specified");
-        }
-        
-        // Validate we have a model - either from request override, llmParams, or provider configuration
-        if (string.IsNullOrWhiteSpace(defaultModel) && 
-            string.IsNullOrWhiteSpace(llmParams?.ModelOverride) &&
-            string.IsNullOrWhiteSpace(requestModelOverride))
+        // ARCHITECTURAL FIX: Use injected IOllamaDirectClient instead of reflection
+        if (_ollamaDirectClient == null)
         {
             throw new InvalidOperationException(
-                "Cannot determine Ollama model for ideation. " +
-                "Please ensure Ollama provider is properly configured with a model in Settings, " +
-                "or select a model from the AI Model dropdown. " +
-                "The model should be configured in Provider Settings (Ollama Model field).");
+                "OllamaDirectClient not available. Ensure it is registered in DI container.");
         }
-        
-        // Use model in priority order: request.LlmModel > llmParams.ModelOverride > defaultModel
-        var modelToUse = !string.IsNullOrWhiteSpace(requestModelOverride)
-            ? requestModelOverride
-            : !string.IsNullOrWhiteSpace(llmParams?.ModelOverride)
-                ? llmParams.ModelOverride
-                : defaultModel!; // Safe because we validated above
-        var temperature = parameters?.Temperature ?? llmParams?.Temperature ?? 0.7;
-        var maxTokens = parameters?.MaxTokens ?? llmParams?.MaxTokens ?? 2048;
-        var topP = parameters?.TopP ?? llmParams?.TopP ?? 0.9;
-        var topK = parameters?.TopK ?? llmParams?.TopK;
+
+        // Check availability first
+        var isAvailable = await _ollamaDirectClient.IsAvailableAsync(ct).ConfigureAwait(false);
+        if (!isAvailable)
+        {
+            throw new InvalidOperationException(
+                "Ollama is not available. Please ensure Ollama is running and accessible.");
+        }
+
+        // Determine model to use (BrainstormRequest uses LlmModel property)
+        string? modelToUse = request.LlmModel ?? parameters.ModelOverride;
+        if (string.IsNullOrWhiteSpace(modelToUse))
+        {
+            // Try to get available models and pick the first one
+            var models = await _ollamaDirectClient.ListModelsAsync(ct).ConfigureAwait(false);
+            if (models.Count > 0)
+            {
+                modelToUse = models[0];
+                _logger.LogInformation("No model specified, using first available: {Model}", modelToUse);
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "No model specified and no models available on Ollama instance.");
+            }
+        }
 
         _logger.LogInformation(
-            "Calling Ollama API directly for ideation (Model: {Model}, Temperature: {Temperature}, MaxTokens: {MaxTokens})",
-            modelToUse, temperature, maxTokens);
+            "Generating ideation with Ollama: model={Model}, systemPromptLength={SystemLength}, userPromptLength={UserLength}",
+            modelToUse, systemPrompt.Length, userPrompt.Length);
 
-        // Build combined prompt (like script generation does) - combine system and user prompts
-        // Script generation uses a single prompt, not messages array
-        var combinedPrompt = string.IsNullOrWhiteSpace(systemPrompt)
-            ? userPrompt
-            : $"{systemPrompt}\n\n{userPrompt}";
-
-        // Build Ollama API request with parameters (using /api/generate endpoint like script generation)
-        var options = new Dictionary<string, object>
+        // Build generation options
+        var options = new OllamaGenerationOptions
         {
-            { "temperature", temperature },
-            { "top_p", topP },
-            { "num_predict", maxTokens }
+            Temperature = parameters.Temperature,
+            TopP = parameters.TopP,
+            MaxTokens = parameters.MaxTokens,
+            NumGpu = -1, // Use all available GPUs
+            NumCtx = 4096 // Standard context window
         };
 
-        if (topK.HasValue)
+        _logger.LogInformation(
+            "Ollama generation options for ideation: numGpu={NumGpu}, numCtx={NumCtx}, maxTokens={MaxTokens}",
+            options.NumGpu, options.NumCtx, options.MaxTokens);
+
+        // Call Ollama with retry handled by OllamaDirectClient
+        try
         {
-            options["top_k"] = topK.Value;
+            var response = await _ollamaDirectClient.GenerateAsync(
+                modelToUse,
+                userPrompt,
+                systemPrompt,
+                options,
+                ct).ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Ollama ideation generation completed: responseLength={Length}",
+                response.Length);
+
+            return response;
         }
-
-        // Use /api/generate endpoint with format=json for ideation (requires structured JSON output)
-        // This matches the working script generation implementation
-        var requestBody = new
+        catch (Exception ex)
         {
-            model = modelToUse,
-            prompt = combinedPrompt,
-            stream = false,
-            format = "json", // Ideation requires JSON format
-            options = options
-        };
-
-        var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
-        var content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-        Exception? lastException = null;
-        for (int attempt = 0; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                if (attempt > 0)
-                {
-                    var backoffDelay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
-                    _logger.LogInformation("Retrying Ollama ideation (attempt {Attempt}/{MaxRetries}) after {Delay}s",
-                        attempt + 1, maxRetries + 1, backoffDelay.TotalSeconds);
-                    await Task.Delay(backoffDelay, ct).ConfigureAwait(false);
-                }
-
-                // CRITICAL FIX: Use independent timeout - don't link to parent token for timeout management
-                // This prevents upstream components (frontend, API middleware) from cancelling our long-running operation
-                // if they have shorter timeouts. The linked token approach would cancel if ANY upstream has a short timeout.
-                using var cts = new System.Threading.CancellationTokenSource();
-                cts.CancelAfter(timeout);
-
-                // Still respect explicit user cancellation by checking the parent token
-                if (ct.IsCancellationRequested)
-                {
-                    throw new OperationCanceledException("Ideation was cancelled by user", ct);
-                }
-
-                _logger.LogInformation("Sending ideation request to Ollama (attempt {Attempt}/{MaxRetries}, timeout: {Timeout:F1} minutes)",
-                    attempt + 1, maxRetries + 1, timeout.TotalMinutes);
-
-                _logger.LogInformation("Request sent to Ollama, awaiting response (timeout: {Timeout:F1} minutes, this may take a while for large models)...",
-                    timeout.TotalMinutes);
-
-                // Start periodic heartbeat logging to show the system is still working
-                // During a long wait, there's no visibility that the system is working without this
-                var requestStartTime = DateTime.UtcNow;
-                using var heartbeatCts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
-                var heartbeatTask = Task.Run(async () =>
-                {
-                    try
-                    {
-                        while (!heartbeatCts.Token.IsCancellationRequested)
-                        {
-                            await Task.Delay(TimeSpan.FromSeconds(30), heartbeatCts.Token).ConfigureAwait(false);
-                            var elapsed = DateTime.UtcNow - requestStartTime;
-                            var remaining = timeout.TotalSeconds - elapsed.TotalSeconds;
-                            if (remaining > 0)
-                            {
-                                _logger.LogInformation(
-                                    "Still awaiting Ollama ideation response... ({Elapsed:F0}s elapsed, {Remaining:F0}s remaining before timeout)",
-                                    elapsed.TotalSeconds,
-                                    remaining);
-                            }
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Expected when request completes or is cancelled
-                    }
-                }, heartbeatCts.Token);
-
-                // Use /api/generate endpoint (like script generation) - this is the correct endpoint for Ollama
-                var response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
-
-                // Check for model not found error - if model doesn't exist, query for available models and use first one
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-                    if (errorContent.Contains("model") && errorContent.Contains("not found"))
-                    {
-                        _logger.LogWarning("Model '{Model}' not found, querying Ollama for available models", modelToUse);
-                        
-                        // Query Ollama for available models (like script generation does)
-                        try
-                        {
-                            using var tagsCts = new System.Threading.CancellationTokenSource();
-                            tagsCts.CancelAfter(TimeSpan.FromSeconds(10));
-                            var tagsResponse = await httpClient.GetAsync($"{baseUrl}/api/tags", tagsCts.Token).ConfigureAwait(false);
-                            
-                            if (tagsResponse.IsSuccessStatusCode)
-                            {
-                                var tagsContent = await tagsResponse.Content.ReadAsStringAsync(tagsCts.Token).ConfigureAwait(false);
-                                var tagsDoc = System.Text.Json.JsonDocument.Parse(tagsContent);
-                                
-                                if (tagsDoc.RootElement.TryGetProperty("models", out var modelsArray) &&
-                                    modelsArray.ValueKind == System.Text.Json.JsonValueKind.Array)
-                                {
-                                    var availableModels = new List<string>();
-                                    foreach (var modelElement in modelsArray.EnumerateArray())
-                                    {
-                                        if (modelElement.TryGetProperty("name", out var nameProp))
-                                        {
-                                            var name = nameProp.GetString();
-                                            if (!string.IsNullOrEmpty(name))
-                                            {
-                                                availableModels.Add(name);
-                                            }
-                                        }
-                                    }
-                                    
-                                    if (availableModels.Count > 0)
-                                    {
-                                        // Use the first available model (like script generation would)
-                                        var fallbackModel = availableModels[0];
-                                        _logger.LogInformation("Model '{RequestedModel}' not found, using first available model: '{FallbackModel}'. Available models: {AllModels}",
-                                            modelToUse, fallbackModel, string.Join(", ", availableModels));
-                                        modelToUse = fallbackModel;
-                                        
-                                        // Retry with the available model
-                                        requestBody = new
-                                        {
-                                            model = modelToUse,
-                                            prompt = combinedPrompt,
-                                            stream = false,
-                                            format = "json",
-                                            options = options
-                                        };
-                                        json = System.Text.Json.JsonSerializer.Serialize(requestBody);
-                                        content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
-                                        response = await httpClient.PostAsync($"{baseUrl}/api/generate", content, cts.Token).ConfigureAwait(false);
-                                        response.EnsureSuccessStatusCode();
-                                    }
-                                    else
-                                    {
-                                        throw new InvalidOperationException(
-                                            $"Model '{modelToUse}' not found and no models are available in Ollama. " +
-                                            $"Please install a model using: ollama pull <model-name>");
-                                    }
-                                }
-                                else
-                                {
-                                    throw new InvalidOperationException(
-                                        $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
-                                }
-                            }
-                            else
-                            {
-                                throw new InvalidOperationException(
-                                    $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
-                            }
-                        }
-                        catch (Exception ex) when (!(ex is InvalidOperationException))
-                        {
-                            _logger.LogError(ex, "Error querying Ollama for available models");
-                            throw new InvalidOperationException(
-                                $"Model '{modelToUse}' not found. Please pull the model first using: ollama pull {modelToUse}");
-                        }
-                    }
-                    else
-                    {
-                        response.EnsureSuccessStatusCode();
-                    }
-                }
-
-                // Cancel heartbeat since we got a response
-                heartbeatCts.Cancel();
-
-                // CRITICAL: Use cts.Token instead of ct for ReadAsStringAsync (like script generation)
-                // This prevents upstream components from cancelling our long-running operation
-                var responseJson = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
-
-                if (string.IsNullOrWhiteSpace(responseJson))
-                {
-                    _logger.LogError("Ollama returned empty JSON response for ideation");
-                    throw new InvalidOperationException("Ollama returned an empty JSON response");
-                }
-
-                _logger.LogDebug("Ollama API returned JSON response of length {Length} characters", responseJson.Length);
-
-                // Parse and validate response structure (like script generation)
-                System.Text.Json.JsonDocument? responseDoc = null;
-                try
-                {
-                    responseDoc = System.Text.Json.JsonDocument.Parse(responseJson);
-                }
-                catch (System.Text.Json.JsonException ex)
-                {
-                    _logger.LogError(ex, "Failed to parse Ollama JSON response: {Response}",
-                        responseJson.Substring(0, Math.Min(500, responseJson.Length)));
-                    throw new InvalidOperationException("Ollama returned invalid JSON response", ex);
-                }
-
-                // Check for errors in response (like script generation)
-                if (responseDoc.RootElement.TryGetProperty("error", out var errorElement))
-                {
-                    var errorMessage = errorElement.GetString() ?? "Unknown error";
-                    _logger.LogError("Ollama API error: {Error}", errorMessage);
-                    throw new InvalidOperationException($"Ollama API error: {errorMessage}");
-                }
-
-                // /api/generate returns response in 'response' field (like script generation)
-                if (responseDoc.RootElement.TryGetProperty("response", out var responseText))
-                {
-                    var result = responseText.GetString() ?? string.Empty;
-
-                    if (string.IsNullOrWhiteSpace(result))
-                    {
-                        _logger.LogError("Ollama returned an empty response. Response JSON: {Response}",
-                            responseJson.Substring(0, Math.Min(1000, responseJson.Length)));
-                        throw new InvalidOperationException("Ollama returned an empty response");
-                    }
-
-                    _logger.LogInformation("Ollama ideation succeeded with {Length} characters", result.Length);
-                    return result;
-                }
-
-                // Log available fields for debugging
-                var availableFields = string.Join(", ", responseDoc.RootElement.EnumerateObject().Select(p => p.Name));
-                _logger.LogError(
-                    "Ollama response did not contain expected 'response' field. Available fields: {Fields}. Response: {Response}",
-                    availableFields,
-                    responseJson.Substring(0, Math.Min(500, responseJson.Length)));
-                throw new InvalidOperationException($"Invalid response structure from Ollama. Expected 'response' field but got: {responseJson.Substring(0, Math.Min(200, responseJson.Length))}");
-            }
-            catch (TaskCanceledException ex)
-            {
-                lastException = ex;
-                if (attempt < maxRetries)
-                {
-                    _logger.LogWarning(ex, "Ollama ideation timed out (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
-                }
-                else
-                {
-                    _logger.LogError(ex, "Ollama ideation timed out on final attempt ({Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
-                }
-            }
-            catch (System.Net.Http.HttpRequestException ex)
-            {
-                lastException = ex;
-                if (attempt < maxRetries)
-                {
-                    _logger.LogWarning(ex, "Ollama ideation connection failed (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
-                }
-                else
-                {
-                    _logger.LogError(ex, "Ollama ideation connection failed on final attempt ({Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
-                }
-            }
-            catch (Exception ex)
-            {
-                lastException = ex;
-                if (attempt < maxRetries)
-                {
-                    _logger.LogWarning(ex, "Error calling Ollama for ideation (attempt {Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
-                }
-                else
-                {
-                    _logger.LogError(ex, "Error calling Ollama for ideation on final attempt ({Attempt}/{MaxRetries})", attempt + 1, maxRetries + 1);
-                }
-            }
+            _logger.LogError(ex, "Failed to generate ideation with Ollama using model {Model}", modelToUse);
+            throw new InvalidOperationException(
+                $"Failed to generate concepts with Ollama. Please ensure Ollama is running and model '{modelToUse}' is available.",
+                ex);
         }
-
-        throw new InvalidOperationException(
-            $"Failed to generate concepts with Ollama after {maxRetries + 1} attempts. Please ensure Ollama is running and model '{modelToUse}' is available.",
-            lastException);
     }
+
 
     /// <summary>
     /// Format a number with K/M/B suffixes for readability
@@ -4180,14 +3920,130 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
     }
 
     /// <summary>
+    /// Throws an InvalidOperationException with detailed error information from an orchestration result.
+    /// Logs the error before throwing for debugging purposes.
+    /// </summary>
+    private void ThrowOrchestrationError(Aura.Core.Orchestration.OrchestrationResult<string> orchestrationResult)
+    {
+        _logger.LogError(
+            "Ideation LLM orchestration failed: {Error}, Provider: {Provider}",
+            orchestrationResult.ErrorMessage,
+            orchestrationResult.ProviderUsed);
+
+        throw new InvalidOperationException(
+            $"Ideation failed: {orchestrationResult.ErrorMessage ?? "Unknown error"}. " +
+            $"Provider: {orchestrationResult.ProviderUsed ?? "Unknown"}");
+    }
+
+    /// <summary>
     /// Clean JSON response by removing markdown code blocks and other LLM formatting artifacts
     /// </summary>
+    /// <summary>
+    /// Repair and clean JSON response from LLM providers to handle common formatting issues
+    /// </summary>
+    private static string RepairJsonResponse(string response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return string.Empty;
+
+        var cleaned = response.Trim();
+
+        // Remove BOM (Byte Order Mark) if present
+        if (cleaned.Length > 0 && cleaned[0] == '\uFEFF')
+        {
+            cleaned = cleaned.Substring(1);
+        }
+
+        // Remove markdown code block wrappers using regex for more robust matching
+        cleaned = System.Text.RegularExpressions.Regex.Replace(
+            cleaned,
+            @"^```(?:json)?\s*",
+            "",
+            System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleaned = System.Text.RegularExpressions.Regex.Replace(
+            cleaned,
+            @"\s*```$",
+            "",
+            System.Text.RegularExpressions.RegexOptions.Multiline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        cleaned = cleaned.Trim();
+
+        // CRITICAL FIX: Handle incomplete JSON from Ollama streaming
+        // If the response ends with incomplete JSON structure, try to repair it
+        var firstBrace = cleaned.IndexOf('{');
+        var lastBrace = cleaned.LastIndexOf('}');
+
+        if (firstBrace >= 0 && lastBrace > firstBrace)
+        {
+            cleaned = cleaned.Substring(firstBrace, lastBrace - firstBrace + 1);
+
+            // CRITICAL FIX: Try to repair incomplete JSON
+            // Count braces to detect truncated JSON
+            int openBraces = 0;
+            int closeBraces = 0;
+            foreach (char c in cleaned)
+            {
+                if (c == '{') openBraces++;
+                if (c == '}') closeBraces++;
+            }
+
+            // If we have more open braces than close braces, try to close them
+            if (openBraces > closeBraces)
+            {
+                // Add missing closing braces
+                var missingBraces = openBraces - closeBraces;
+                cleaned = cleaned + new string('}', missingBraces);
+            }
+        }
+        else if (firstBrace >= 0 && lastBrace < 0)
+        {
+            // CRITICAL FIX: Incomplete JSON - only opening brace found
+            // Try to extract and complete it
+            cleaned = cleaned.Substring(firstBrace);
+
+            // Count open and close braces in a single pass for efficiency
+            int openBraces = 0;
+            int closeBraces = 0;
+            foreach (char c in cleaned)
+            {
+                if (c == '{') openBraces++;
+                else if (c == '}') closeBraces++;
+            }
+
+            var missingBraces = openBraces - closeBraces;
+            if (missingBraces > 0)
+            {
+                cleaned = cleaned + new string('}', missingBraces);
+            }
+        }
+        else
+        {
+            // If no object found, try to find a JSON array
+            var arrayMatch = System.Text.RegularExpressions.Regex.Match(cleaned, @"\[[\s\S]*\]");
+            if (arrayMatch.Success)
+            {
+                cleaned = arrayMatch.Value;
+            }
+        }
+
+        // Final trim
+        cleaned = cleaned.Trim();
+
+        return cleaned;
+    }
+
     private static string CleanJsonResponse(string response)
     {
         if (string.IsNullOrWhiteSpace(response))
             return string.Empty;
 
         var cleanedResponse = response.Trim();
+
+        // Remove BOM (Byte Order Mark) if present
+        if (cleanedResponse.Length > 0 && cleanedResponse[0] == '\uFEFF')
+        {
+            cleanedResponse = cleanedResponse.Substring(1);
+        }
 
         // Remove markdown code block markers with language specifier (case-insensitive)
         var jsonMarker = "```json";

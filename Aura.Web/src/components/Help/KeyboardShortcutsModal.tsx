@@ -49,7 +49,11 @@ const shortcutGroups: ShortcutGroup[] = [
       { keys: ['C'], description: 'Razor Tool (Cut)' },
       { keys: ['V'], description: 'Selection Tool' },
       { keys: ['M'], description: 'Add Marker' },
-      { keys: ['Ctrl', '+'], description: 'Zoom In Timeline' },
+      {
+        keys: ['Ctrl', '='],
+        description: 'Zoom In Timeline',
+        context: 'Also Ctrl+Shift+= (Ctrl++)',
+      },
       { keys: ['Ctrl', '-'], description: 'Zoom Out Timeline' },
     ],
   },

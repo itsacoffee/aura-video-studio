@@ -14,13 +14,16 @@ public class RagScriptEnhancer
 {
     private readonly ILogger<RagScriptEnhancer> _logger;
     private readonly RagContextBuilder _contextBuilder;
+    private readonly QueryExpansionService? _queryExpansion;
 
     public RagScriptEnhancer(
         ILogger<RagScriptEnhancer> logger,
-        RagContextBuilder contextBuilder)
+        RagContextBuilder contextBuilder,
+        QueryExpansionService? queryExpansion = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _contextBuilder = contextBuilder ?? throw new ArgumentNullException(nameof(contextBuilder));
+        _queryExpansion = queryExpansion;
     }
 
     /// <summary>
@@ -46,7 +49,7 @@ public class RagScriptEnhancer
                 brief.Topic, brief.RagConfiguration.TopK, brief.RagConfiguration.MinimumScore);
 
             // Use query expansion for better retrieval
-            var queryVariations = BuildRagQueryVariations(brief);
+            var queryVariations = await BuildRagQueryVariationsAsync(brief, ct).ConfigureAwait(false);
             _logger.LogInformation("Using {Count} query variations for RAG retrieval", queryVariations.Count);
 
             var ragConfig = new RagConfig
@@ -120,15 +123,19 @@ public class RagScriptEnhancer
             var ragContext = new Aura.Core.Models.RAG.RagContext
             {
                 Query = BuildRagQuery(brief),
+                Status = updatedChunks.Count > 0 ? RagContextStatus.Success : RagContextStatus.NoRelevantChunks,
                 Chunks = updatedChunks,
                 Citations = allCitations.Values.OrderBy(c => c.Number).ToList(),
                 FormattedContext = formattedContext,
                 TotalTokens = totalTokens
             };
 
-            if (ragContext.Chunks.Count == 0)
+            // Check if meaningful context was retrieved
+            if (!ragContext.HasMeaningfulContext)
             {
-                _logger.LogWarning("No relevant RAG context found for query: {Query}", ragContext.Query);
+                _logger.LogInformation(
+                    "RAG enhancement skipped: Status={Status}. Brief will be used without RAG.",
+                    ragContext.Status);
                 return (brief, ragContext);
             }
 
@@ -142,7 +149,7 @@ public class RagScriptEnhancer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to enhance brief with RAG context, continuing without RAG");
+            _logger.LogWarning(ex, "Failed to enhance brief with RAG, using original brief");
             return (brief, null);
         }
     }
@@ -214,11 +221,41 @@ public class RagScriptEnhancer
     }
 
     /// <summary>
+    /// Builds multiple query variations for better RAG retrieval using LLM expansion when available
+    /// </summary>
+    private async Task<System.Collections.Generic.List<string>> BuildRagQueryVariationsAsync(Brief brief, CancellationToken ct)
+    {
+        var baseQuery = BuildRagQuery(brief);
+        
+        // Try LLM-based expansion if available and enabled
+        if (_queryExpansion != null && brief.RagConfiguration?.EnableLlmQueryExpansion == true)
+        {
+            try
+            {
+                var context = $"Goal: {brief.Goal}, Audience: {brief.Audience}";
+                var expanded = await _queryExpansion.ExpandQueryAsync(baseQuery, context, 6, ct)
+                    .ConfigureAwait(false);
+                
+                _logger.LogInformation("LLM-expanded query into {Count} variations", expanded.Count);
+                return expanded;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Query expansion failed, using fallback");
+            }
+        }
+        
+        // Fallback to existing basic expansion
+        return BuildRagQueryVariations(brief);
+    }
+
+    /// <summary>
     /// Enhances the brief by injecting RAG context into PromptModifiers
     /// </summary>
     private Brief EnhanceBriefWithContext(Brief brief, RagContext ragContext)
     {
-        var ragInstructions = FormatRagInstructions(ragContext);
+        var tightenClaims = brief.RagConfiguration?.TightenClaims ?? false;
+        var ragInstructions = FormatRagInstructions(ragContext, tightenClaims);
 
         var existingModifiers = brief.PromptModifiers;
         var existingInstructions = existingModifiers?.AdditionalInstructions ?? string.Empty;
@@ -239,7 +276,9 @@ public class RagScriptEnhancer
     /// <summary>
     /// Formats RAG context into prompt instructions
     /// </summary>
-    private string FormatRagInstructions(RagContext ragContext)
+    /// <param name="ragContext">The RAG context to format</param>
+    /// <param name="tightenClaims">Whether to include claim grounding instructions</param>
+    private string FormatRagInstructions(RagContext ragContext, bool tightenClaims)
     {
         var instructions = new System.Text.StringBuilder();
 
@@ -266,6 +305,35 @@ public class RagScriptEnhancer
                     (citation.Section != null ? $" - {citation.Section}" : "") +
                     (citation.PageNumber.HasValue ? $" (p. {citation.PageNumber})" : ""));
             }
+        }
+
+        if (tightenClaims)
+        {
+            instructions.AppendLine();
+            instructions.AppendLine();
+            instructions.AppendLine("# Claim Grounding Requirements");
+            instructions.AppendLine();
+            instructions.AppendLine("IMPORTANT: Follow these rules for factual accuracy:");
+            instructions.AppendLine();
+            instructions.AppendLine("1. **Only make claims that are supported by the reference material above.**");
+            instructions.AppendLine("   - If you cannot find support for a claim, either omit it or phrase it as an opinion/general statement.");
+            instructions.AppendLine();
+            instructions.AppendLine("2. **Always cite your sources inline.**");
+            instructions.AppendLine("   - When stating a fact, include the citation immediately: \"Studies show X [Citation 1].\"");
+            instructions.AppendLine();
+            instructions.AppendLine("3. **Distinguish between facts and opinions.**");
+            instructions.AppendLine("   - Facts: Use when supported by citations.");
+            instructions.AppendLine("   - Opinions/General statements: Use phrases like \"Many believe...\", \"It's often said...\", \"Generally speaking...\"");
+            instructions.AppendLine();
+            instructions.AppendLine("4. **Avoid these unsupported claim patterns:**");
+            instructions.AppendLine("   - \"Research shows...\" (without citation)");
+            instructions.AppendLine("   - \"Studies have found...\" (without citation)");
+            instructions.AppendLine("   - \"X percent of...\" (without citation)");
+            instructions.AppendLine("   - \"According to experts...\" (without citation)");
+            instructions.AppendLine();
+            instructions.AppendLine("5. **When in doubt, use hedging language:**");
+            instructions.AppendLine("   - \"This may...\" instead of \"This will...\"");
+            instructions.AppendLine("   - \"Some suggest...\" instead of \"Everyone knows...\"");
         }
 
         return instructions.ToString();

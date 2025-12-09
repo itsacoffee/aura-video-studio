@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Models;
 using Aura.Core.Models.Localization;
+using Aura.Core.Orchestration;
 using Aura.Core.Providers;
 using Aura.Core.Services.Localization;
 using Microsoft.Extensions.Logging;
@@ -20,13 +21,24 @@ public class TranslationServiceTests
 {
     private readonly Mock<ILogger<TranslationService>> _loggerMock;
     private readonly Mock<ILlmProvider> _llmProviderMock;
+    private readonly Mock<LlmStageAdapter> _stageAdapterMock;
     private readonly TranslationService _service;
 
     public TranslationServiceTests()
     {
         _loggerMock = new Mock<ILogger<TranslationService>>();
         _llmProviderMock = new Mock<ILlmProvider>();
-        _service = new TranslationService(_loggerMock.Object, _llmProviderMock.Object);
+
+        // Create mock stage adapter
+        var mockAdapterLogger = new Mock<ILogger<LlmStageAdapter>>();
+        var mockProviderMixer = new Mock<Aura.Core.Orchestrator.ProviderMixer>();
+        _stageAdapterMock = new Mock<LlmStageAdapter>(
+            mockAdapterLogger.Object,
+            new Dictionary<string, ILlmProvider> { { "RuleBased", _llmProviderMock.Object } },
+            mockProviderMixer.Object,
+            null);
+
+        _service = new TranslationService(_loggerMock.Object, _llmProviderMock.Object, _stageAdapterMock.Object);
     }
 
     #region ExtractTranslation Tests
