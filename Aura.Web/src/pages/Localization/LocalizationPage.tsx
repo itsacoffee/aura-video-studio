@@ -43,7 +43,7 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXL,
     paddingLeft: tokens.spacingHorizontalXXL,
     paddingRight: tokens.spacingHorizontalXXL,
-    maxWidth: '1200px',
+    maxWidth: '1400px',
     margin: '0 auto',
   },
   header: {
@@ -75,6 +75,7 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXL,
     paddingLeft: tokens.spacingHorizontalXXL,
     paddingRight: tokens.spacingHorizontalXXL,
+    width: '100%',
   },
   sectionTitle: {
     marginBottom: tokens.spacingVerticalS,
@@ -89,7 +90,8 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXL,
-    maxWidth: '700px',
+    maxWidth: '960px',
+    width: '100%',
   },
   fieldGroup: {
     display: 'flex',
@@ -98,7 +100,7 @@ const useStyles = makeStyles({
   },
   fieldHint: {
     color: tokens.colorNeutralForeground3,
-    fontSize: tokens.fontSizeBase200,
+    fontSize: '14px',
     lineHeight: '1.5',
     marginTop: tokens.spacingVerticalXS,
   },
@@ -123,7 +125,7 @@ const useStyles = makeStyles({
     backgroundColor: tokens.colorNeutralBackground1,
     borderRadius: tokens.borderRadiusSmall,
     fontFamily: 'monospace',
-    fontSize: '14px',
+    fontSize: '15px',
     lineHeight: '1.6',
     whiteSpace: 'pre-wrap',
   },
@@ -134,7 +136,7 @@ const useStyles = makeStyles({
   progressText: {
     marginTop: tokens.spacingVerticalS,
     color: tokens.colorNeutralForeground3,
-    fontSize: '12px',
+    fontSize: '13px',
     lineHeight: '1.5',
   },
   errorContainer: {
@@ -142,7 +144,7 @@ const useStyles = makeStyles({
   },
   errorGuidance: {
     marginTop: tokens.spacingVerticalM,
-    fontSize: '13px',
+    fontSize: '14px',
     lineHeight: '1.6',
     color: tokens.colorNeutralForeground2,
     display: 'flex',
@@ -156,7 +158,7 @@ const useStyles = makeStyles({
     marginTop: tokens.spacingVerticalM,
   },
   suggestedAction: {
-    fontSize: '12px',
+    fontSize: '13px',
     lineHeight: '1.5',
     padding: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
     backgroundColor: tokens.colorNeutralBackground3,
@@ -174,9 +176,26 @@ const useStyles = makeStyles({
     marginTop: tokens.spacingVerticalXS,
   },
   estimatedTime: {
-    fontSize: tokens.fontSizeBase200,
+    fontSize: '14px',
     color: tokens.colorNeutralForeground3,
     fontStyle: 'italic',
+  },
+  textarea: {
+    width: '100%',
+    minHeight: '240px',
+    fontSize: '15px',
+    lineHeight: '1.6',
+    padding: tokens.spacingHorizontalM,
+  },
+  '@media (max-width: 900px)': {
+    container: {
+      paddingLeft: tokens.spacingHorizontalL,
+      paddingRight: tokens.spacingHorizontalL,
+    },
+    toolCard: {
+      paddingLeft: tokens.spacingHorizontalL,
+      paddingRight: tokens.spacingHorizontalL,
+    },
   },
 });
 
@@ -681,6 +700,7 @@ export const LocalizationPage: React.FC = () => {
             <div className={styles.fieldGroup}>
               <Field label="Text to Translate" required>
                 <Textarea
+                  className={styles.textarea}
                   value={sourceText}
                   onChange={(_, data) => setSourceText(data.value)}
                   placeholder="Enter text to translate..."
@@ -844,6 +864,7 @@ export const LocalizationPage: React.FC = () => {
             <div className={styles.fieldGroup}>
               <Field label="Content to Adapt" required>
                 <Textarea
+                  className={styles.textarea}
                   value={sourceText}
                   onChange={(_, data) => setSourceText(data.value)}
                   placeholder="Enter content to culturally adapt..."

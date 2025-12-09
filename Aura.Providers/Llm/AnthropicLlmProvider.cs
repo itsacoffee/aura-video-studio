@@ -1470,11 +1470,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
             var accumulated = new StringBuilder();
             var tokenIndex = 0;
             string? finishReason = null;
+            string? line;
 
-            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            while (!ct.IsCancellationRequested &&
+                   (line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) != null)
             {
-                var line = await reader.ReadLineAsync().ConfigureAwait(false);
-
                 if (string.IsNullOrWhiteSpace(line) || !line.StartsWith("data: "))
                 {
                     continue;

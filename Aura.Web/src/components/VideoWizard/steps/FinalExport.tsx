@@ -839,6 +839,11 @@ export const FinalExport: FC<FinalExportProps> = ({
 
             eventSource.onopen = () => {
               console.info('[SSE] Connection opened for job:', jobId);
+              if (!connectionEstablished) {
+                connectionEstablished = true;
+                clearTimeout(connectionTimeoutId);
+                console.info('[SSE] Connection acknowledged (onopen) - cleared connection timeout');
+              }
               setExportStage('Connected - waiting for progress updates...');
             };
           });

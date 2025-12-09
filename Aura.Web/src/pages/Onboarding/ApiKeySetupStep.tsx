@@ -1,3 +1,4 @@
+import type { OfflineProviderStatus } from '@/types/offlineProviders';
 import {
   Badge,
   Button,
@@ -27,14 +28,13 @@ import { ProviderHelpPanel } from '../../components/ProviderHelpPanel';
 import type { ProviderStatus } from '../../hooks/useProviderStatus';
 import { useProviderStatus } from '../../hooks/useProviderStatus';
 import { offlineProvidersApi } from '../../services/api/offlineProvidersApi';
-import type { OfflineProviderStatus } from '@/types/offlineProviders';
 
 const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXL,
-    maxWidth: '1150px',
+    maxWidth: '1400px',
     margin: '0 auto',
   },
   quickStartSection: {
@@ -76,15 +76,22 @@ const useStyles = makeStyles({
   },
   providersGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: tokens.spacingVerticalM,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+    columnGap: tokens.spacingHorizontalL,
+    rowGap: tokens.spacingVerticalL,
+    alignItems: 'start',
   },
   providerCard: {
+    position: 'relative',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
     padding: tokens.spacingVerticalL,
     borderRadius: tokens.borderRadiusLarge,
     border: `1px solid ${tokens.colorNeutralStroke2}`,
     backgroundColor: tokens.colorNeutralBackground1,
     transition: 'all 0.2s ease',
+    overflow: 'visible',
     cursor: 'pointer',
     ':hover': {
       border: `1px solid ${tokens.colorNeutralStroke1}`,
@@ -115,7 +122,7 @@ const useStyles = makeStyles({
   },
   providerDescription: {
     color: tokens.colorNeutralForeground3,
-    fontSize: tokens.fontSizeBase300,
+    fontSize: '15px',
     marginBottom: tokens.spacingVerticalM,
     lineHeight: tokens.lineHeightBase300,
   },
@@ -160,6 +167,16 @@ const useStyles = makeStyles({
   },
   collapseButton: {
     marginTop: tokens.spacingVerticalS,
+  },
+  '@media (max-width: 1100px)': {
+    providersGrid: {
+      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    },
+  },
+  '@media (max-width: 820px)': {
+    providersGrid: {
+      gridTemplateColumns: '1fr',
+    },
   },
 });
 
@@ -606,9 +623,7 @@ export function ApiKeySetupStep({
         if (isValidated) {
           return (
             <>
-              <Checkmark24Regular
-                style={{ color: tokens.colorPaletteGreenForeground1 }}
-              />
+              <Checkmark24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
               <Text size={300}>
                 {currentAccountInfo || ollamaStatus?.details || 'Ollama is running and validated'}
               </Text>
@@ -620,9 +635,7 @@ export function ApiKeySetupStep({
         if (!isValidated && isPolledAvailable && currentValidationStatus !== 'invalid') {
           return (
             <>
-              <Checkmark24Regular
-                style={{ color: tokens.colorPaletteGreenForeground1 }}
-              />
+              <Checkmark24Regular style={{ color: tokens.colorPaletteGreenForeground1 }} />
               <Text size={300}>
                 {ollamaStatus?.details || 'Ollama detected - click Validate to confirm'}
               </Text>
@@ -634,14 +647,10 @@ export function ApiKeySetupStep({
         if (currentValidationStatus === 'invalid') {
           return (
             <>
-              <Warning24Regular
-                style={{ color: tokens.colorPaletteRedForeground1 }}
-              />
+              <Warning24Regular style={{ color: tokens.colorPaletteRedForeground1 }} />
               <div>
                 <Text size={300}>
-                  {currentValidationErrors ||
-                    errorMessage ||
-                    'Ollama validation failed'}
+                  {currentValidationErrors || errorMessage || 'Ollama validation failed'}
                 </Text>
                 {ollamaStatus?.howToFix && ollamaStatus.howToFix.length > 0 && (
                   <div style={{ marginTop: tokens.spacingVerticalXS }}>
@@ -689,13 +698,10 @@ export function ApiKeySetupStep({
         // Default state: not validated, not detected
         return (
           <>
-            <Warning24Regular
-              style={{ color: tokens.colorPaletteYellowForeground1 }}
-            />
+            <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1 }} />
             <div>
               <Text size={300}>
-                {errorMessage ||
-                  'Install and run Ollama locally. Status updates automatically.'}
+                {errorMessage || 'Install and run Ollama locally. Status updates automatically.'}
               </Text>
               {ollamaStatus?.howToFix && ollamaStatus.howToFix.length > 0 && (
                 <div style={{ marginTop: tokens.spacingVerticalXS }}>
@@ -733,12 +739,8 @@ export function ApiKeySetupStep({
         console.error('[ApiKeySetupStep] Error rendering Ollama status:', error);
         return (
           <>
-            <Warning24Regular
-              style={{ color: tokens.colorPaletteYellowForeground1 }}
-            />
-            <Text size={300}>
-              Unable to check Ollama status. Click Validate to check manually.
-            </Text>
+            <Warning24Regular style={{ color: tokens.colorPaletteYellowForeground1 }} />
+            <Text size={300}>Unable to check Ollama status. Click Validate to check manually.</Text>
           </>
         );
       }

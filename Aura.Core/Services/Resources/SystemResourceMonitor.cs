@@ -822,9 +822,9 @@ public class SystemResourceMonitor
                     }
                 }
 
-                // Small delay to allow counters to accumulate data (this is inside Task.Run so Thread.Sleep is acceptable)
+                // Small delay to allow counters to accumulate data (GPU Engine counters need a noticeable gap between reads)
                 cancellationToken.ThrowIfCancellationRequested();
-                Thread.Sleep(50);
+                Thread.Sleep(250);
 
                 foreach (var instanceName in instanceNames)
                 {

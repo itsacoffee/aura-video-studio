@@ -418,11 +418,11 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
 
             var buffer = new StringBuilder();
             var tokenCount = 0;
+            string? line;
 
-            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested &&
+                   (line = await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false)) != null)
             {
-                var line = await reader.ReadLineAsync().ConfigureAwait(false);
-
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;

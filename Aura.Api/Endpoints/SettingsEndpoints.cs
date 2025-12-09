@@ -97,7 +97,14 @@ public static class SettingsEndpoints
             catch (Exception ex)
             {
                 Log.Error(ex, "Error checking portable mode");
-                return Results.Problem("Error checking portable mode", statusCode: 500);
+                // Return a safe fallback instead of surfacing a 500 to the UI
+                return Results.Ok(new
+                {
+                    isPortable = false,
+                    baseDirectory = AppContext.BaseDirectory,
+                    dataDirectory = dataRoot,
+                    error = "Portable detection failed"
+                });
             }
         })
         .WithName("GetPortableMode")

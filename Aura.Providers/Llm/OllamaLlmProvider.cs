@@ -2394,11 +2394,11 @@ Return ONLY the transition text, no explanations or additional commentary:";
             using var reader = new StreamReader(stream);
 
             var cumulativeTokens = 0;
+            string? line;
 
-            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            while (!ct.IsCancellationRequested &&
+                   (line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) != null)
             {
-                var line = await reader.ReadLineAsync().ConfigureAwait(false);
-
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;
