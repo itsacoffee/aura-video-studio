@@ -43,7 +43,7 @@ const useStyles = makeStyles({
     padding: tokens.spacingVerticalXXL,
     paddingLeft: tokens.spacingHorizontalXXL,
     paddingRight: tokens.spacingHorizontalXXL,
-    maxWidth: '1400px',
+    maxWidth: 'min(1800px, 96vw)',
     margin: '0 auto',
   },
   header: {
@@ -84,13 +84,13 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground2,
     lineHeight: '1.5',
     marginBottom: tokens.spacingVerticalXL,
-    maxWidth: '650px',
+    maxWidth: '900px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXL,
-    maxWidth: '960px',
+    maxWidth: '1200px',
     width: '100%',
   },
   fieldGroup: {
@@ -213,6 +213,7 @@ export const LocalizationPage: React.FC = () => {
   const [sourceLanguage, setSourceLanguage] = useState('en');
   const [targetLanguage, setTargetLanguage] = useState('es');
   const [translatedText, setTranslatedText] = useState('');
+  const [translatedProviderInfo, setTranslatedProviderInfo] = useState('');
   const [videoPath, setVideoPath] = useState('');
   const [subtitles, setSubtitles] = useState('');
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -346,6 +347,7 @@ export const LocalizationPage: React.FC = () => {
       llmSelection.provider ? `Translating with ${llmSelection.provider}...` : 'Translating...'
     );
     setLastOperation('translate');
+    setTranslatedProviderInfo('');
     startElapsedTimer();
 
     // Create new AbortController for user-initiated cancellation
@@ -386,6 +388,14 @@ export const LocalizationPage: React.FC = () => {
 
       const data = await response.json();
       setTranslatedText(data.translatedText || '');
+      const providerLabel = [
+        data.providerUsed || llmSelection.provider || 'Unknown provider',
+        data.modelUsed || llmSelection.modelId,
+      ]
+        .filter(Boolean)
+        .join(' / ');
+      const fallbackLabel = data.isFallback ? ' (fallback)' : '';
+      setTranslatedProviderInfo(`${providerLabel}${fallbackLabel}`.trim());
     } catch (err: unknown) {
       clearTimeout(timeoutId);
       const error = parseLocalizationError(err);
@@ -748,6 +758,9 @@ export const LocalizationPage: React.FC = () => {
           {translatedText && (
             <div className={styles.resultsSection}>
               <Title2 className={styles.sectionTitle}>Translation Result</Title2>
+              {translatedProviderInfo && (
+                <Text className={styles.providerInfo}>Provider: {translatedProviderInfo}</Text>
+              )}
               <div className={styles.resultText}>{translatedText}</div>
             </div>
           )}

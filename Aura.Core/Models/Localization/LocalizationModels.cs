@@ -133,6 +133,14 @@ public class TranslationResult
     public string TargetLanguage { get; set; } = string.Empty;
     public string SourceText { get; set; } = string.Empty;
     public string TranslatedText { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Provider and model actually used for the translation (helps UI surface what ran).
+    /// </summary>
+    public string ProviderUsed { get; set; } = "Unknown";
+    public string? ModelUsed { get; set; }
+    public bool IsOfflineFallback { get; set; }
+
     public List<TranslatedScriptLine> TranslatedLines { get; set; } = new();
     public TranslationQuality Quality { get; set; } = new();
     public List<CulturalAdaptation> CulturalAdaptations { get; set; } = new();

@@ -4964,7 +4964,25 @@ apiGroup.MapGet("/settings/portable", () =>
     catch (Exception ex)
     {
         Log.Error(ex, "Error loading portable settings");
-        return Results.Problem("Error loading portable settings", statusCode: 500);
+
+        // Return a safe fallback instead of 500 so UI doesn't break during export
+        var baseDirectory = AppContext.BaseDirectory;
+        var localData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura");
+
+        return Results.Ok(new
+        {
+            isPortable = false,
+            baseDirectory,
+            dataDirectory = localData,
+            portableModeEnabled = false,
+            portableRootPath = baseDirectory,
+            toolsDirectory = Path.Combine(baseDirectory, "Tools"),
+            auraDataDirectory = Path.Combine(baseDirectory, "AuraData"),
+            logsDirectory = Path.Combine(baseDirectory, "Logs"),
+            projectsDirectory = Path.Combine(baseDirectory, "Projects"),
+            downloadsDirectory = Path.Combine(baseDirectory, "Downloads"),
+            error = "Portable detection failed"
+        });
     }
 })
 .WithName("GetPortableModeSettings")

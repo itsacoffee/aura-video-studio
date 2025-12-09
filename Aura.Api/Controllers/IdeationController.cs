@@ -6,6 +6,7 @@ using Aura.Core.Models.Ideation;
 using Aura.Core.Services.Ideation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Aura.Core.Errors;
 
 namespace Aura.Api.Controllers;
 
@@ -132,7 +133,25 @@ public partial class IdeationController : ControllerBase
                 concepts = response.Concepts,
                 originalTopic = response.OriginalTopic,
                 generatedAt = response.GeneratedAt,
-                count = response.Concepts.Count
+                count = response.Concepts.Count,
+                // Surface provider/fallback details so the UI can display what was used
+                metadata = response.Metadata
+            });
+        }
+        catch (ProviderException provEx)
+        {
+            _logger.LogError(provEx,
+                "[{CorrelationId}] Ideation provider error: {Message}",
+                correlationId, provEx.Message);
+
+            var statusCode = provEx.IsTransient ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status500InternalServerError;
+            return StatusCode(statusCode, new
+            {
+                error = provEx.UserMessage ?? provEx.Message,
+                errorCode = provEx.SpecificErrorCode,
+                correlationId,
+                provider = provEx.ProviderName,
+                suggestions = provEx.SuggestedActions
             });
         }
         catch (ArgumentException argEx)

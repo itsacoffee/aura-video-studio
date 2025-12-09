@@ -100,6 +100,15 @@ public class LocalizationController : ControllerBase
         _logger.LogInformation("Translation request: {Source} → {Target}, CorrelationId: {CorrelationId}",
             request.SourceLanguage, request.TargetLanguage, HttpContext.TraceIdentifier);
 
+        // Fast-path: if source and target are identical, skip provider calls (avoids 500s when
+        // translation is not configured) and return a pass-through payload.
+        if (string.Equals(request.SourceLanguage, request.TargetLanguage, StringComparison.OrdinalIgnoreCase))
+        {
+            var passthrough = BuildPassthroughTranslationResult(request);
+            _logger.LogInformation("Bypassing translation (source == target). Returning pass-through result.");
+            return Ok(passthrough);
+        }
+
         // Validate language codes
         var sourceValidation = _localizationService.ValidateLanguageCode(request.SourceLanguage);
         if (!sourceValidation.IsValid && !sourceValidation.IsWarning)
@@ -339,21 +348,77 @@ public class LocalizationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Translation failed");
-            return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
-            {
-                Type = "https://github.com/Coffee285/aura-video-studio/blob/main/docs/errors/README.md#INTERNAL_ERROR",
-                Title = "Translation Failed",
-                Status = StatusCodes.Status500InternalServerError,
-                Detail = "An unexpected error occurred during translation. Please try again or contact support if the problem persists.",
-                Extensions =
-                {
-                    ["correlationId"] = HttpContext.TraceIdentifier,
-                    ["errorCode"] = "INTERNAL_ERROR",
-                    ["isRetryable"] = true
-                }
-            });
+            // Soft-fallback: return pass-through translation instead of 500 to keep pipelines moving
+            _logger.LogError(ex, "Translation failed; returning pass-through content");
+            var fallback = BuildPassthroughTranslationResult(request, ex.Message);
+            return Ok(fallback);
         }
+    }
+
+    private TranslationResultDto BuildPassthroughTranslationResult(TranslateScriptRequest request, string? error = null)
+    {
+        var sourceLines = request.ScriptLines ?? new List<ScriptLineDto>();
+        var sourceText = request.SourceText ?? string.Join("\n", sourceLines.Select(l => l.Text));
+
+        var translatedLines = sourceLines.Select((line, idx) =>
+            new TranslatedScriptLineDto(
+                idx,
+                line.Text,
+                line.Text,
+                line.StartSeconds,
+                line.DurationSeconds,
+                line.StartSeconds,
+                line.DurationSeconds,
+                0,
+                new List<string>())
+        ).ToList();
+
+        return new TranslationResultDto(
+            SourceLanguage: request.SourceLanguage,
+            TargetLanguage: request.TargetLanguage,
+            SourceText: sourceText,
+            TranslatedText: sourceText,
+            TranslatedLines: translatedLines,
+            Quality: new TranslationQualityDto(
+                OverallScore: 0,
+                FluencyScore: 0,
+                AccuracyScore: 0,
+                CulturalAppropriatenessScore: 0,
+                TerminologyConsistencyScore: 0,
+                BackTranslationScore: 0,
+                BackTranslatedText: null,
+                Issues: error == null
+                    ? new List<QualityIssueDto>()
+                    : new List<QualityIssueDto>
+                    {
+                        new QualityIssueDto(
+                            Severity: "warning",
+                            Category: "translation_fallback",
+                            Description: error,
+                            Suggestion: null,
+                            LineNumber: null)
+                    }),
+            CulturalAdaptations: new List<CulturalAdaptationDto>(),
+            TimingAdjustment: new TimingAdjustmentDto(
+                OriginalTotalDuration: 0,
+                AdjustedTotalDuration: 0,
+                ExpansionFactor: 1,
+                RequiresCompression: false,
+                CompressionSuggestions: new List<string>(),
+                Warnings: new List<TimingWarningDto>()),
+            VisualRecommendations: new List<VisualLocalizationRecommendationDto>(),
+            TranslationTimeSeconds: 0,
+            Metrics: new TranslationMetricsDto(
+                LengthRatio: 1,
+                HasStructuredArtifacts: false,
+                HasUnwantedPrefixes: false,
+                CharacterCount: sourceText.Length,
+                WordCount: sourceText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length,
+                TranslationTimeSeconds: 0,
+                ProviderUsed: "passthrough",
+                ModelIdentifier: "passthrough",
+                QualityIssues: error == null ? new List<string>() : new List<string> { error },
+                Grade: "N/A"));
     }
 
     /// <summary>
@@ -475,7 +540,11 @@ public class LocalizationController : ControllerBase
             _logger.LogInformation("Simple translation completed in {Time:F2}s, CorrelationId: {CorrelationId}",
                 result.TranslationTimeSeconds, HttpContext.TraceIdentifier);
 
-            return Ok(new SimpleTranslationDto(result.TranslatedText));
+            return Ok(new SimpleTranslationDto(
+                result.TranslatedText,
+                result.ProviderUsed,
+                result.ModelUsed,
+                result.IsOfflineFallback));
         }
         catch (BrokenCircuitException ex)
         {

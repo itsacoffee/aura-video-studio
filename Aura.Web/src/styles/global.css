@@ -21,14 +21,18 @@
  * Or simply stop importing this file in main.tsx
  */
 
+:root {
+  /* Default desktop-first font sizing; bumped for better readability */
+  --aura-base-font-size: clamp(18px, calc(0.45vw + 15px), 22px);
+}
+
 /* ==========================================================================
    ROOT FONT-SIZE BASELINE
-   Use the browser/OS default base font-size (typically 16px) so the app
-   respects system scaling and accessibility settings. You can still override
-   this via --aura-base-font-size if needed.
+   Responsively scales to match large desktop layouts (Apple/Adobe-like density)
+   while respecting OS scaling. Overridable via --aura-base-font-size.
    ========================================================================== */
 html {
-  font-size: var(--aura-base-font-size, 100%);
+  font-size: var(--aura-base-font-size);
 }
 
 /* ==========================================================================
@@ -38,7 +42,7 @@ html {
    To revert: remove or comment out this rule.
    ========================================================================== */
 body {
-  line-height: 1.45;
+  line-height: 1.55;
 }
 
 /* ==========================================================================
@@ -50,7 +54,7 @@ body {
 input,
 textarea,
 select {
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* ==========================================================================

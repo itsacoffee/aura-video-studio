@@ -456,6 +456,7 @@ public class PipelineValidationTests
         services.AddSingleton<VideoOrchestrator>();
 
         // Job management
+        services.AddSingleton<Aura.Core.Services.Timeline.TimelineSerializationService>();
         services.AddSingleton<ArtifactManager>();
         services.AddSingleton<JobRunner>();
 

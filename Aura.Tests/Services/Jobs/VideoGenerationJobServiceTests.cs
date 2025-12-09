@@ -6,6 +6,7 @@ using Aura.Core.Models;
 using Aura.Core.Models.Generation;
 using Aura.Core.Models.Jobs;
 using Aura.Core.Orchestrator;
+using Aura.Core.Providers;
 using Aura.Core.Services.Jobs;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -132,7 +133,8 @@ public class VideoGenerationJobServiceTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<bool>(),
-                It.IsAny<IProgress<GenerationProgress>>()
+                It.IsAny<IProgress<GenerationProgress>>(),
+                It.IsAny<IImageProvider?>()
             ))
             .ReturnsAsync("/path/to/output.mp4");
 
@@ -197,7 +199,8 @@ public class VideoGenerationJobServiceTests
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<bool>(),
-                It.IsAny<IProgress<GenerationProgress>>()
+                It.IsAny<IProgress<GenerationProgress>>(),
+                It.IsAny<IImageProvider?>()
             ))
             .ThrowsAsync(new OperationCanceledException());
 

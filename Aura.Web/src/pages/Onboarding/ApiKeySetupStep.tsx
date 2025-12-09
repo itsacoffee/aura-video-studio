@@ -34,7 +34,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     gap: tokens.spacingVerticalXL,
-    maxWidth: '1400px',
+    maxWidth: 'min(1800px, 96vw)',
     margin: '0 auto',
   },
   quickStartSection: {

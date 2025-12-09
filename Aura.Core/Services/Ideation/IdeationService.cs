@@ -11,6 +11,7 @@ using Aura.Core.Models.Ideation;
 using Aura.Core.Models.RAG;
 using Aura.Core.Orchestration;
 using Aura.Core.Providers;
+using Aura.Core.Errors;
 using Aura.Core.Services.Conversation;
 using Aura.Core.Services.RAG;
 using Microsoft.Extensions.Logging;
@@ -441,7 +442,7 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
                     }
 
                     // Fallback: direct Ollama when StageAdapter failed or returned empty
-                    if (jsonResponse == null && stageAdapterFailed && isOllamaProvider)
+                    if (jsonResponse == null && stageAdapterFailed && _ollamaDirectClient != null)
                     {
                         _logger.LogInformation("Falling back to direct Ollama path with heartbeat logging for ideation");
                         jsonResponse = await GenerateWithOllamaDirectAsync(
@@ -638,10 +639,20 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
                     if (attempt == maxRetries)
                     {
-                        throw new InvalidOperationException(
-                            $"LLM returned invalid JSON after {maxRetries + 1} attempts. " +
-                            $"Response preview: {jsonResponse?.Substring(0, Math.Min(200, jsonResponse?.Length ?? 0))}",
-                            jsonEx);
+                        throw new ProviderException(
+                            "Ollama",
+                            ProviderType.LLM,
+                            $"LLM returned invalid JSON after {maxRetries + 1} attempts",
+                            ProviderErrorCode.InvalidInput,
+                            "The model did not return valid JSON for ideation.",
+                            isTransient: true,
+                            suggestedActions: new[]
+                            {
+                                "Retry the request",
+                                "Use a model known to produce valid JSON for ideation (e.g., qwen3:4b, llama3.1:8b)",
+                                "Restart Ollama: run 'ollama serve'"
+                            },
+                            innerException: jsonEx);
                     }
                 }
                 catch (Exception ex) when (attempt < maxRetries)
@@ -653,8 +664,22 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
             if (jsonResponse == null)
             {
-                throw lastException ?? new InvalidOperationException(
-                    $"Failed to generate concepts after {maxRetries + 1} attempts");
+                // Surface a structured provider error instead of a generic 500
+                throw new ProviderException(
+                    "Ollama",
+                    ProviderType.LLM,
+                    $"Failed to generate concepts after {maxRetries + 1} attempts",
+                    ProviderErrorCode.ServiceUnavailable,
+                    "The AI provider did not return valid ideation results.",
+                    isTransient: true,
+                    suggestedActions: new[]
+                    {
+                        "Retry the request",
+                        "Restart Ollama: run 'ollama serve'",
+                        "Try a smaller/known-good model (e.g., qwen3:4b, llama3.1:8b)",
+                        "Check Ollama logs for errors"
+                    },
+                    innerException: lastException);
             }
 
             var response = jsonResponse;
@@ -3831,16 +3856,26 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
         // ARCHITECTURAL FIX: Use injected IOllamaDirectClient instead of reflection
         if (_ollamaDirectClient == null)
         {
-            throw new InvalidOperationException(
-                "OllamaDirectClient not available. Ensure it is registered in DI container.");
+            throw ProviderException.NetworkError("Ollama", ProviderType.LLM);
         }
 
         // Check availability first
         var isAvailable = await _ollamaDirectClient.IsAvailableAsync(ct).ConfigureAwait(false);
         if (!isAvailable)
         {
-            throw new InvalidOperationException(
-                "Ollama is not available. Please ensure Ollama is running and accessible.");
+            throw new ProviderException(
+                "Ollama",
+                ProviderType.LLM,
+                "Ollama is not available for ideation",
+                ProviderErrorCode.ServiceUnavailable,
+                "Ollama is not running. Start it with 'ollama serve' and ensure a model is installed.",
+                isTransient: true,
+                suggestedActions: new[]
+                {
+                    "Start Ollama: run 'ollama serve'",
+                    "Install a model: run 'ollama pull llama3.1'",
+                    "Verify connectivity to Ollama at http://127.0.0.1:11434"
+                });
         }
 
         // Determine model to use (BrainstormRequest uses LlmModel property)
@@ -3856,8 +3891,19 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
             }
             else
             {
-                throw new InvalidOperationException(
-                    "No model specified and no models available on Ollama instance.");
+                throw new ProviderException(
+                    "Ollama",
+                    ProviderType.LLM,
+                    "No Ollama models are installed for ideation",
+                    ProviderErrorCode.ServiceUnavailable,
+                    "Install at least one model with 'ollama pull <model>'.",
+                    isTransient: false,
+                    suggestedActions: new[]
+                    {
+                        "Install a model: run 'ollama pull llama3.1'",
+                        "Verify 'ollama list' shows a model",
+                        "Select a different provider/model in settings"
+                    });
             }
         }
 
@@ -3895,12 +3941,27 @@ Generate SPECIFIC content NOW. Do not use placeholders.";
 
             return response;
         }
+        catch (ProviderException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate ideation with Ollama using model {Model}", modelToUse);
-            throw new InvalidOperationException(
-                $"Failed to generate concepts with Ollama. Please ensure Ollama is running and model '{modelToUse}' is available.",
-                ex);
+            throw new ProviderException(
+                "Ollama",
+                ProviderType.LLM,
+                $"Ollama ideation failed: {ex.Message}",
+                ProviderErrorCode.ServiceUnavailable,
+                "Ollama encountered an error while generating concepts.",
+                isTransient: true,
+                suggestedActions: new[]
+                {
+                    "Restart Ollama: run 'ollama serve' again",
+                    "Retry with a smaller or known-good model",
+                    "Check Ollama logs for errors"
+                },
+                innerException: ex);
         }
     }
 

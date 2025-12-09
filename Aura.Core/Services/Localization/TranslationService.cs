@@ -13,6 +13,7 @@ using Aura.Core.Models.Localization;
 using Aura.Core.Models.Audience;
 using Aura.Core.Orchestration;
 using Aura.Core.Providers;
+using Aura.Core.Errors;
 using Microsoft.Extensions.Logging;
 
 namespace Aura.Core.Services.Localization;
@@ -191,6 +192,24 @@ public class TranslationService
             TargetLanguage = request.TargetLanguage
         };
 
+        // Build LLM parameters for this translation (ensure plain text by setting ResponseFormat null)
+        LlmParameters? llmParameters = null;
+        if (!string.IsNullOrWhiteSpace(request.ModelId))
+        {
+            llmParameters = new LlmParameters(
+                ModelOverride: request.ModelId,
+                ResponseFormat: null);
+        }
+        else
+        {
+            llmParameters = new LlmParameters(ResponseFormat: null);
+        }
+
+        // Track which provider/model was actually used so the UI can display it
+        var providerUsed = "Unknown";
+        string? modelUsed = request.ModelId ?? llmParameters?.ModelOverride;
+        var usedFallback = false;
+
         try
         {
             // Phase 1: Core translation with cultural context
@@ -298,6 +317,26 @@ public class TranslationService
                     result.Metrics.Grade,
                     string.Join("; ", result.Metrics.QualityIssues));
             }
+
+            // Capture provider/model metadata for UI visibility
+            try
+            {
+                var capabilities = _llmProvider.GetCapabilities();
+                if (providerUsed == "Unknown")
+                {
+                    providerUsed = capabilities.ProviderName;
+                }
+
+                modelUsed ??= request.ModelId ?? capabilities.DefaultModel;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not retrieve provider capabilities for translation metadata");
+            }
+
+            result.ProviderUsed = providerUsed;
+            result.ModelUsed = modelUsed;
+            result.IsOfflineFallback = usedFallback;
 
             _logger.LogInformation("Translation completed in {Time:F2}s with quality score {Quality:F1}",
                 result.TranslationTimeSeconds, result.Quality.OverallScore);
@@ -511,6 +550,8 @@ public class TranslationService
             options,
             glossary);
 
+        var usedFallback = false;
+
         try
         {
             _logger.LogInformation(
@@ -567,6 +608,7 @@ public class TranslationService
                     else
                     {
                         response = orchestrationResult.Data;
+
                         _logger.LogInformation("Translation via LlmStageAdapter succeeded (Provider: {Provider})",
                             orchestrationResult.ProviderUsed ?? "Unknown");
                     }
@@ -578,16 +620,18 @@ public class TranslationService
                 }
 
                 // 2) Fallback: direct Ollama path with longer timeout/heartbeat
-                if (response == null && isOllamaProvider)
+                if (response == null && _ollamaDirectClient != null)
                 {
                     _logger.LogInformation("Falling back to direct Ollama path with heartbeat logging");
-                    response = await GenerateWithOllamaDirectAsync(
+                    var directResult = await GenerateWithOllamaDirectAsync(
                         systemPrompt,
                         userPrompt,
                         sourceLanguage,
                         targetLanguage,
                         llmParameters?.ModelOverride,
                         cancellationToken).ConfigureAwait(false);
+                    response = directResult.Response;
+                    usedFallback = true;
                     _logger.LogInformation("Translation via direct Ollama succeeded after fallback");
                 }
             }
@@ -1208,7 +1252,7 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
     /// ARCHITECTURAL FIX: Uses IOllamaDirectClient instead of reflection-based access.
     /// This is more maintainable and doesn't break when provider implementation changes.
     /// </summary>
-    private async Task<string> GenerateWithOllamaDirectAsync(
+    private async Task<(string Response, string? ModelUsed)> GenerateWithOllamaDirectAsync(
         string systemPrompt,
         string userPrompt,
         string sourceLanguage,
@@ -1219,17 +1263,26 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         // ARCHITECTURAL FIX: Use injected IOllamaDirectClient instead of reflection
         if (_ollamaDirectClient == null)
         {
-            throw new InvalidOperationException(
-                "OllamaDirectClient not available. Ensure it is registered in DI container.");
+            throw ProviderException.NetworkError("Ollama", ProviderType.LLM);
         }
 
         // Check availability first
         var isAvailable = await _ollamaDirectClient.IsAvailableAsync(ct).ConfigureAwait(false);
         if (!isAvailable)
         {
-            throw new InvalidOperationException(
-                "Ollama is required for translation but is not available. " +
-                "Please ensure Ollama is running: 'ollama serve' and verify models are installed: 'ollama list'");
+            throw new ProviderException(
+                "Ollama",
+                ProviderType.LLM,
+                "Ollama is not available for translation",
+                ProviderErrorCode.ServiceUnavailable,
+                "Ollama is not running. Start it with 'ollama serve' and ensure a model is installed with 'ollama pull <model>'.",
+                isTransient: true,
+                suggestedActions: new[]
+                {
+                    "Start Ollama: run 'ollama serve'",
+                    "Install a model: run 'ollama pull llama3.1'",
+                    "Verify connectivity to Ollama at http://127.0.0.1:11434"
+                });
         }
 
         _logger.LogInformation("Ollama availability check passed for translation");
@@ -1238,8 +1291,19 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
         var availableModels = await _ollamaDirectClient.ListModelsAsync(ct).ConfigureAwait(false);
         if (availableModels.Count == 0)
         {
-            throw new InvalidOperationException(
-                "No Ollama models available for translation. Please install a model: 'ollama pull llama3.1'");
+            throw new ProviderException(
+                "Ollama",
+                ProviderType.LLM,
+                "No Ollama models are installed for translation",
+                ProviderErrorCode.ServiceUnavailable,
+                "Install at least one model with 'ollama pull <model>'.",
+                isTransient: false,
+                suggestedActions: new[]
+                {
+                    "Install a model: run 'ollama pull llama3.1'",
+                    "Verify 'ollama list' shows at least one model",
+                    "Select a different provider/model in settings"
+                });
         }
 
         string? modelToUse = modelOverride;
@@ -1311,20 +1375,46 @@ Your response must contain ONLY the translated text, exactly as shown in the cor
 
             if (string.IsNullOrWhiteSpace(response))
             {
-                throw new InvalidOperationException(
-                    "Ollama returned an empty translation response. " +
-                    "This may indicate GPU overload or model issues. " +
-                    "Check GPU usage and try again.");
+                throw new ProviderException(
+                    "Ollama",
+                    ProviderType.LLM,
+                    "Ollama returned an empty translation response",
+                    ProviderErrorCode.ServiceUnavailable,
+                    "The model returned no text. It may still be loading or may have failed.",
+                    isTransient: true,
+                    suggestedActions: new[]
+                    {
+                        "Retry after a few seconds",
+                        "Check GPU/CPU utilization; ensure resources are available",
+                        "Try a smaller model or reload the model with 'ollama run <model>'"
+                    });
             }
 
             _logger.LogInformation("Ollama translation succeeded with {Length} characters", response.Length);
-            return response;
+            return (response, modelToUse);
+        }
+        catch (ProviderException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ollama translation failed for {SourceLang} -> {TargetLang}",
                 sourceLanguage, targetLanguage);
-            throw;
+            throw new ProviderException(
+                "Ollama",
+                ProviderType.LLM,
+                $"Ollama translation failed: {ex.Message}",
+                ProviderErrorCode.ServiceUnavailable,
+                "Ollama encountered an error while translating.",
+                isTransient: true,
+                suggestedActions: new[]
+                {
+                    "Restart Ollama: run 'ollama serve' again",
+                    "Retry with a smaller or known-good model (e.g., llama3.1:8b)",
+                    "Check Ollama logs for errors"
+                },
+                innerException: ex);
         }
     }
 }

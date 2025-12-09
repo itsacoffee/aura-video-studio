@@ -730,6 +730,15 @@ public class SystemResourceMonitor
                 return metrics;
             }
 
+            // Fall back to WMI GPU performance counters (present on most Win10/11 systems)
+            var wmiPerfUsage = await TryGetGpuUsageFromWmiPerfCountersAsync(cancellationToken).ConfigureAwait(false);
+            if (wmiPerfUsage.HasValue)
+            {
+                metrics.UsagePercent = wmiPerfUsage.Value;
+                _logger.LogTrace("GPU usage from WMI perf counters: {Usage}%", wmiPerfUsage.Value);
+                return metrics;
+            }
+
             // Fall back to nvidia-smi for NVIDIA GPUs
             var nvidiaSmiMetrics = await TryGetNvidiaSmiMetricsAsync(cancellationToken).ConfigureAwait(false);
             if (nvidiaSmiMetrics != null)
@@ -804,45 +813,64 @@ public class SystemResourceMonitor
 
                 double totalUtilization = 0.0;
                 int validCounters = 0;
+                var counters = new List<PerformanceCounter>();
 
-                foreach (var instanceName in instanceNames)
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    try
+                    // Prime each counter once; first call is always 0
+                    foreach (var instanceName in instanceNames)
                     {
-                        using var counter = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, true);
-                        // First call initializes the counter and returns 0; result is intentionally discarded
-                        // A subsequent call after a delay will return the actual utilization value
-                        _ = counter.NextValue();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogTrace(ex, "Failed to read GPU Engine counter for instance {Instance}", instanceName);
-                    }
-                }
+                        cancellationToken.ThrowIfCancellationRequested();
 
-                // Small delay to allow counters to accumulate data (GPU Engine counters need a noticeable gap between reads)
-                cancellationToken.ThrowIfCancellationRequested();
-                Thread.Sleep(250);
-
-                foreach (var instanceName in instanceNames)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    try
-                    {
-                        using var counter = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, true);
-                        var value = counter.NextValue();
-                        if (value >= 0)
+                        try
                         {
-                            totalUtilization += value;
-                            validCounters++;
+                            var counter = new PerformanceCounter("GPU Engine", "Utilization Percentage", instanceName, true);
+                            _ = counter.NextValue();
+                            counters.Add(counter);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogTrace(ex, "Failed to prime GPU Engine counter for instance {Instance}", instanceName);
                         }
                     }
-                    catch (Exception ex)
+
+                    if (counters.Count == 0)
                     {
-                        _logger.LogTrace(ex, "Failed to read GPU Engine counter for instance {Instance}", instanceName);
+                        return (double?)null;
+                    }
+
+                    // Wait long enough for counters to accumulate (per Microsoft guidance this needs ~1s)
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (cancellationToken.WaitHandle.WaitOne(1000))
+                    {
+                        throw new OperationCanceledException(cancellationToken);
+                    }
+
+                    // Read real values
+                    foreach (var counter in counters)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        try
+                        {
+                            var value = counter.NextValue();
+                            if (value >= 0)
+                            {
+                                totalUtilization += value;
+                                validCounters++;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogTrace(ex, "Failed to read GPU Engine counter");
+                        }
+                    }
+                }
+                finally
+                {
+                    foreach (var counter in counters)
+                    {
+                        counter.Dispose();
                     }
                 }
 
@@ -859,6 +887,70 @@ public class SystemResourceMonitor
             _logger.LogDebug(ex, "GPU Engine performance counters not available");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Tries to get GPU utilization using WMI GPU performance counters.
+    /// Works on most Windows 10/11 systems with WDDM drivers even when PerfCounters are blocked.
+    /// </summary>
+    private async Task<double?> TryGetGpuUsageFromWmiPerfCountersAsync(CancellationToken cancellationToken)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Task.Run(() =>
+            {
+                double totalUtilization = 0.0;
+                int samples = 0;
+
+                using var searcher = new ManagementObjectSearcher(
+                    "root\\cimv2",
+                    "SELECT UtilizationPercentage FROM Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine");
+
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        if (obj["UtilizationPercentage"] is uint u)
+                        {
+                            totalUtilization += u;
+                            samples++;
+                        }
+                        else if (obj["UtilizationPercentage"] is int i && i >= 0)
+                        {
+                            totalUtilization += i;
+                            samples++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogTrace(ex, "Failed to read WMI GPU perf counter sample");
+                    }
+                }
+
+                return samples > 0 ? Math.Min(100.0, totalUtilization) : (double?)null;
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ManagementException ex)
+        {
+            _logger.LogTrace(ex, "WMI GPU perf counters not available");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read WMI GPU perf counters");
+        }
+
+        return null;
     }
 
     private async Task<GpuMetrics?> CollectGpuMetricsLinuxAsync(CancellationToken cancellationToken)

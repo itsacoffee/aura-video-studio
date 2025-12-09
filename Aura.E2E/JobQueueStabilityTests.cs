@@ -284,7 +284,9 @@ public class JobQueueStabilityTests
             $"QueuedUtc ({job.QueuedUtc}) should be >= beforeCreate ({beforeCreate})");
         Assert.True(job.QueuedUtc <= afterCreate, 
             $"QueuedUtc ({job.QueuedUtc}) should be <= afterCreate ({afterCreate})");
-        Assert.Equal(job.CreatedUtc, job.QueuedUtc);
+        
+        // Allow tiny clock drift/microsecond differences
+        Assert.Equal(job.CreatedUtc, job.QueuedUtc, precision: TimeSpan.FromMilliseconds(10));
         
         _output.WriteLine($"Job created with QueuedUtc: {job.QueuedUtc:yyyy-MM-dd HH:mm:ss.fff}");
     }

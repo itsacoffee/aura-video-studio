@@ -2731,7 +2731,10 @@ public record SimpleTranslationRequest(
 /// Used by LocalizationPage frontend
 /// </summary>
 public record SimpleTranslationDto(
-    string TranslatedText);
+    string TranslatedText,
+    string ProviderUsed,
+    string? ModelUsed = null,
+    bool IsFallback = false);
 
 // ============================================================================
 // PROVIDER HEALTH DTOs - for translation provider validation

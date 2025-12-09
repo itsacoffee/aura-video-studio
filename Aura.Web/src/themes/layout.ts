@@ -111,9 +111,9 @@ export const touchTargets = {
  */
 export const pageLayout = {
   /** Maximum content width - tuned for 16:9 desktops for better space utilization */
-  maxContentWidth: '1440px',
+  maxContentWidth: '1760px',
   /** Standard page padding (desktop) - tighter for better space utilization with responsive scaling */
-  pagePadding: 'clamp(16px, 3vw, 28px)',
+  pagePadding: 'clamp(20px, 3.6vw, 36px)',
   /** Page padding for smaller screens */
   pagePaddingMobile: tokens.spacingVerticalM,
   /** Minimum page padding to ensure content is not flush with edges */
@@ -148,9 +148,9 @@ export const panelLayout = {
  */
 export const container = {
   /** Standard max-width for forms and content flows */
-  formMaxWidth: '800px',
+  formMaxWidth: '1040px',
   /** Wide content (dashboards, grids) - increased for better space utilization */
-  wideMaxWidth: '1440px',
+  wideMaxWidth: '1800px',
   /** Full-width content with padding */
   fullWidth: '100%',
 } as const;

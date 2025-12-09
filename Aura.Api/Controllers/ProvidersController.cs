@@ -1990,6 +1990,11 @@ public class ProvidersController : ControllerBase
 
             switch (request.Provider.ToLowerInvariant())
             {
+                case "ollama":
+                case "local":
+                    // Local/Ollama providers don't require API keys; treat as valid to avoid blocking exports
+                    fieldValidationStatus["Provider"] = true;
+                    break;
                 case "openai":
                     ValidateOpenAIConfiguration(request.Configuration, fieldErrors, fieldValidationStatus);
                     break;

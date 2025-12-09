@@ -10,6 +10,7 @@ import { NotificationCenter } from './dashboard/NotificationCenter';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ProviderHealthIndicator } from './Header';
 import { GlobalLlmSelector } from './LLMMenu/GlobalLlmSelector';
+import { ZoomControls } from './ZoomControls';
 import { MobileBottomNav } from './MobileBottomNav';
 import { MobileFAB } from './MobileFAB';
 import { ResultsTray } from './ResultsTray';
@@ -207,6 +208,7 @@ export function Layout({
           <div className={styles.topBar} role="banner" aria-label="Top bar">
             <UndoRedoButtons />
             <div className={styles.topBarActions}>
+              <ZoomControls />
               <ProviderHealthIndicator />
               <GlobalLlmSelector />
               <NotificationCenter />
