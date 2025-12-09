@@ -28,7 +28,7 @@ internal static class FfmpegTestHelper
         {
             var batchContent = @"@echo off
 if ""%1""==""-version"" (
-    echo ffmpeg version 6.0-test Copyright (c) 2000-2024 the FFmpeg developers
+    echo ffmpeg version 6.0-test Copyright (c) 2000-present the FFmpeg developers
     echo built with gcc 12.2.0
     exit /b 0
 )
@@ -39,7 +39,7 @@ exit /b 1";
 
         var shellContent = @"#!/bin/bash
 if [ ""$1"" = ""-version"" ]; then
-    echo ""ffmpeg version 6.0-test Copyright (c) 2000-2024 the FFmpeg developers""
+    echo ""ffmpeg version 6.0-test Copyright (c) 2000-present the FFmpeg developers""
     echo ""built with gcc 12.2.0""
     exit 0
 fi
