@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Dependencies;
+using Aura.Tests.TestUtilities;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -30,7 +31,7 @@ public class FfmpegLocatorTests : IDisposable
     {
         // Arrange
         var mockFfmpegPath = Path.Combine(_testDirectory, "ffmpeg" + (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : ""));
-        await CreateMockFfmpegBinary(mockFfmpegPath);
+        await FfmpegTestHelper.CreateMockFfmpegBinary(mockFfmpegPath);
         
         // Act
         var result = await _locator.ValidatePathAsync(mockFfmpegPath, CancellationToken.None);
@@ -51,7 +52,7 @@ public class FfmpegLocatorTests : IDisposable
         Directory.CreateDirectory(mockDir);
         
         var mockFfmpegPath = Path.Combine(mockDir, "ffmpeg" + (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : ""));
-        await CreateMockFfmpegBinary(mockFfmpegPath);
+        await FfmpegTestHelper.CreateMockFfmpegBinary(mockFfmpegPath);
         
         // Act
         var result = await _locator.ValidatePathAsync(mockDir, CancellationToken.None);
@@ -70,7 +71,7 @@ public class FfmpegLocatorTests : IDisposable
         Directory.CreateDirectory(binDir);
         
         var mockFfmpegPath = Path.Combine(binDir, "ffmpeg" + (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : ""));
-        await CreateMockFfmpegBinary(mockFfmpegPath);
+        await FfmpegTestHelper.CreateMockFfmpegBinary(mockFfmpegPath);
         
         // Act
         var result = await _locator.ValidatePathAsync(mockDir, CancellationToken.None);
@@ -113,7 +114,7 @@ public class FfmpegLocatorTests : IDisposable
         // Arrange
         var mockFfmpegPath = Path.Combine(_testDirectory, "configured", "ffmpeg" + (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".exe" : ""));
         Directory.CreateDirectory(Path.GetDirectoryName(mockFfmpegPath)!);
-        await CreateMockFfmpegBinary(mockFfmpegPath);
+        await FfmpegTestHelper.CreateMockFfmpegBinary(mockFfmpegPath);
         
         // Act
         var result = await _locator.CheckAllCandidatesAsync(mockFfmpegPath, CancellationToken.None);
@@ -136,6 +137,33 @@ public class FfmpegLocatorTests : IDisposable
         Assert.NotNull(result.Reason);
         Assert.True(result.AttemptedPaths.Count > 0, "Should have attempted multiple paths");
     }
+
+    [Fact]
+    public async Task CheckAllCandidatesAsync_FindsBundledResourcePath()
+    {
+        var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+        var rid = FfmpegTestHelper.GetRuntimeRidSegment();
+
+        // Simulate packaged backend base directory
+        var backendBase = Path.Combine(_testDirectory, "resources", "backend", rid);
+        Directory.CreateDirectory(backendBase);
+
+        // Place ffmpeg in resources/ffmpeg/<rid>/bin
+        var bundledPath = Path.Combine(_testDirectory, "resources", "ffmpeg", rid, "bin", exeName);
+        Directory.CreateDirectory(Path.GetDirectoryName(bundledPath)!);
+        await FfmpegTestHelper.CreateMockFfmpegBinary(bundledPath);
+
+        var locator = new FfmpegLocator(
+            NullLogger<FfmpegLocator>.Instance,
+            _testDirectory,
+            null,
+            backendBase);
+
+        var result = await locator.CheckAllCandidatesAsync(null, CancellationToken.None);
+
+        Assert.True(result.Found);
+        Assert.Equal(bundledPath, result.FfmpegPath);
+    }
     
     public void Dispose()
     {
@@ -149,63 +177,6 @@ public class FfmpegLocatorTests : IDisposable
         catch
         {
             // Ignore cleanup errors
-        }
-    }
-    
-    /// <summary>
-    /// Create a mock ffmpeg binary that responds to -version
-    /// </summary>
-    private async Task CreateMockFfmpegBinary(string path)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // Create a simple batch script for Windows
-            var batchContent = @"@echo off
-if ""%1""==""-version"" (
-    echo ffmpeg version 6.0-test Copyright (c) 2000-2024 the FFmpeg developers
-    echo built with gcc 12.2.0
-    exit /b 0
-)
-exit /b 1";
-            // Change extension to .bat for testing (since we can't create real .exe)
-            var batPath = Path.ChangeExtension(path, ".bat");
-            await File.WriteAllTextAsync(batPath, batchContent);
-            
-            // Also write a .exe that's actually a batch redirect
-            // For test purposes, just copy the same content
-            await File.WriteAllTextAsync(path, batchContent);
-        }
-        else
-        {
-            // Create a shell script for Unix
-            var shellContent = @"#!/bin/bash
-if [ ""$1"" = ""-version"" ]; then
-    echo ""ffmpeg version 6.0-test Copyright (c) 2000-2024 the FFmpeg developers""
-    echo ""built with gcc 12.2.0""
-    exit 0
-fi
-exit 1";
-            await File.WriteAllTextAsync(path, shellContent);
-            
-            // Make executable on Unix
-            try
-            {
-                var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "chmod",
-                    Arguments = $"+x {path}",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                });
-                if (process != null)
-                {
-                    await process.WaitForExitAsync();
-                }
-            }
-            catch
-            {
-                // Ignore if chmod fails
-            }
         }
     }
 }

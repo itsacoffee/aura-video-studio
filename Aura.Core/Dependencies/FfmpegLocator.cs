@@ -57,11 +57,17 @@ public class FfmpegLocator : IFfmpegLocator
     private readonly string _toolsDirectory;
     private readonly string _dependenciesDirectory;
     private readonly string? _explicitPath;
+    private readonly string _appBaseDirectory;
 
-    public FfmpegLocator(ILogger<FfmpegLocator> logger, string? toolsDirectory = null, string? explicitPath = null)
+    public FfmpegLocator(
+        ILogger<FfmpegLocator> logger,
+        string? toolsDirectory = null,
+        string? explicitPath = null,
+        string? appBaseDirectory = null)
     {
         _logger = logger;
         _explicitPath = explicitPath;
+        _appBaseDirectory = appBaseDirectory ?? AppContext.BaseDirectory;
         
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _toolsDirectory = toolsDirectory ?? Path.Combine(localAppData, "Aura", "Tools");
@@ -202,7 +208,7 @@ public class FfmpegLocator : IFfmpegLocator
         else if (Directory.Exists(ffmpegPath))
         {
             // Try to find ffmpeg executable in directory
-            var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+            var exeName = FfmpegRuntimeHelper.GetExecutableName();
             var exePath = Path.Combine(ffmpegPath, exeName);
             
             if (File.Exists(exePath))
@@ -265,7 +271,7 @@ public class FfmpegLocator : IFfmpegLocator
     private List<string> GetCandidatePaths(string? configuredPath)
     {
         var candidates = new List<string>();
-        var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+        var exeName = FfmpegRuntimeHelper.GetExecutableName();
 
         // 0. Check explicit path from unified configuration service (highest priority)
         if (!string.IsNullOrEmpty(_explicitPath))
@@ -306,7 +312,28 @@ public class FfmpegLocator : IFfmpegLocator
             candidates.Add(configuredPath);
         }
 
-        // 3. App-specific paths - dependencies folder (user manual copy location)
+        // 3. Bundled resources (desktop build) - look relative to application base directory
+        // Handles paths like: resources/ffmpeg/win-x64/bin/ffmpeg.exe when running packaged desktop build
+        var rid = FfmpegRuntimeHelper.GetRuntimeRid();
+
+        var resourceBaseCandidates = new[]
+        {
+            Path.Combine(_appBaseDirectory, "resources", "ffmpeg", rid, "bin", exeName),
+            Path.Combine(_appBaseDirectory, "..", "ffmpeg", rid, "bin", exeName),
+            Path.Combine(_appBaseDirectory, "..", "ffmpeg", exeName),
+            Path.Combine(_appBaseDirectory, "..", "..", "ffmpeg", rid, "bin", exeName)
+        };
+
+        foreach (var candidate in resourceBaseCandidates)
+        {
+            var normalized = Path.GetFullPath(candidate);
+            if (!candidates.Any(p => p.Equals(normalized, StringComparison.OrdinalIgnoreCase)))
+            {
+                candidates.Add(normalized);
+            }
+        }
+
+        // 4. App-specific paths - dependencies folder (user manual copy location)
         var depsBin = Path.Combine(_dependenciesDirectory, "bin", exeName);
         candidates.Add(depsBin);
         
@@ -314,7 +341,7 @@ public class FfmpegLocator : IFfmpegLocator
         var depsRoot = Path.Combine(_dependenciesDirectory, exeName);
         candidates.Add(depsRoot);
 
-        // 4. Tools directory - managed installations
+        // 5. Tools directory - managed installations
         var toolsFFmpegDir = Path.Combine(_toolsDirectory, "ffmpeg");
         if (Directory.Exists(toolsFFmpegDir))
         {
@@ -359,7 +386,7 @@ public class FfmpegLocator : IFfmpegLocator
 
         try
         {
-            var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+            var exeName = FfmpegRuntimeHelper.GetExecutableName();
             var validation = await ValidateFfmpegBinaryAsync(exeName, ct).ConfigureAwait(false);
             
             if (validation.success)

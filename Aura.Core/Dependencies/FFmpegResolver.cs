@@ -22,17 +22,20 @@ public class FFmpegResolver
     private readonly IMemoryCache _cache;
     private readonly FFmpegConfigurationStore? _configStore;
     private readonly string _managedInstallRoot;
+    private readonly string _appBaseDirectory;
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private static readonly string CacheKey = "ffmpeg-resolution-result";
 
     public FFmpegResolver(
         ILogger<FFmpegResolver> logger,
         IMemoryCache cache,
-        FFmpegConfigurationStore? configStore = null)
+        FFmpegConfigurationStore? configStore = null,
+        string? appBaseDirectory = null)
     {
         _logger = logger;
         _cache = cache;
         _configStore = configStore;
+        _appBaseDirectory = appBaseDirectory ?? AppContext.BaseDirectory;
 
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _managedInstallRoot = Path.Combine(localAppData, "Aura", "Tools", "ffmpeg");
@@ -162,6 +165,40 @@ public class FFmpegResolver
         _logger.LogInformation("Checking managed install root: {Root}", _managedInstallRoot);
 
         var attemptedPaths = new List<string> { _managedInstallRoot };
+
+        // Check bundled resources (desktop build) before legacy managed installs
+        var bundledCandidates = GetBundledResourceCandidates();
+        if (bundledCandidates.Count > 0)
+        {
+            attemptedPaths.AddRange(bundledCandidates);
+
+            foreach (var candidate in bundledCandidates)
+            {
+                if (!File.Exists(candidate))
+                {
+                    _logger.LogDebug("Bundled FFmpeg not found at {Path}", candidate);
+                    continue;
+                }
+
+                var validation = await ValidateFFmpegBinaryAsync(candidate, ct).ConfigureAwait(false);
+                if (validation.success)
+                {
+                    _logger.LogInformation("Found bundled FFmpeg at {Path}", candidate);
+                    return new FfmpegResolutionResult
+                    {
+                        Found = true,
+                        IsValid = true,
+                        Path = candidate,
+                        Version = ExtractVersionString(validation.output),
+                        Source = "Bundled",
+                        ValidationOutput = validation.output,
+                        AttemptedPaths = attemptedPaths
+                    };
+                }
+
+                _logger.LogWarning("Bundled FFmpeg validation failed at {Path}: {Error}", candidate, validation.error);
+            }
+        }
 
         if (!Directory.Exists(_managedInstallRoot))
         {
@@ -525,6 +562,32 @@ public class FFmpegResolver
                 ? "Environment FFmpeg overrides were invalid."
                 : "No environment FFmpeg overrides configured."
         };
+    }
+
+    private List<string> GetBundledResourceCandidates()
+    {
+        var candidates = new List<string>();
+        var exeName = FfmpegRuntimeHelper.GetExecutableName();
+        var rid = FfmpegRuntimeHelper.GetRuntimeRid();
+
+        var resourcePaths = new[]
+        {
+            Path.Combine(_appBaseDirectory, "resources", "ffmpeg", rid, "bin", exeName),
+            Path.Combine(_appBaseDirectory, "..", "ffmpeg", rid, "bin", exeName),
+            Path.Combine(_appBaseDirectory, "..", "ffmpeg", exeName),
+            Path.Combine(_appBaseDirectory, "..", "..", "ffmpeg", rid, "bin", exeName)
+        };
+
+        foreach (var path in resourcePaths)
+        {
+            var normalized = Path.GetFullPath(path);
+            if (!candidates.Any(p => p.Equals(normalized, StringComparison.OrdinalIgnoreCase)))
+            {
+                candidates.Add(normalized);
+            }
+        }
+
+        return candidates;
     }
 
     private static IReadOnlyList<string> GetEnvironmentOverridePaths()

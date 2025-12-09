@@ -3,6 +3,8 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Aura.Core.Dependencies;
+using Aura.Tests.TestUtilities;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -234,6 +236,27 @@ public class FFmpegResolverTests : IDisposable
             Environment.SetEnvironmentVariable("FFMPEG_PATH", originalFfmpegValue);
             Environment.SetEnvironmentVariable("FFMPEG_BINARIES_PATH", originalBinariesValue);
         }
+    }
+
+    [Fact]
+    public async Task ResolveAsync_FindsBundledResourceFfmpeg()
+    {
+        var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+        var rid = FfmpegTestHelper.GetRuntimeRidSegment();
+
+        var backendBase = Path.Combine(_testDir, "resources", "backend", rid);
+        Directory.CreateDirectory(backendBase);
+
+        var bundledPath = Path.Combine(_testDir, "resources", "ffmpeg", rid, "bin", exeName);
+        Directory.CreateDirectory(Path.GetDirectoryName(bundledPath)!);
+        await FfmpegTestHelper.CreateMockFfmpegBinary(bundledPath);
+
+        var resolver = new FFmpegResolver(NullLogger<FFmpegResolver>.Instance, _cache, null, backendBase);
+        var result = await resolver.ResolveAsync(null, forceRefresh: true, CancellationToken.None);
+
+        Assert.True(result.Found);
+        Assert.Equal("Bundled", result.Source);
+        Assert.Equal(bundledPath, result.Path);
     }
 
     public void Dispose()
