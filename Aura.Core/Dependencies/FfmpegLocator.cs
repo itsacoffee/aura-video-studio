@@ -271,7 +271,7 @@ public class FfmpegLocator : IFfmpegLocator
     private List<string> GetCandidatePaths(string? configuredPath)
     {
         var candidates = new List<string>();
-        var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+        var exeName = FfmpegRuntimeHelper.GetExecutableName();
 
         // 0. Check explicit path from unified configuration service (highest priority)
         if (!string.IsNullOrEmpty(_explicitPath))
@@ -314,11 +314,7 @@ public class FfmpegLocator : IFfmpegLocator
 
         // 3. Bundled resources (desktop build) - look relative to application base directory
         // Handles paths like: resources/ffmpeg/win-x64/bin/ffmpeg.exe when running packaged desktop build
-        var rid = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? "win-x64"
-            : RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-                ? (RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "osx-arm64" : "osx-x64")
-                : "linux-x64";
+        var rid = FfmpegRuntimeHelper.GetRuntimeRid();
 
         var resourceBaseCandidates = new[]
         {

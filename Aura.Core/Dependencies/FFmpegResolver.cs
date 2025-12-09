@@ -565,12 +565,8 @@ public class FFmpegResolver
     private List<string> GetBundledResourceCandidates()
     {
         var candidates = new List<string>();
-        var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
-        var rid = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? "win-x64"
-            : RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-                ? (RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "osx-arm64" : "osx-x64")
-                : "linux-x64";
+        var exeName = FfmpegRuntimeHelper.GetExecutableName();
+        var rid = FfmpegRuntimeHelper.GetRuntimeRid();
 
         var resourcePaths = new[]
         {
