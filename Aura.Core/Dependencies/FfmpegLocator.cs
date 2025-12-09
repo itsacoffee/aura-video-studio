@@ -36,12 +36,12 @@ public interface IFfmpegLocator
     /// Returns the first valid FFmpeg found or throws if none available
     /// </summary>
     Task<string> GetEffectiveFfmpegPathAsync(string? configuredPath = null, CancellationToken ct = default);
-    
+
     /// <summary>
     /// Check all candidate locations for FFmpeg and return first valid one
     /// </summary>
     Task<FfmpegValidationResult> CheckAllCandidatesAsync(string? configuredPath = null, CancellationToken ct = default);
-    
+
     /// <summary>
     /// Validate a specific FFmpeg path
     /// </summary>
@@ -68,16 +68,16 @@ public class FfmpegLocator : IFfmpegLocator
         _logger = logger;
         _explicitPath = explicitPath;
         _appBaseDirectory = appBaseDirectory ?? AppContext.BaseDirectory;
-        
+
         var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         _toolsDirectory = toolsDirectory ?? Path.Combine(localAppData, "Aura", "Tools");
-        
+
         // If custom tools directory provided, derive dependencies from it
         if (toolsDirectory != null)
         {
             var parentDir = Path.GetDirectoryName(_toolsDirectory);
-            _dependenciesDirectory = parentDir != null 
-                ? Path.Combine(parentDir, "dependencies") 
+            _dependenciesDirectory = parentDir != null
+                ? Path.Combine(parentDir, "dependencies")
                 : Path.Combine(localAppData, "Aura", "dependencies");
         }
         else
@@ -95,15 +95,15 @@ public class FfmpegLocator : IFfmpegLocator
         CancellationToken ct = default)
     {
         _logger.LogInformation("Resolving effective FFmpeg path");
-        
+
         var result = await CheckAllCandidatesAsync(configuredPath, ct).ConfigureAwait(false);
-        
+
         if (result.Found && !string.IsNullOrEmpty(result.FfmpegPath))
         {
             _logger.LogInformation("Resolved effective FFmpeg path: {Path}", result.FfmpegPath);
             return result.FfmpegPath;
         }
-        
+
         var error = new
         {
             code = "E302-FFMPEG_NOT_FOUND",
@@ -117,15 +117,15 @@ public class FfmpegLocator : IFfmpegLocator
                 "Add FFmpeg to system PATH"
             }
         };
-        
-        _logger.LogError("FFmpeg not found after checking all candidates: {Error}", 
+
+        _logger.LogError("FFmpeg not found after checking all candidates: {Error}",
             System.Text.Json.JsonSerializer.Serialize(error));
-        
+
         throw new InvalidOperationException(
             $"FFmpeg not found. Checked {result.AttemptedPaths.Count} locations. " +
             $"Install FFmpeg via Download Center or attach an existing installation.");
     }
-    
+
     /// <summary>
     /// Check all candidate locations for FFmpeg and return first valid one
     /// </summary>
@@ -134,14 +134,14 @@ public class FfmpegLocator : IFfmpegLocator
         CancellationToken ct = default)
     {
         _logger.LogInformation("Checking all FFmpeg candidate locations");
-        
+
         var result = new FfmpegValidationResult();
         var candidates = GetCandidatePaths(configuredPath);
 
         foreach (var candidate in candidates)
         {
             result.AttemptedPaths.Add(candidate);
-            
+
             if (!File.Exists(candidate))
             {
                 _logger.LogDebug("FFmpeg not found at: {Path}", candidate);
@@ -159,12 +159,12 @@ public class FfmpegLocator : IFfmpegLocator
                 result.Reason = "Valid FFmpeg binary found";
                 result.HasX264 = CheckX264Support(validation.output);
                 result.Source = DetermineSource(candidate);
-                
+
                 if (!result.HasX264)
                 {
                     result.Diagnostics.Add("x264 encoder not detected - video encoding may be limited");
                 }
-                
+
                 return result;
             }
             else
@@ -184,7 +184,7 @@ public class FfmpegLocator : IFfmpegLocator
         result.Found = false;
         result.Reason = $"FFmpeg not found in any of {result.AttemptedPaths.Count} candidate locations";
         _logger.LogWarning("FFmpeg not found after checking {Count} locations", result.AttemptedPaths.Count);
-        
+
         return result;
     }
 
@@ -198,9 +198,34 @@ public class FfmpegLocator : IFfmpegLocator
         var result = new FfmpegValidationResult();
         result.AttemptedPaths.Add(ffmpegPath);
 
+        // If caller passed a bare executable name (e.g., "ffmpeg"), attempt to validate via PATH
+        // so we don't incorrectly fail when FFmpeg is available on PATH but not as a fully qualified file path.
+        var looksLikeExecutableName = !Path.IsPathRooted(ffmpegPath)
+                                      && !ffmpegPath.Contains(Path.DirectorySeparatorChar)
+                                      && !ffmpegPath.Contains(Path.AltDirectorySeparatorChar);
+        if (looksLikeExecutableName)
+        {
+            var validationFromPath = await ValidateFfmpegBinaryAsync(ffmpegPath, ct).ConfigureAwait(false);
+            if (validationFromPath.success)
+            {
+                result.Found = true;
+                result.FfmpegPath = ffmpegPath;
+                result.VersionString = ExtractVersionString(validationFromPath.output);
+                result.ValidationOutput = validationFromPath.output;
+                result.Reason = "Valid FFmpeg binary found on PATH";
+                result.Source = "PATH";
+                result.HasX264 = CheckX264Support(validationFromPath.output);
+                if (!result.HasX264)
+                {
+                    result.Diagnostics.Add("x264 encoder not detected - video encoding may be limited");
+                }
+                return result;
+            }
+        }
+
         // Resolve path - could be exe or directory
         string resolvedPath;
-        
+
         if (File.Exists(ffmpegPath))
         {
             resolvedPath = ffmpegPath;
@@ -210,7 +235,7 @@ public class FfmpegLocator : IFfmpegLocator
             // Try to find ffmpeg executable in directory
             var exeName = FfmpegRuntimeHelper.GetExecutableName();
             var exePath = Path.Combine(ffmpegPath, exeName);
-            
+
             if (File.Exists(exePath))
             {
                 resolvedPath = exePath;
@@ -239,7 +264,7 @@ public class FfmpegLocator : IFfmpegLocator
         }
 
         var validation = await ValidateFfmpegBinaryAsync(resolvedPath, ct).ConfigureAwait(false);
-        
+
         if (validation.success)
         {
             result.Found = true;
@@ -249,7 +274,7 @@ public class FfmpegLocator : IFfmpegLocator
             result.Reason = "Valid FFmpeg binary";
             result.HasX264 = CheckX264Support(validation.output);
             result.Source = "Attached";
-            
+
             if (!result.HasX264)
             {
                 result.Diagnostics.Add("x264 encoder not detected - video encoding may be limited");
@@ -336,7 +361,7 @@ public class FfmpegLocator : IFfmpegLocator
         // 4. App-specific paths - dependencies folder (user manual copy location)
         var depsBin = Path.Combine(_dependenciesDirectory, "bin", exeName);
         candidates.Add(depsBin);
-        
+
         // Also check without bin subdirectory
         var depsRoot = Path.Combine(_dependenciesDirectory, exeName);
         candidates.Add(depsRoot);
@@ -349,13 +374,13 @@ public class FfmpegLocator : IFfmpegLocator
             var versionDirs = Directory.GetDirectories(toolsFFmpegDir)
                 .OrderByDescending(d => d)
                 .ToList();
-            
+
             foreach (var versionDir in versionDirs)
             {
                 // Try bin subdirectory first
                 var binPath = Path.Combine(versionDir, "bin", exeName);
                 candidates.Add(binPath);
-                
+
                 // Try root of version directory
                 var rootPath = Path.Combine(versionDir, exeName);
                 candidates.Add(rootPath);
@@ -388,7 +413,7 @@ public class FfmpegLocator : IFfmpegLocator
         {
             var exeName = FfmpegRuntimeHelper.GetExecutableName();
             var validation = await ValidateFfmpegBinaryAsync(exeName, ct).ConfigureAwait(false);
-            
+
             if (validation.success)
             {
                 result.Found = true;
@@ -398,12 +423,12 @@ public class FfmpegLocator : IFfmpegLocator
                 result.Reason = "Found on PATH";
                 result.HasX264 = CheckX264Support(validation.output);
                 result.Source = "PATH";
-                
+
                 if (!result.HasX264)
                 {
                     result.Diagnostics.Add("x264 encoder not detected - video encoding may be limited");
                 }
-                
+
                 _logger.LogInformation("FFmpeg found on PATH");
             }
             else
@@ -464,9 +489,9 @@ public class FfmpegLocator : IFfmpegLocator
                 {
                     // Ignore errors when killing process
                 }
-                
-                return (false, null, timeoutCts.IsCancellationRequested 
-                    ? "FFmpeg validation timed out after 5 seconds" 
+
+                return (false, null, timeoutCts.IsCancellationRequested
+                    ? "FFmpeg validation timed out after 5 seconds"
                     : "Operation was cancelled");
             }
 
@@ -559,7 +584,7 @@ public class FfmpegLocator : IFfmpegLocator
     private List<string> CheckWindowsRegistry()
     {
         var candidates = new List<string>();
-        
+
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             return candidates;
@@ -620,7 +645,7 @@ public class FfmpegLocator : IFfmpegLocator
                     catch (Exception ex)
                     {
                         // Registry key access may fail due to permissions - this is normal
-                        _logger.LogDebug(ex, "Failed to access registry key {Hive}\\{Path}", 
+                        _logger.LogDebug(ex, "Failed to access registry key {Hive}\\{Path}",
                             hive.Name, regPath);
                     }
                 }

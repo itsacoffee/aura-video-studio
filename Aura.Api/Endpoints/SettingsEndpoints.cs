@@ -16,13 +16,15 @@ public static class SettingsEndpoints
     public static IEndpointRouteBuilder MapSettingsEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api");
+        var dataRoot = AuraEnvironmentPaths.ResolveDataRoot(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura"));
 
         // Save settings
         group.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =>
         {
             try
             {
-                var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "settings.json");
+                var settingsPath = Path.Combine(dataRoot, "settings.json");
                 Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
                 File.WriteAllText(settingsPath, System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
@@ -50,7 +52,7 @@ public static class SettingsEndpoints
         {
             try
             {
-                var settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura", "settings.json");
+                var settingsPath = Path.Combine(dataRoot, "settings.json");
                 if (File.Exists(settingsPath))
                 {
                     var json = File.ReadAllText(settingsPath);
@@ -89,7 +91,7 @@ public static class SettingsEndpoints
                     baseDirectory = AppContext.BaseDirectory,
                     dataDirectory = isPortable
                         ? Path.Combine(AppContext.BaseDirectory, "AuraData")
-                        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aura")
+                        : dataRoot
                 });
             }
             catch (Exception ex)

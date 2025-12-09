@@ -1199,6 +1199,7 @@ builder.Services.AddProviderServices();
 builder.Services.AddAuraProviders();
 builder.Services.AddProviderFactories();
 builder.Services.AddProviderHealthServices();
+builder.Services.AddSingleton<Aura.Api.Services.ProviderHealthInitializer>();
 
 // Register Video Template Service for script-to-video templates
 builder.Services.AddSingleton<Aura.Core.Services.Templates.IVideoTemplateService>(sp =>
@@ -4429,48 +4430,6 @@ apiGroup.MapPost("/dependencies/rescan", async (
     }
 })
 .WithName("RescanDependencies")
-.WithOpenApi();
-
-// Settings endpoints
-apiGroup.MapPost("/settings/save", ([FromBody] Dictionary<string, object> settings) =>
-{
-    try
-    {
-        var settingsPath = Path.Combine(auraDataRoot, "settings.json");
-        Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
-        File.WriteAllText(settingsPath, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
-        return Results.Ok(new { success = true, message = "Settings saved" });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error saving settings");
-        return Results.Problem("Error saving settings", statusCode: 500);
-    }
-})
-.WithName("SaveSettings")
-.WithOpenApi();
-
-
-apiGroup.MapGet("/settings/load", () =>
-{
-    try
-    {
-        var settingsPath = Path.Combine(auraDataRoot, "settings.json");
-        if (File.Exists(settingsPath))
-        {
-            var json = File.ReadAllText(settingsPath);
-            var settings = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
-            return Results.Ok(settings);
-        }
-        return Results.Ok(new Dictionary<string, object>());
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error loading settings");
-        return Results.Problem("Error loading settings", statusCode: 500);
-    }
-})
-.WithName("LoadSettings")
 .WithOpenApi();
 
 // NOTE: Render/Job endpoints moved to JobsController and QuickController
