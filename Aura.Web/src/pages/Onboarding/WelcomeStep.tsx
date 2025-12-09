@@ -29,7 +29,7 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalM,
   },
   subtitle: {
-    maxWidth: '600px',
+    maxWidth: '800px',
     marginBottom: tokens.spacingVerticalL,
   },
   cardsContainer: {

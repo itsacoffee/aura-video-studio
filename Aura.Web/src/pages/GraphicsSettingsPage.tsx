@@ -39,7 +39,7 @@ import { createDefaultGraphicsSettings } from '../types/graphicsSettings';
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: '900px',
+    maxWidth: '1150px',
     margin: '0 auto',
     padding: tokens.spacingVerticalXXL,
   },

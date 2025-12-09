@@ -34,7 +34,7 @@ import { useAccessibility } from '../contexts/AccessibilityContext';
 
 const useStyles = makeStyles({
   container: {
-    maxWidth: '800px',
+    maxWidth: '1000px',
     margin: '0 auto',
     ...shorthands.padding(tokens.spacingVerticalXXL),
   },

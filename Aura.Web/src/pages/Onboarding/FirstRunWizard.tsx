@@ -87,7 +87,7 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100%',
     padding: `${tokens.spacingVerticalL} ${tokens.spacingHorizontalXL}`,
-    maxWidth: '900px',
+    maxWidth: '1150px',
     margin: '0 auto',
   },
   header: {
@@ -1718,7 +1718,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
           style={{
             display: 'block',
             color: tokens.colorNeutralForeground2,
-            maxWidth: '600px',
+            maxWidth: '800px',
             margin: '0 auto',
           }}
         >
@@ -1912,7 +1912,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
                 padding: tokens.spacingVerticalM,
                 backgroundColor: tokens.colorPaletteRedBackground1,
                 border: `1px solid ${tokens.colorPaletteRedBorder1}`,
-                maxWidth: '600px',
+                maxWidth: '800px',
                 margin: '0 auto 1rem auto',
               }}
             >
@@ -1956,7 +1956,7 @@ export function FirstRunWizard({ onComplete }: FirstRunWizardProps = {}) {
             style={{
               padding: tokens.spacingVerticalM,
               textAlign: 'left',
-              maxWidth: '600px',
+              maxWidth: '800px',
               margin: '0 auto',
             }}
           >

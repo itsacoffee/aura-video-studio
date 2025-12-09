@@ -35,8 +35,8 @@ interface UIScaleResult {
 }
 
 const DEFAULT_CONFIG: UIScaleConfig = {
-  baseWidth: 1920,
-  baseHeight: 1080,
+  baseWidth: 2208,
+  baseHeight: 1242,
   mode: 'fill',
   debounceDelay: 150,
 };

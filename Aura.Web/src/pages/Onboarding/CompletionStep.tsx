@@ -31,13 +31,13 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalM,
   },
   subtitle: {
-    maxWidth: '600px',
+    maxWidth: '800px',
     marginBottom: tokens.spacingVerticalL,
   },
   summaryCard: {
     padding: tokens.spacingVerticalXL,
     width: '100%',
-    maxWidth: '600px',
+    maxWidth: '800px',
     textAlign: 'left',
     marginTop: tokens.spacingVerticalL,
   },
