@@ -40,7 +40,7 @@ public class FFmpegResolver
 
     /// <summary>
     /// Resolve effective FFmpeg path with precedence and caching
-    /// Precedence: Managed install > User-configured path > PATH lookup
+    /// Precedence: Environment override > Managed install > User-configured path > PATH lookup
     /// </summary>
     public async Task<FfmpegResolutionResult> ResolveAsync(
         string? configuredPath = null,
@@ -59,20 +59,22 @@ public class FFmpegResolver
         {
             if (!hasEnvOverrides)
             {
-                _logger.LogDebug("Returning cached FFmpeg resolution result");
+                _logger.LogDebug("Returning cached FFmpeg resolution result (Source: {Source}, Path: {Path})", 
+                    cached?.Source ?? "None", cached?.Path ?? "null");
                 return cached!;
             }
 
             if (cached != null && cached.Source == "Environment" && cached.Found && cached.IsValid)
             {
-                _logger.LogDebug("Returning cached environment FFmpeg resolution result");
+                _logger.LogDebug("Returning cached environment FFmpeg resolution result (Path: {Path})", cached.Path);
                 return cached;
             }
 
-            _logger.LogDebug("Environment overrides detected, bypassing cached FFmpeg result");
+            _logger.LogDebug("Environment overrides detected or cache invalid, bypassing cached FFmpeg result");
         }
 
-        _logger.LogInformation("Resolving FFmpeg path with precedence: Environment > Managed > Configured > PATH");
+        _logger.LogInformation("Resolving FFmpeg path with precedence: Environment (AURA_FFMPEG_PATH / FFMPEG_PATH) > Managed ({ManagedRoot}) > Configured > PATH", 
+            _managedInstallRoot);
 
         var attemptedPaths = new List<string>();
         FfmpegResolutionResult result;
@@ -126,13 +128,29 @@ public class FFmpegResolver
                 return result;
             }
 
-            // Nothing found
+            // Nothing found - provide detailed actionable error message
+            var errorDetails = new System.Text.StringBuilder();
+            errorDetails.AppendLine("FFmpeg not found. Attempted locations:");
+            foreach (var path in attemptedPaths)
+            {
+                errorDetails.AppendLine($"  - {path}");
+            }
+            errorDetails.AppendLine();
+            errorDetails.AppendLine("To fix this issue:");
+            errorDetails.AppendLine("1. Install FFmpeg via Settings > Downloads");
+            errorDetails.AppendLine("2. Or set AURA_FFMPEG_PATH environment variable to FFmpeg location");
+            errorDetails.AppendLine("3. Or add FFmpeg to system PATH");
+            errorDetails.AppendLine($"4. Or place FFmpeg in managed location: {_managedInstallRoot}");
+            
+            var errorMessage = errorDetails.ToString();
+            _logger.LogWarning("FFmpeg resolution failed. {ErrorDetails}", errorMessage);
+
             result = new FfmpegResolutionResult
             {
                 Found = false,
                 IsValid = false,
                 Source = "None",
-                Error = "FFmpeg not found in any location. Install managed FFmpeg or configure path in Settings.",
+                Error = errorMessage,
                 AttemptedPaths = attemptedPaths
             };
 
@@ -569,7 +587,7 @@ public class FFmpegResolver
     }
 
     /// <summary>
-    /// Validate FFmpeg binary by running -version
+    /// Validate FFmpeg binary by running -version with timeout
     /// </summary>
     private async Task<(bool success, string? output, string? error)> ValidateFFmpegBinaryAsync(
         string ffmpegPath,
@@ -593,10 +611,35 @@ public class FFmpegResolver
                 return (false, null, "Failed to start FFmpeg process");
             }
 
-            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            // Add 5-second timeout to prevent hanging on invalid FFmpeg binary
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
-            var stdout = await process.StandardOutput.ReadToEndAsync(ct).ConfigureAwait(false);
-            var stderr = await process.StandardError.ReadToEndAsync(ct).ConfigureAwait(false);
+            try
+            {
+                await process.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+                }
+                catch
+                {
+                    // Ignore errors when killing process
+                }
+
+                return (false, null, timeoutCts.IsCancellationRequested
+                    ? "FFmpeg validation timed out after 5 seconds"
+                    : "Operation was cancelled");
+            }
+
+            var stdout = await process.StandardOutput.ReadToEndAsync(linkedCts.Token).ConfigureAwait(false);
+            var stderr = await process.StandardError.ReadToEndAsync(linkedCts.Token).ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
