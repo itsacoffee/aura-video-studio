@@ -14,9 +14,9 @@ import { useUIScaleCSS } from '../hooks/useUIScale';
 interface ScaledUIContainerProps {
   /** Child components to render with scaling applied */
   children: ReactNode;
-  /** Base reference width for scaling calculations (default: 1920) */
+  /** Base reference width for scaling calculations (default: 2208 - 15% larger than 1920) */
   baseWidth?: number;
-  /** Base reference height for scaling calculations (default: 1080) */
+  /** Base reference height for scaling calculations (default: 1242 - 15% larger than 1080) */
   baseHeight?: number;
   /** Whether to use contain (letterbox) or fill behavior (default: 'fill') */
   mode?: 'fill' | 'contain';
@@ -47,8 +47,8 @@ interface ScaledUIContainerProps {
  */
 export function ScaledUIContainer({
   children,
-  baseWidth = 1920,
-  baseHeight = 1080,
+  baseWidth = 2208,
+  baseHeight = 1242,
   mode = 'fill',
   enabled = true,
 }: ScaledUIContainerProps) {

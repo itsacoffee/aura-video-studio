@@ -6,7 +6,7 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'column',
     padding: tokens.spacingVerticalXXL,
-    maxWidth: '900px',
+    maxWidth: '1150px',
     margin: '0 auto',
     gap: tokens.spacingVerticalL,
   },

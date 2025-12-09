@@ -86,7 +86,7 @@ const useStyles = makeStyles({
   calloutText: {
     fontSize: '16px',
     color: tokens.colorNeutralForeground2,
-    maxWidth: '600px',
+    maxWidth: '800px',
     margin: '0 auto',
     lineHeight: '1.6',
     marginBottom: tokens.spacingVerticalXL,
@@ -116,7 +116,7 @@ const useStyles = makeStyles({
   reconfigureText: {
     fontSize: '14px',
     color: tokens.colorNeutralForeground2,
-    maxWidth: '500px',
+    maxWidth: '700px',
     margin: '0 auto',
     lineHeight: '1.5',
     marginBottom: tokens.spacingVerticalL,
@@ -173,7 +173,7 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalM,
     paddingLeft: tokens.spacingHorizontalXL,
     textAlign: 'left',
-    maxWidth: '600px',
+    maxWidth: '800px',
     margin: '0 auto',
   },
   readyBanner: {
