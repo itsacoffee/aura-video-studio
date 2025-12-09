@@ -96,10 +96,11 @@ public class OllamaStreamingClient
 
         try
         {
-            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            string? line;
+
+            while (!ct.IsCancellationRequested &&
+                   (line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) != null)
             {
-                var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;
@@ -165,7 +166,7 @@ public class OllamaStreamingClient
     /// <summary>
     /// Stream a chat completion with message history
     /// </summary>
-    public async IAsyncEnumerable<OllamaStreamingChunk> StreamChatAsync(
+        public async IAsyncEnumerable<OllamaStreamingChunk> StreamChatAsync(
         string model,
         IEnumerable<ChatMessage> messages,
         double temperature = 0.7,
@@ -220,10 +221,11 @@ public class OllamaStreamingClient
 
         try
         {
-            while (!reader.EndOfStream && !ct.IsCancellationRequested)
+            string? line;
+
+            while (!ct.IsCancellationRequested &&
+                   (line = await reader.ReadLineAsync(ct).ConfigureAwait(false)) != null)
             {
-                var line = await reader.ReadLineAsync().ConfigureAwait(false);
-                
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;

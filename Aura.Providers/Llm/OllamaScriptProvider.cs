@@ -87,7 +87,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
         CancellationToken cancellationToken)
     {
         var modelToUse = request.ModelOverride ?? _model;
-        _logger.LogInformation("Generating script with Ollama for topic: {Topic}. ModelOverride: {ModelOverride}, DefaultModel: {DefaultModel}, UsingModel: {UsingModel}", 
+        _logger.LogInformation("Generating script with Ollama for topic: {Topic}. ModelOverride: {ModelOverride}, DefaultModel: {DefaultModel}, UsingModel: {UsingModel}",
             request.Brief.Topic, request.ModelOverride ?? "null", _model, modelToUse);
 
         var isAvailable = await IsServiceAvailableAsync(cancellationToken).ConfigureAwait(false);
@@ -616,7 +616,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
             var cacheAge = DateTime.UtcNow - _lastAvailabilityCheck;
             if (cacheAge < _availabilityCacheDuration)
             {
-                _logger.LogDebug("Using cached Ollama availability result: {Result} (age: {Age}s)", 
+                _logger.LogDebug("Using cached Ollama availability result: {Result} (age: {Age}s)",
                     _lastAvailabilityResult, cacheAge.TotalSeconds);
                 return _lastAvailabilityResult;
             }
@@ -647,7 +647,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
 
                 using var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/version");
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/version", _baseUrl);
@@ -693,7 +693,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                 fallbackCts.CancelAfter(TimeSpan.FromSeconds(45)); // Lenient fallback
                 using var fallbackRequest = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/api/tags");
                 using var tagsResponse = await _httpClient.SendAsync(fallbackRequest, HttpCompletionOption.ResponseHeadersRead, fallbackCts.Token).ConfigureAwait(false);
-                
+
                 if (tagsResponse.IsSuccessStatusCode)
                 {
                     _logger.LogInformation("Ollama service detected at {BaseUrl} via /api/tags fallback", _baseUrl);
@@ -717,7 +717,7 @@ public class OllamaScriptProvider : BaseLlmScriptProvider
                 if (innerException != null)
                 {
                     errorDetails += $", InnerException: {innerException.GetType().Name} - {innerException.Message}";
-                    if (innerException.Message.Contains("No connection could be made") || 
+                    if (innerException.Message.Contains("No connection could be made") ||
                         innerException.Message.Contains("Connection refused") ||
                         innerException.Message.Contains("actively refused"))
                     {
@@ -888,7 +888,7 @@ Style: {spec.Style}
 Target Scenes: {targetSceneCount}
 
 Please provide a well-structured script with:
-1. A title line starting with # 
+1. A title line starting with #
 2. {targetSceneCount} scenes, each starting with ## [Scene Name]
 3. Clear narration for each scene (50-150 words each)
 4. Proper punctuation for natural TTS reading";
