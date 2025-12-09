@@ -4973,45 +4973,6 @@ apiGroup.MapGet("/settings/portable", () =>
 // Portable mode is always enabled - this endpoint is read-only for info purposes
 // Keeping for backward compatibility but it doesn't change the mode
 
-// Open Tools Folder
-apiGroup.MapPost("/settings/open-tools-folder", () =>
-{
-    try
-    {
-        var providerSettings = app.Services.GetRequiredService<Aura.Core.Configuration.ProviderSettings>();
-        var toolsDirectory = providerSettings.GetToolsDirectory();
-
-        // Create directory if it doesn't exist
-        if (!Directory.Exists(toolsDirectory))
-        {
-            Directory.CreateDirectory(toolsDirectory);
-        }
-
-        // Platform-specific logic to open folder in file explorer
-        if (OperatingSystem.IsWindows())
-        {
-            System.Diagnostics.Process.Start("explorer.exe", toolsDirectory);
-        }
-        else if (OperatingSystem.IsMacOS())
-        {
-            System.Diagnostics.Process.Start("open", toolsDirectory);
-        }
-        else if (OperatingSystem.IsLinux())
-        {
-            System.Diagnostics.Process.Start("xdg-open", toolsDirectory);
-        }
-
-        return Results.Ok(new { success = true, path = toolsDirectory });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error opening tools folder");
-        return Results.Problem("Error opening tools folder", statusCode: 500);
-    }
-})
-.WithName("OpenToolsFolder")
-.WithOpenApi();
-
 // Path resolution endpoint - expand environment variables in paths
 apiGroup.MapPost("/paths/resolve", ([FromBody] PathResolveRequestDto request) =>
 {
