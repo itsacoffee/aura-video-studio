@@ -208,7 +208,7 @@ public class FfmpegLocator : IFfmpegLocator
         else if (Directory.Exists(ffmpegPath))
         {
             // Try to find ffmpeg executable in directory
-            var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+            var exeName = FfmpegRuntimeHelper.GetExecutableName();
             var exePath = Path.Combine(ffmpegPath, exeName);
             
             if (File.Exists(exePath))
@@ -386,7 +386,7 @@ public class FfmpegLocator : IFfmpegLocator
 
         try
         {
-            var exeName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "ffmpeg.exe" : "ffmpeg";
+            var exeName = FfmpegRuntimeHelper.GetExecutableName();
             var validation = await ValidateFfmpegBinaryAsync(exeName, ct).ConfigureAwait(false);
             
             if (validation.success)

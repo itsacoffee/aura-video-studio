@@ -546,8 +546,10 @@ public class FFmpegResolver
                 _logger.LogInformation("Found valid FFmpeg via environment variable: {Path}", result.Path);
                 return result;
             }
-
-            _logger.LogWarning("Environment path {Path} did not contain valid FFmpeg: {Error}", envPath, result.Error);
+            else
+            {
+                _logger.LogWarning("Environment path {Path} did not contain valid FFmpeg: {Error}", envPath, result.Error);
+            }
         }
 
         return new FfmpegResolutionResult
