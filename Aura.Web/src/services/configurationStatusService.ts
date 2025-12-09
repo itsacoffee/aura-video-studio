@@ -452,7 +452,11 @@ class ConfigurationStatusService {
         checks.ffmpegDetected = retryFFmpeg.installed;
         console.info('[configurationStatusService] FFmpeg retry result:', { installed: retryFFmpeg.installed, path: retryFFmpeg.path });
       }
-      isConfigured = checks.ffmpegDetected; // Only require FFmpeg if wizard completed
+      // CRITICAL FIX: If wizard is completed, ALWAYS consider configured
+      // Even if FFmpeg isn't detected, user completed setup and should be able to access features
+      // They can fix FFmpeg issues via Settings or see warnings in the UI
+      isConfigured = true; // Trust wizard completion over runtime checks
+      console.info('[configurationStatusService] Wizard completed - marking as configured regardless of checks');
     } else {
       isConfigured = checks.providerConfigured && checks.ffmpegDetected; // Require both if wizard not completed
     }
